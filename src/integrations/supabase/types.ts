@@ -470,6 +470,7 @@ export type Database = {
           created_at: string
           id: string
           method: string
+          notes: string | null
           payment_date: string
           receipt_file_url: string | null
           rent_due_id: string
@@ -479,6 +480,7 @@ export type Database = {
           created_at?: string
           id?: string
           method?: string
+          notes?: string | null
           payment_date: string
           receipt_file_url?: string | null
           rent_due_id: string
@@ -488,6 +490,7 @@ export type Database = {
           created_at?: string
           id?: string
           method?: string
+          notes?: string | null
           payment_date?: string
           receipt_file_url?: string | null
           rent_due_id?: string

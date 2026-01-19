@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { DollarSign, Building2, Upload, X, FileText } from "lucide-react";
+import { DollarSign, Building2, Upload, X, FileText, Eye } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { PageHeader } from "@/components/ui/page-header";
@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -35,6 +36,16 @@ import {
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 
+interface RentPayment {
+  id: string;
+  payment_date: string;
+  amount: number;
+  method: string;
+  receipt_file_url: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
 interface RentDue {
   id: string;
   period_month: string;
@@ -49,6 +60,31 @@ interface RentDue {
   tenants: {
     full_name: string;
   };
+  rent_payments?: RentPayment[];
+}
+
+// Compute derived values for a rent due
+function computeRentDueStatus(rentDue: RentDue): {
+  totalPaid: number;
+  balanceDue: number;
+  derivedStatus: string;
+} {
+  const payments = rentDue.rent_payments || [];
+  const totalPaid = payments.reduce((sum, p) => sum + Number(p.amount), 0);
+  const balanceDue = Math.max(rentDue.expected_amount - totalPaid, 0);
+
+  let derivedStatus: string;
+  if (totalPaid >= rentDue.expected_amount) {
+    derivedStatus = "paid";
+  } else if (totalPaid > 0) {
+    derivedStatus = "partial";
+  } else if (new Date() > new Date(rentDue.due_date)) {
+    derivedStatus = "overdue";
+  } else {
+    derivedStatus = "due";
+  }
+
+  return { totalPaid, balanceDue, derivedStatus };
 }
 
 export default function Rent() {
@@ -57,10 +93,12 @@ export default function Rent() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const [paymentsViewDialogOpen, setPaymentsViewDialogOpen] = useState(false);
   const [selectedRentDue, setSelectedRentDue] = useState<RentDue | null>(null);
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split("T")[0]);
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("transfer");
+  const [paymentNotes, setPaymentNotes] = useState("");
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -89,13 +127,14 @@ export default function Rent() {
 
       const propertyIds = userProperties.map((p) => p.id);
 
-      // Then fetch rent dues for those properties
+      // Fetch rent dues with payments for those properties
       const { data, error } = await supabase
         .from("rent_dues")
         .select(`
           *,
           properties(internal_identifier),
-          tenants(full_name)
+          tenants(full_name),
+          rent_payments(*)
         `)
         .in("property_id", propertyIds)
         .order("due_date", { ascending: true });
@@ -115,12 +154,19 @@ export default function Rent() {
   };
 
   const openPaymentDialog = (rentDue: RentDue) => {
+    const { balanceDue } = computeRentDueStatus(rentDue);
     setSelectedRentDue(rentDue);
-    setPaymentAmount(rentDue.balance_due.toString());
+    setPaymentAmount(balanceDue > 0 ? balanceDue.toString() : "");
     setPaymentDate(new Date().toISOString().split("T")[0]);
     setPaymentMethod("transfer");
+    setPaymentNotes("");
     setReceiptFile(null);
     setPaymentDialogOpen(true);
+  };
+
+  const openPaymentsViewDialog = (rentDue: RentDue) => {
+    setSelectedRentDue(rentDue);
+    setPaymentsViewDialogOpen(true);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -202,6 +248,9 @@ export default function Rent() {
       return;
     }
 
+    const { balanceDue } = computeRentDueStatus(selectedRentDue);
+    const exceedsBalance = amount > balanceDue;
+
     setIsSubmitting(true);
 
     try {
@@ -211,22 +260,38 @@ export default function Rent() {
         receiptUrl = await uploadReceipt(selectedRentDue.id);
       }
 
-      // Create payment record
+      // Create payment record (always a NEW row)
       const { error: paymentError } = await supabase.from("rent_payments").insert({
         rent_due_id: selectedRentDue.id,
         payment_date: paymentDate,
         amount: amount,
         method: paymentMethod,
         receipt_file_url: receiptUrl,
+        notes: paymentNotes || null,
       });
 
       if (paymentError) throw paymentError;
 
-      // Calculate new balance
-      const newBalance = Math.max(0, selectedRentDue.balance_due - amount);
-      const newStatus = newBalance === 0 ? "paid" : "partial";
+      // Calculate new balance and status after this payment
+      const currentTotalPaid = (selectedRentDue.rent_payments || []).reduce(
+        (sum, p) => sum + Number(p.amount),
+        0
+      );
+      const newTotalPaid = currentTotalPaid + amount;
+      const newBalance = Math.max(0, selectedRentDue.expected_amount - newTotalPaid);
 
-      // Update rent due
+      let newStatus: string;
+      if (newTotalPaid >= selectedRentDue.expected_amount) {
+        newStatus = "paid";
+      } else if (newTotalPaid > 0) {
+        newStatus = "partial";
+      } else if (new Date() > new Date(selectedRentDue.due_date)) {
+        newStatus = "overdue";
+      } else {
+        newStatus = "due";
+      }
+
+      // Update rent due with new balance and status
       const { error: updateError } = await supabase
         .from("rent_dues")
         .update({
@@ -237,7 +302,12 @@ export default function Rent() {
 
       if (updateError) throw updateError;
 
-      if (newBalance > 0) {
+      if (exceedsBalance) {
+        toast({
+          title: "Payment saved",
+          description: "Payment saved. Amount exceeds the remaining balance.",
+        });
+      } else if (newBalance > 0) {
         toast({
           title: "Payment saved",
           description: `Payment saved. Balance still due: ${formatCurrency(newBalance)}`,
@@ -252,6 +322,7 @@ export default function Rent() {
       setPaymentDialogOpen(false);
       setSelectedRentDue(null);
       setPaymentAmount("");
+      setPaymentNotes("");
       setReceiptFile(null);
       fetchRentDues();
     } catch (error) {
@@ -270,7 +341,8 @@ export default function Rent() {
     const matchesSearch =
       rd.properties.internal_identifier.toLowerCase().includes(search.toLowerCase()) ||
       rd.tenants.full_name.toLowerCase().includes(search.toLowerCase());
-    const matchesStatus = statusFilter === "all" || rd.status === statusFilter;
+    const { derivedStatus } = computeRentDueStatus(rd);
+    const matchesStatus = statusFilter === "all" || derivedStatus === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
@@ -326,6 +398,7 @@ export default function Rent() {
             <SelectItem value="paid">Paid</SelectItem>
             <SelectItem value="partial">Partial</SelectItem>
             <SelectItem value="overdue">Overdue</SelectItem>
+            <SelectItem value="due">Due</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -355,54 +428,74 @@ export default function Rent() {
                         <TableHead>Tenant</TableHead>
                         <TableHead>Period</TableHead>
                         <TableHead>Due Date</TableHead>
-                        <TableHead className="text-right">Expected Amount</TableHead>
-                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Expected</TableHead>
+                        <TableHead className="text-right">Total Paid</TableHead>
                         <TableHead className="text-right">Balance Due</TableHead>
-                        <TableHead className="text-right">Action</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredRentDues.map((rd) => (
-                        <TableRow key={rd.id}>
-                          <TableCell>
-                            <div className="flex items-center gap-3">
-                              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10 text-primary">
-                                <Building2 className="w-4 h-4" />
+                      {filteredRentDues.map((rd) => {
+                        const { totalPaid, balanceDue, derivedStatus } = computeRentDueStatus(rd);
+                        const paymentCount = rd.rent_payments?.length || 0;
+                        return (
+                          <TableRow key={rd.id}>
+                            <TableCell>
+                              <div className="flex items-center gap-3">
+                                <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10 text-primary">
+                                  <Building2 className="w-4 h-4" />
+                                </div>
+                                <span className="font-medium">
+                                  {rd.properties.internal_identifier}
+                                </span>
                               </div>
-                              <span className="font-medium">
-                                {rd.properties.internal_identifier}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {rd.tenants.full_name}
+                            </TableCell>
+                            <TableCell>{formatMonth(rd.period_month)}</TableCell>
+                            <TableCell>{formatDate(rd.due_date)}</TableCell>
+                            <TableCell className="text-right">
+                              <span className="font-semibold">
+                                {formatCurrency(rd.expected_amount)}
                               </span>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-muted-foreground">
-                            {rd.tenants.full_name}
-                          </TableCell>
-                          <TableCell>{formatMonth(rd.period_month)}</TableCell>
-                          <TableCell>{formatDate(rd.due_date)}</TableCell>
-                          <TableCell className="text-right">
-                            <span className="font-semibold">
-                              {formatCurrency(rd.expected_amount)}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            <StatusBadge variant={rd.status as any} />
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <span className={rd.balance_due > 0 ? "font-semibold text-warning" : "text-muted-foreground"}>
-                              {formatCurrency(rd.balance_due)}
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {rd.status !== "paid" ? (
-                              <Button size="sm" onClick={() => openPaymentDialog(rd)}>
-                                Record payment
-                              </Button>
-                            ) : (
-                              <span className="text-sm text-muted-foreground">—</span>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <span className={totalPaid > 0 ? "font-semibold text-success" : "text-muted-foreground"}>
+                                {formatCurrency(totalPaid)}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <span className={balanceDue > 0 ? "font-semibold text-warning" : "text-muted-foreground"}>
+                                {formatCurrency(balanceDue)}
+                              </span>
+                            </TableCell>
+                            <TableCell>
+                              <StatusBadge variant={derivedStatus as any} />
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                {paymentCount > 0 && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => openPaymentsViewDialog(rd)}
+                                  >
+                                    <Eye className="w-4 h-4 mr-1" />
+                                    View ({paymentCount})
+                                  </Button>
+                                )}
+                                {derivedStatus !== "paid" && (
+                                  <Button size="sm" onClick={() => openPaymentDialog(rd)}>
+                                    Record payment
+                                  </Button>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 </div>
@@ -423,31 +516,67 @@ export default function Rent() {
             <Card>
               <CardContent className="p-6">
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {filteredRentDues.map((rd) => (
-                    <div
-                      key={rd.id}
-                      className="p-4 rounded-lg border bg-card hover:shadow-medium transition-shadow"
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-medium">{formatMonth(rd.period_month)}</span>
-                        <StatusBadge variant={rd.status as any} />
+                  {filteredRentDues.map((rd) => {
+                    const { totalPaid, balanceDue, derivedStatus } = computeRentDueStatus(rd);
+                    const paymentCount = rd.rent_payments?.length || 0;
+                    return (
+                      <div
+                        key={rd.id}
+                        className="p-4 rounded-lg border bg-card hover:shadow-medium transition-shadow"
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-medium">{formatMonth(rd.period_month)}</span>
+                          <StatusBadge variant={derivedStatus as any} />
+                        </div>
+                        <p className="text-sm text-muted-foreground mb-1">
+                          {rd.properties.internal_identifier}
+                        </p>
+                        <p className="text-sm text-muted-foreground mb-2">
+                          {rd.tenants.full_name}
+                        </p>
+                        <div className="space-y-1 mb-3">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Expected:</span>
+                            <span className="font-semibold">{formatCurrency(rd.expected_amount)}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Paid:</span>
+                            <span className={totalPaid > 0 ? "text-success" : "text-muted-foreground"}>
+                              {formatCurrency(totalPaid)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Balance:</span>
+                            <span className={balanceDue > 0 ? "text-warning font-semibold" : "text-muted-foreground"}>
+                              {formatCurrency(balanceDue)}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {paymentCount > 0 && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="flex-1"
+                              onClick={() => openPaymentsViewDialog(rd)}
+                            >
+                              <Eye className="w-4 h-4 mr-1" />
+                              View ({paymentCount})
+                            </Button>
+                          )}
+                          {derivedStatus !== "paid" && (
+                            <Button
+                              size="sm"
+                              className="flex-1"
+                              onClick={() => openPaymentDialog(rd)}
+                            >
+                              Record payment
+                            </Button>
+                          )}
+                        </div>
                       </div>
-                      <p className="text-sm text-muted-foreground mb-1">
-                        {rd.properties.internal_identifier}
-                      </p>
-                      <p className="text-sm text-muted-foreground mb-2">
-                        {rd.tenants.full_name}
-                      </p>
-                      <div className="flex items-center justify-between">
-                        <span className="font-semibold">{formatCurrency(rd.expected_amount)}</span>
-                        {rd.status !== "paid" && (
-                          <Button size="sm" onClick={() => openPaymentDialog(rd)}>
-                            Record payment
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
@@ -486,11 +615,16 @@ export default function Rent() {
                   <div className="text-right">
                     <p className="text-sm text-muted-foreground">Balance due</p>
                     <p className="font-bold text-lg">
-                      {formatCurrency(selectedRentDue.balance_due)}
+                      {formatCurrency(computeRentDueStatus(selectedRentDue).balanceDue)}
                     </p>
                   </div>
                 </div>
               </div>
+
+              {/* Helper text */}
+              <p className="text-sm text-muted-foreground bg-muted/30 p-3 rounded-lg">
+                You can record multiple payments for the same rent due.
+              </p>
 
               {/* Payment Date */}
               <div className="space-y-2">
@@ -529,6 +663,18 @@ export default function Rent() {
                     <SelectItem value="cash">Cash</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              {/* Notes */}
+              <div className="space-y-2">
+                <Label htmlFor="notes">Notes (optional)</Label>
+                <Textarea
+                  id="notes"
+                  placeholder="Add any notes about this payment..."
+                  value={paymentNotes}
+                  onChange={(e) => setPaymentNotes(e.target.value)}
+                  rows={2}
+                />
               </div>
 
               {/* Receipt Upload */}
@@ -578,6 +724,113 @@ export default function Rent() {
                 </Button>
                 <Button onClick={handlePayment} disabled={isSubmitting}>
                   {isSubmitting ? "Recording..." : "Record payment"}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* View Payments Dialog */}
+      <Dialog open={paymentsViewDialogOpen} onOpenChange={setPaymentsViewDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Payment History</DialogTitle>
+            <DialogDescription>
+              All payments recorded for this rent due.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedRentDue && (
+            <div className="space-y-4 mt-2">
+              {/* Rent Due Summary */}
+              <div className="p-4 rounded-lg bg-muted/50 border">
+                <div className="flex items-start gap-3">
+                  <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 text-primary shrink-0">
+                    <Building2 className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold truncate">
+                      {selectedRentDue.properties.internal_identifier}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {formatMonth(selectedRentDue.period_month)}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm text-muted-foreground">Expected</p>
+                    <p className="font-bold">{formatCurrency(selectedRentDue.expected_amount)}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Payments List */}
+              {selectedRentDue.rent_payments && selectedRentDue.rent_payments.length > 0 ? (
+                <div className="space-y-3">
+                  {selectedRentDue.rent_payments
+                    .sort((a, b) => new Date(b.payment_date).getTime() - new Date(a.payment_date).getTime())
+                    .map((payment) => (
+                      <div
+                        key={payment.id}
+                        className="p-4 rounded-lg border bg-card"
+                      >
+                        <div className="flex items-start justify-between mb-2">
+                          <div>
+                            <p className="font-semibold">{formatCurrency(payment.amount)}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {formatDate(payment.payment_date)}
+                            </p>
+                          </div>
+                          <span className="text-xs px-2 py-1 rounded-full bg-muted capitalize">
+                            {payment.method}
+                          </span>
+                        </div>
+                        {payment.notes && (
+                          <p className="text-sm text-muted-foreground mt-2">
+                            {payment.notes}
+                          </p>
+                        )}
+                        {payment.receipt_file_url && (
+                          <a
+                            href={payment.receipt_file_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-sm text-primary hover:underline mt-2"
+                          >
+                            <FileText className="w-4 h-4" />
+                            View receipt
+                          </a>
+                        )}
+                      </div>
+                    ))}
+                </div>
+              ) : (
+                <p className="text-center text-muted-foreground py-4">
+                  No payments recorded yet.
+                </p>
+              )}
+
+              {/* Summary */}
+              {selectedRentDue.rent_payments && selectedRentDue.rent_payments.length > 0 && (
+                <div className="p-4 rounded-lg bg-muted/30 border-t">
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Total paid:</span>
+                    <span className="font-bold text-success">
+                      {formatCurrency(computeRentDueStatus(selectedRentDue).totalPaid)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center mt-1">
+                    <span className="text-muted-foreground">Remaining balance:</span>
+                    <span className={`font-bold ${computeRentDueStatus(selectedRentDue).balanceDue > 0 ? "text-warning" : ""}`}>
+                      {formatCurrency(computeRentDueStatus(selectedRentDue).balanceDue)}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Close Button */}
+              <div className="flex justify-end pt-2">
+                <Button variant="outline" onClick={() => setPaymentsViewDialogOpen(false)}>
+                  Close
                 </Button>
               </div>
             </div>
