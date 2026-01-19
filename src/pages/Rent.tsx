@@ -418,21 +418,21 @@ export default function Rent() {
               className="py-12"
             />
           ) : (
-            <Card>
+            <Card className="overflow-hidden">
               <CardContent className="p-0">
                 <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
+                  <Table className="min-w-[900px]">
+                    <TableHeader className="sticky top-0 bg-card z-10">
                       <TableRow>
-                        <TableHead>Property</TableHead>
-                        <TableHead>Tenant</TableHead>
-                        <TableHead>Period</TableHead>
-                        <TableHead>Due Date</TableHead>
-                        <TableHead className="text-right">Expected</TableHead>
-                        <TableHead className="text-right">Total Paid</TableHead>
-                        <TableHead className="text-right">Balance Due</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
+                        <TableHead className="whitespace-nowrap">Property</TableHead>
+                        <TableHead className="whitespace-nowrap">Tenant</TableHead>
+                        <TableHead className="whitespace-nowrap">Period</TableHead>
+                        <TableHead className="whitespace-nowrap">Due Date</TableHead>
+                        <TableHead className="text-right whitespace-nowrap">Expected</TableHead>
+                        <TableHead className="text-right whitespace-nowrap">Total Paid</TableHead>
+                        <TableHead className="text-right whitespace-nowrap">Balance Due</TableHead>
+                        <TableHead className="whitespace-nowrap">Status</TableHead>
+                        <TableHead className="text-right whitespace-nowrap">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
