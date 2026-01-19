@@ -347,8 +347,18 @@ export default function Dashboard() {
     const totalPaid = (data.rent_payments || []).reduce((sum: number, p: any) => sum + Number(p.amount), 0);
     const balanceDue = Math.max(data.expected_amount - totalPaid, 0);
 
+    // Block if already fully paid
+    if (balanceDue === 0) {
+      toast({
+        title: "Already paid",
+        description: "This rent is already fully paid.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setSelectedRentDue(data as RentDueData);
-    setPaymentAmount(balanceDue > 0 ? balanceDue.toString() : "");
+    setPaymentAmount(balanceDue.toString());
     setPaymentDate(new Date().toISOString().split("T")[0]);
     setPaymentMethod("transfer");
     setPaymentNotes("");
@@ -504,7 +514,7 @@ export default function Dashboard() {
       console.error("Error recording payment:", error);
       toast({
         title: "Error",
-        description: "Something went wrong. Please try again.",
+        description: "Could not save payment. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -616,10 +626,8 @@ export default function Dashboard() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="transfer">Bank Transfer</SelectItem>
+                  <SelectItem value="transfer">Transfer</SelectItem>
                   <SelectItem value="cash">Cash</SelectItem>
-                  <SelectItem value="check">Check</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
                 </SelectContent>
               </Select>
             </div>
