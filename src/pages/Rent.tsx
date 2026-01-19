@@ -73,6 +73,23 @@ export default function Rent() {
 
   const fetchRentDues = async () => {
     try {
+      // First get properties owned by this user
+      const { data: userProperties, error: propError } = await supabase
+        .from("properties")
+        .select("id")
+        .eq("owner_user_id", user!.id);
+
+      if (propError) throw propError;
+
+      if (!userProperties || userProperties.length === 0) {
+        setRentDues([]);
+        setLoading(false);
+        return;
+      }
+
+      const propertyIds = userProperties.map((p) => p.id);
+
+      // Then fetch rent dues for those properties
       const { data, error } = await supabase
         .from("rent_dues")
         .select(`
@@ -80,6 +97,7 @@ export default function Rent() {
           properties(internal_identifier),
           tenants(full_name)
         `)
+        .in("property_id", propertyIds)
         .order("due_date", { ascending: true });
 
       if (error) throw error;
@@ -323,7 +341,7 @@ export default function Rent() {
             <EmptyState
               icon={DollarSign}
               title="No rent dues yet"
-              description="Rent dues are generated automatically from active contracts."
+              description="Create an active contract to generate rent dues."
               className="py-12"
             />
           ) : (
@@ -399,7 +417,7 @@ export default function Rent() {
             <EmptyState
               icon={DollarSign}
               title="No rent dues yet"
-              description="Rent dues are generated automatically from active contracts."
+              description="Create an active contract to generate rent dues."
               className="py-12"
             />
           ) : (

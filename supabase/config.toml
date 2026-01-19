@@ -1,1 +1,4 @@
 project_id = "gkcuzhmwdfqdslbtgtyk"
+
+[functions.generate-rent-dues]
+verify_jwt = false
