@@ -218,15 +218,26 @@ export default function Dashboard() {
         .filter((rd) => rd.period_month === currentMonth && rd.balanceDue > 0)
         .reduce((sum, rd) => sum + rd.balanceDue, 0);
 
-      // Missing utility proofs
+      // Missing utility proofs with derived status
       const utilityProofs = utilityProofsRes.data || [];
-      const missingProofItems: MissingProofItem[] = utilityProofs.map((p: any) => ({
-        id: p.id,
-        property: p.utility_obligations?.properties?.internal_identifier || "Unknown",
-        utilityType: p.utility_obligations?.type || "Unknown",
-        period: formatMonth(p.period_month),
-        status: p.status === "not_submitted" ? "Not submitted" : p.status,
-      }));
+      const missingProofItems: MissingProofItem[] = utilityProofs.map((p: any) => {
+        // Derive due date from period and due_day_of_month
+        const [year, month] = (p.period_month || "").split("-").map(Number);
+        const dueDay = p.utility_obligations?.due_day_of_month || 10;
+        const dueDate = new Date(year, month - 1, dueDay);
+        
+        // Derive status: overdue if past due date and no file
+        const derivedStatus = dueDate < now && !p.file_url ? "overdue" : "not_submitted";
+        
+        return {
+          id: p.id,
+          property: p.utility_obligations?.properties?.internal_identifier || "Unknown",
+          utilityType: p.utility_obligations?.type || "Unknown",
+          period: formatMonth(p.period_month),
+          status: derivedStatus,
+          dueDate: dueDate.toISOString().split("T")[0],
+        };
+      });
 
       // Taxes due soon
       const taxes = taxesRes.data || [];
