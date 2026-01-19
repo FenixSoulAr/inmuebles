@@ -143,7 +143,9 @@ Deno.serve(async (req) => {
         const dueDate = new Date(monthToGenerate.getFullYear(), monthToGenerate.getMonth(), 5);
         
         // Determine status based on due date
-        let status = "pending";
+        // Allowed values: 'paid', 'partial', 'overdue'
+        // For unpaid dues, use 'partial' if not yet due, 'overdue' if past due
+        let status = "partial";
         if (dueDate < today) {
           status = "overdue";
         }

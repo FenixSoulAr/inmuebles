@@ -357,6 +357,7 @@ export default function Rent() {
                         <TableHead>Due Date</TableHead>
                         <TableHead className="text-right">Expected Amount</TableHead>
                         <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Balance Due</TableHead>
                         <TableHead className="text-right">Action</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -379,19 +380,17 @@ export default function Rent() {
                           <TableCell>{formatMonth(rd.period_month)}</TableCell>
                           <TableCell>{formatDate(rd.due_date)}</TableCell>
                           <TableCell className="text-right">
-                            <div>
-                              <span className="font-semibold">
-                                {formatCurrency(rd.expected_amount)}
-                              </span>
-                              {rd.balance_due > 0 && rd.balance_due < rd.expected_amount && (
-                                <p className="text-xs text-warning">
-                                  Due: {formatCurrency(rd.balance_due)}
-                                </p>
-                              )}
-                            </div>
+                            <span className="font-semibold">
+                              {formatCurrency(rd.expected_amount)}
+                            </span>
                           </TableCell>
                           <TableCell>
                             <StatusBadge variant={rd.status as any} />
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <span className={rd.balance_due > 0 ? "font-semibold text-warning" : "text-muted-foreground"}>
+                              {formatCurrency(rd.balance_due)}
+                            </span>
                           </TableCell>
                           <TableCell className="text-right">
                             {rd.status !== "paid" ? (
