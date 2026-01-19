@@ -1,51 +1,32 @@
 import { useEffect, useState } from "react";
-import { Plus, Zap, Upload } from "lucide-react";
+import { Zap, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { PageHeader } from "@/components/ui/page-header";
-import { StatusBadge } from "@/components/ui/status-badge";
-import { EmptyState } from "@/components/ui/empty-state";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
+import {
+  UtilitiesTable,
+  UtilityProofRow,
+} from "@/components/utilities/UtilitiesTable";
+import {
+  UtilitiesFilter,
+  UtilityFilterStatus,
+} from "@/components/utilities/UtilitiesFilter";
+import { UploadProofModal } from "@/components/utilities/UploadProofModal";
 
-interface UtilityObligation {
-  id: string;
-  type: string;
-  payer: string;
-  frequency: string;
-  due_day_of_month: number;
-  active: boolean;
-  properties: {
-    internal_identifier: string;
-    full_address: string;
-  };
-}
-
-interface UtilityProof {
+interface UtilityProofData {
   id: string;
   period_month: string;
   status: string;
   file_url: string | null;
   utility_obligations: {
     type: string;
+    payer: string;
+    due_day_of_month: number | null;
     properties: {
+      id: string;
       internal_identifier: string;
     };
   };
@@ -60,9 +41,25 @@ const utilityTypeLabels: Record<string, string> = {
 };
 
 export default function Utilities() {
-  const [obligations, setObligations] = useState<UtilityObligation[]>([]);
-  const [proofs, setProofs] = useState<UtilityProof[]>([]);
+  const [proofs, setProofs] = useState<UtilityProofRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<UtilityFilterStatus>("all");
+  const [counts, setCounts] = useState({
+    all: 0,
+    overdue: 0,
+    not_submitted: 0,
+    paid_with_proof: 0,
+  });
+
+  // Upload modal state
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [selectedProofId, setSelectedProofId] = useState<string | null>(null);
+  const [selectedProofDetails, setSelectedProofDetails] = useState<{
+    property: string;
+    utilityType: string;
+    period: string;
+  } | null>(null);
+
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -72,23 +69,82 @@ export default function Utilities() {
 
   const fetchData = async () => {
     try {
-      const [obligationsRes, proofsRes] = await Promise.all([
-        supabase
-          .from("utility_obligations")
-          .select("*, properties(internal_identifier, full_address)")
-          .eq("active", true),
-        supabase
-          .from("utility_proofs")
-          .select("*, utility_obligations(type, properties(internal_identifier))")
-          .order("period_month", { ascending: false })
-          .limit(50),
-      ]);
+      const { data, error } = await supabase
+        .from("utility_proofs")
+        .select(
+          `
+          id,
+          period_month,
+          status,
+          file_url,
+          utility_obligations (
+            type,
+            payer,
+            due_day_of_month,
+            properties (
+              id,
+              internal_identifier
+            )
+          )
+        `
+        )
+        .order("period_month", { ascending: false });
 
-      if (obligationsRes.error) throw obligationsRes.error;
-      if (proofsRes.error) throw proofsRes.error;
+      if (error) throw error;
 
-      setObligations(obligationsRes.data || []);
-      setProofs(proofsRes.data || []);
+      const now = new Date();
+      const processedProofs: UtilityProofRow[] = (data || []).map((proof: UtilityProofData) => {
+        // Derive due date from period and due_day_of_month
+        const [year, month] = proof.period_month.split("-").map(Number);
+        const dueDay = proof.utility_obligations.due_day_of_month || 10;
+        const dueDate = new Date(year, month - 1, dueDay);
+
+        // Derive status automatically
+        let derivedStatus: "paid_with_proof" | "not_submitted" | "overdue";
+        if (proof.file_url) {
+          derivedStatus = "paid_with_proof";
+        } else if (dueDate < now) {
+          derivedStatus = "overdue";
+        } else {
+          derivedStatus = "not_submitted";
+        }
+
+        // Format period for display
+        const periodDate = new Date(year, month - 1);
+        const periodDisplay = periodDate.toLocaleDateString("en-US", {
+          month: "short",
+          year: "numeric",
+        });
+
+        return {
+          id: proof.id,
+          property: proof.utility_obligations.properties.internal_identifier,
+          propertyId: proof.utility_obligations.properties.id,
+          utilityType: proof.utility_obligations.type,
+          period: periodDisplay,
+          periodMonth: proof.period_month,
+          responsible: proof.utility_obligations.payer,
+          dueDate: dueDate.toISOString().split("T")[0],
+          status: derivedStatus,
+          fileUrl: proof.file_url,
+        };
+      });
+
+      // Calculate counts
+      const newCounts = {
+        all: processedProofs.length,
+        overdue: processedProofs.filter((p) => p.status === "overdue").length,
+        not_submitted: processedProofs.filter((p) => p.status === "not_submitted").length,
+        paid_with_proof: processedProofs.filter((p) => p.status === "paid_with_proof").length,
+      };
+
+      setProofs(processedProofs);
+      setCounts(newCounts);
+
+      // Default to showing actionable items (overdue + not submitted)
+      if (newCounts.overdue > 0 || newCounts.not_submitted > 0) {
+        setFilter("all");
+      }
     } catch (error) {
       console.error("Error fetching utilities:", error);
       toast({
@@ -101,12 +157,30 @@ export default function Utilities() {
     }
   };
 
-  const formatMonth = (periodMonth: string) => {
-    const [year, month] = periodMonth.split("-");
-    return new Date(parseInt(year), parseInt(month) - 1).toLocaleDateString("en-US", {
-      month: "short",
-      year: "numeric",
+  const filteredProofs = proofs.filter((proof) => {
+    if (filter === "all") return true;
+    return proof.status === filter;
+  });
+
+  const handleUploadProof = (proofId: string) => {
+    const proof = proofs.find((p) => p.id === proofId);
+    if (!proof) return;
+
+    setSelectedProofId(proofId);
+    setSelectedProofDetails({
+      property: proof.property,
+      utilityType: utilityTypeLabels[proof.utilityType] || proof.utilityType,
+      period: proof.period,
     });
+    setUploadModalOpen(true);
+  };
+
+  const handleViewProof = (fileUrl: string) => {
+    window.open(fileUrl, "_blank");
+  };
+
+  const handleUploadSuccess = () => {
+    fetchData();
   };
 
   if (loading) {
@@ -118,82 +192,100 @@ export default function Utilities() {
   }
 
   return (
-    <div>
-      <PageHeader title="Utilities" description="Track utility payments and proofs" />
+    <div className="space-y-6">
+      <PageHeader
+        title="Utilities"
+        description="Track utility payments and proofs of payment"
+      />
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Active Obligations */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Active Obligations</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {obligations.length === 0 ? (
-              <EmptyState
-                icon={Zap}
-                title="No utility obligations"
-                description="Add utility obligations to track payments."
-                className="py-8"
-              />
-            ) : (
-              <div className="space-y-3">
-                {obligations.map((ob) => (
-                  <div
-                    key={ob.id}
-                    className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
-                  >
-                    <div>
-                      <p className="font-medium">{utilityTypeLabels[ob.type] || ob.type}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {ob.properties.internal_identifier}
-                      </p>
-                      <p className="text-xs text-muted-foreground capitalize">
-                        Payer: {ob.payer} • Due day: {ob.due_day_of_month}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+      {/* Helper text alert */}
+      <Alert>
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>
+          Utilities require proof of payment. Missing proofs will trigger alerts.
+        </AlertDescription>
+      </Alert>
 
-        {/* Recent Proofs */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Payment Proofs</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {proofs.length === 0 ? (
-              <EmptyState
-                icon={Upload}
-                title="No proofs yet"
-                description="Payment proofs will appear here."
-                className="py-8"
-              />
-            ) : (
-              <div className="space-y-3">
-                {proofs.map((proof) => (
-                  <div
-                    key={proof.id}
-                    className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
-                  >
-                    <div>
-                      <p className="font-medium">
-                        {utilityTypeLabels[proof.utility_obligations.type] || proof.utility_obligations.type}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {proof.utility_obligations.properties.internal_identifier} • {formatMonth(proof.period_month)}
-                      </p>
-                    </div>
-                    <StatusBadge variant={proof.status as any} />
-                  </div>
-                ))}
+      {/* Summary stats */}
+      {(counts.overdue > 0 || counts.not_submitted > 0) && (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Card className={counts.overdue > 0 ? "border-destructive/50" : ""}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Overdue
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className={`text-2xl font-bold ${counts.overdue > 0 ? "text-destructive" : ""}`}>
+                {counts.overdue}
               </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Not submitted
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{counts.not_submitted}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Paid with proof
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-success">{counts.paid_with_proof}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Total
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{counts.all}</div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Main content card */}
+      <Card>
+        <CardHeader className="pb-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Zap className="w-5 h-5" />
+              Utility proofs
+            </CardTitle>
+            <UtilitiesFilter
+              activeFilter={filter}
+              onFilterChange={setFilter}
+              counts={counts}
+            />
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          <UtilitiesTable
+            proofs={filteredProofs}
+            onUploadProof={handleUploadProof}
+            onViewProof={handleViewProof}
+          />
+        </CardContent>
+      </Card>
+
+      {/* Upload proof modal */}
+      <UploadProofModal
+        open={uploadModalOpen}
+        onOpenChange={setUploadModalOpen}
+        proofId={selectedProofId}
+        proofDetails={selectedProofDetails}
+        onSuccess={handleUploadSuccess}
+      />
     </div>
   );
 }

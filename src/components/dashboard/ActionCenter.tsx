@@ -38,6 +38,7 @@ export interface MissingProofItem {
   utilityType: string;
   period: string;
   status: string;
+  dueDate?: string;
 }
 
 export interface TaxDueItem {
@@ -242,22 +243,30 @@ export function ActionCenter({
                       <TableHead className="whitespace-nowrap">Property</TableHead>
                       <TableHead className="whitespace-nowrap">Utility</TableHead>
                       <TableHead className="whitespace-nowrap">Period</TableHead>
+                      <TableHead className="whitespace-nowrap">Due date</TableHead>
                       <TableHead className="whitespace-nowrap">Status</TableHead>
                       <TableHead className="text-right whitespace-nowrap">Action</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {missingProofs.slice(0, MAX_ROWS).map((item) => (
-                      <TableRow key={item.id}>
+                      <TableRow
+                        key={item.id}
+                        className={item.status === "overdue" ? "bg-destructive/5" : undefined}
+                      >
                         <TableCell className="font-medium">{item.property}</TableCell>
                         <TableCell>{item.utilityType}</TableCell>
                         <TableCell>{item.period}</TableCell>
+                        <TableCell>
+                          {item.dueDate ? formatDate(item.dueDate) : "—"}
+                        </TableCell>
                         <TableCell>
                           <StatusBadge variant={item.status as any} />
                         </TableCell>
                         <TableCell className="text-right">
                           <Button
                             size="sm"
+                            variant={item.status === "overdue" ? "default" : "outline"}
                             onClick={() => onUploadProof?.(item.id)}
                           >
                             Upload proof
