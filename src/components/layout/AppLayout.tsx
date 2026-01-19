@@ -23,9 +23,9 @@ export function AppLayout() {
 
   return (
     <TooltipProvider>
-      <div className="flex min-h-screen w-full bg-background">
+      <div className="flex min-h-screen w-full bg-background overflow-hidden">
         <AppSidebar />
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 min-w-0 overflow-y-auto">
           <div className="p-6 lg:p-8 animate-fade-in">
             <Outlet />
           </div>
