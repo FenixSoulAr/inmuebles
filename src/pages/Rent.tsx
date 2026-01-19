@@ -15,6 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -505,130 +506,42 @@ export default function Rent() {
         </TabsContent>
 
         <TabsContent value="calendar">
-          {filteredRentDues.length === 0 ? (
-            <EmptyState
-              icon={DollarSign}
-              title="No rent dues yet"
-              description="Create an active contract to generate rent dues."
-              className="py-12"
-            />
-          ) : (
-            <Card>
-              <CardContent className="p-6">
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {filteredRentDues.map((rd) => {
-                    const { totalPaid, balanceDue, derivedStatus } = computeRentDueStatus(rd);
-                    const paymentCount = rd.rent_payments?.length || 0;
-                    return (
-                      <div
-                        key={rd.id}
-                        className="p-4 rounded-lg border bg-card hover:shadow-medium transition-shadow"
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="font-medium">{formatMonth(rd.period_month)}</span>
-                          <StatusBadge variant={derivedStatus as any} />
-                        </div>
-                        <p className="text-sm text-muted-foreground mb-1">
-                          {rd.properties.internal_identifier}
-                        </p>
-                        <p className="text-sm text-muted-foreground mb-2">
-                          {rd.tenants.full_name}
-                        </p>
-                        <div className="space-y-1 mb-3">
-                          <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">Expected:</span>
-                            <span className="font-semibold">{formatCurrency(rd.expected_amount)}</span>
-                          </div>
-                          <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">Paid:</span>
-                            <span className={totalPaid > 0 ? "text-success" : "text-muted-foreground"}>
-                              {formatCurrency(totalPaid)}
-                            </span>
-                          </div>
-                          <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">Balance:</span>
-                            <span className={balanceDue > 0 ? "text-warning font-semibold" : "text-muted-foreground"}>
-                              {formatCurrency(balanceDue)}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {paymentCount > 0 && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="flex-1"
-                              onClick={() => openPaymentsViewDialog(rd)}
-                            >
-                              <Eye className="w-4 h-4 mr-1" />
-                              View ({paymentCount})
-                            </Button>
-                          )}
-                          {derivedStatus !== "paid" && (
-                            <Button
-                              size="sm"
-                              className="flex-1"
-                              onClick={() => openPaymentDialog(rd)}
-                            >
-                              Record payment
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          <Card>
+            <CardContent className="py-12">
+              <EmptyState
+                icon={DollarSign}
+                title="Calendar view coming soon"
+                description="View rent dues in a calendar format."
+              />
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 
-      {/* Payment Dialog */}
+      {/* Record Payment Dialog */}
       <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Record Payment</DialogTitle>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col p-0">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b flex-shrink-0">
+            <DialogTitle>Record payment</DialogTitle>
             <DialogDescription>
-              Enter payment details for this rent due.
+              {selectedRentDue && (
+                <>
+                  {selectedRentDue.properties.internal_identifier} – {formatMonth(selectedRentDue.period_month)}
+                </>
+              )}
             </DialogDescription>
           </DialogHeader>
-          {selectedRentDue && (
-            <div className="space-y-4 mt-2">
-              {/* Rent Due Summary */}
-              <div className="p-4 rounded-lg bg-muted/50 border">
-                <div className="flex items-start gap-3">
-                  <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 text-primary shrink-0">
-                    <Building2 className="w-5 h-5" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold truncate">
-                      {selectedRentDue.properties.internal_identifier}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {formatMonth(selectedRentDue.period_month)}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {selectedRentDue.tenants.full_name}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm text-muted-foreground">Balance due</p>
-                    <p className="font-bold text-lg">
-                      {formatCurrency(computeRentDueStatus(selectedRentDue).balanceDue)}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
+          
+          <div className="flex-1 overflow-y-auto px-6 py-4">
+            <div className="space-y-6">
               {/* Helper text */}
-              <p className="text-sm text-muted-foreground bg-muted/30 p-3 rounded-lg">
+              <p className="text-sm text-muted-foreground">
                 You can record multiple payments for the same rent due.
               </p>
 
               {/* Payment Date */}
               <div className="space-y-2">
-                <Label htmlFor="paymentDate">Payment Date</Label>
+                <Label htmlFor="paymentDate">Payment date</Label>
                 <Input
                   id="paymentDate"
                   type="date"
@@ -637,11 +550,11 @@ export default function Rent() {
                 />
               </div>
 
-              {/* Payment Amount */}
+              {/* Amount */}
               <div className="space-y-2">
-                <Label htmlFor="amount">Amount</Label>
+                <Label htmlFor="paymentAmount">Amount</Label>
                 <Input
-                  id="amount"
+                  id="paymentAmount"
                   type="number"
                   step="0.01"
                   min="0"
@@ -649,14 +562,19 @@ export default function Rent() {
                   value={paymentAmount}
                   onChange={(e) => setPaymentAmount(e.target.value)}
                 />
+                {selectedRentDue && (
+                  <p className="text-sm text-muted-foreground">
+                    Balance due: {formatCurrency(computeRentDueStatus(selectedRentDue).balanceDue)}
+                  </p>
+                )}
               </div>
 
-              {/* Payment Method */}
+              {/* Method */}
               <div className="space-y-2">
-                <Label>Method</Label>
+                <Label htmlFor="paymentMethod">Payment method</Label>
                 <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-                  <SelectTrigger>
-                    <SelectValue />
+                  <SelectTrigger id="paymentMethod">
+                    <SelectValue placeholder="Select method" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="transfer">Transfer</SelectItem>
@@ -667,28 +585,30 @@ export default function Rent() {
 
               {/* Notes */}
               <div className="space-y-2">
-                <Label htmlFor="notes">Notes (optional)</Label>
+                <Label htmlFor="paymentNotes">Notes (optional)</Label>
                 <Textarea
-                  id="notes"
+                  id="paymentNotes"
                   placeholder="Add any notes about this payment..."
                   value={paymentNotes}
                   onChange={(e) => setPaymentNotes(e.target.value)}
-                  rows={2}
+                  rows={3}
                 />
               </div>
 
               {/* Receipt Upload */}
               <div className="space-y-2">
                 <Label>Receipt (optional)</Label>
+                <p className="text-sm text-muted-foreground mb-2">
+                  Upload a PDF or image.
+                </p>
                 {receiptFile ? (
-                  <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted/30">
-                    <FileText className="w-5 h-5 text-muted-foreground shrink-0" />
-                    <span className="text-sm truncate flex-1">{receiptFile.name}</span>
+                  <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
+                    <FileText className="w-5 h-5 text-muted-foreground" />
+                    <span className="flex-1 text-sm truncate">{receiptFile.name}</span>
                     <Button
                       type="button"
                       variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 shrink-0"
+                      size="sm"
                       onClick={removeFile}
                     >
                       <X className="w-4 h-4" />
@@ -696,145 +616,127 @@ export default function Rent() {
                   </div>
                 ) : (
                   <div
-                    className="flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
+                    className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:border-primary/50 transition-colors"
                     onClick={() => fileInputRef.current?.click()}
                   >
-                    <Upload className="w-8 h-8 text-muted-foreground mb-2" />
+                    <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
                     <p className="text-sm text-muted-foreground">
                       Click to upload receipt
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      PDF, JPG, PNG up to 10MB
+                      PDF, JPG, PNG, WebP (max 10MB)
                     </p>
                   </div>
                 )}
                 <input
                   ref={fileInputRef}
                   type="file"
+                  className="hidden"
                   accept=".pdf,.jpg,.jpeg,.png,.webp"
                   onChange={handleFileChange}
-                  className="hidden"
                 />
               </div>
-
-              {/* Actions */}
-              <div className="flex justify-end gap-3 pt-4 border-t">
-                <Button variant="outline" onClick={() => setPaymentDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={handlePayment} disabled={isSubmitting}>
-                  {isSubmitting ? "Recording..." : "Record payment"}
-                </Button>
-              </div>
             </div>
-          )}
+          </div>
+
+          <DialogFooter className="px-6 py-4 border-t flex-shrink-0">
+            <Button
+              variant="outline"
+              onClick={() => setPaymentDialogOpen(false)}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handlePayment} disabled={isSubmitting}>
+              {isSubmitting ? "Saving..." : "Save payment"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* View Payments Dialog */}
       <Dialog open={paymentsViewDialogOpen} onOpenChange={setPaymentsViewDialogOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Payment History</DialogTitle>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col p-0">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b flex-shrink-0">
+            <DialogTitle>Payment history</DialogTitle>
             <DialogDescription>
-              All payments recorded for this rent due.
+              {selectedRentDue && (
+                <>
+                  {selectedRentDue.properties.internal_identifier} – {formatMonth(selectedRentDue.period_month)}
+                </>
+              )}
             </DialogDescription>
           </DialogHeader>
-          {selectedRentDue && (
-            <div className="space-y-4 mt-2">
-              {/* Rent Due Summary */}
-              <div className="p-4 rounded-lg bg-muted/50 border">
-                <div className="flex items-start gap-3">
-                  <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 text-primary shrink-0">
-                    <Building2 className="w-5 h-5" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold truncate">
-                      {selectedRentDue.properties.internal_identifier}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {formatMonth(selectedRentDue.period_month)}
-                    </p>
-                  </div>
-                  <div className="text-right">
+          
+          <div className="flex-1 overflow-y-auto px-6 py-4">
+            {selectedRentDue && (
+              <div className="space-y-4">
+                {/* Summary */}
+                <div className="grid grid-cols-2 gap-4 p-4 bg-muted rounded-lg">
+                  <div>
                     <p className="text-sm text-muted-foreground">Expected</p>
-                    <p className="font-bold">{formatCurrency(selectedRentDue.expected_amount)}</p>
+                    <p className="font-semibold">{formatCurrency(selectedRentDue.expected_amount)}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Balance due</p>
+                    <p className="font-semibold">
+                      {formatCurrency(computeRentDueStatus(selectedRentDue).balanceDue)}
+                    </p>
                   </div>
                 </div>
-              </div>
 
-              {/* Payments List */}
-              {selectedRentDue.rent_payments && selectedRentDue.rent_payments.length > 0 ? (
+                {/* Payments List */}
                 <div className="space-y-3">
-                  {selectedRentDue.rent_payments
+                  {(selectedRentDue.rent_payments || [])
                     .sort((a, b) => new Date(b.payment_date).getTime() - new Date(a.payment_date).getTime())
                     .map((payment) => (
                       <div
                         key={payment.id}
-                        className="p-4 rounded-lg border bg-card"
+                        className="p-4 border rounded-lg space-y-2"
                       >
-                        <div className="flex items-start justify-between mb-2">
-                          <div>
-                            <p className="font-semibold">{formatCurrency(payment.amount)}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {formatDate(payment.payment_date)}
-                            </p>
-                          </div>
-                          <span className="text-xs px-2 py-1 rounded-full bg-muted capitalize">
-                            {payment.method}
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold">{formatCurrency(payment.amount)}</span>
+                          <span className="text-sm text-muted-foreground">
+                            {formatDate(payment.payment_date)}
                           </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <span className="capitalize">{payment.method}</span>
+                          {payment.receipt_file_url && (
+                            <>
+                              <span>•</span>
+                              <a
+                                href={payment.receipt_file_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-primary hover:underline flex items-center gap-1"
+                              >
+                                <FileText className="w-3 h-3" />
+                                Receipt
+                              </a>
+                            </>
+                          )}
                         </div>
                         {payment.notes && (
                           <p className="text-sm text-muted-foreground mt-2">
                             {payment.notes}
                           </p>
                         )}
-                        {payment.receipt_file_url && (
-                          <a
-                            href={payment.receipt_file_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-sm text-primary hover:underline mt-2"
-                          >
-                            <FileText className="w-4 h-4" />
-                            View receipt
-                          </a>
-                        )}
                       </div>
                     ))}
                 </div>
-              ) : (
-                <p className="text-center text-muted-foreground py-4">
-                  No payments recorded yet.
-                </p>
-              )}
-
-              {/* Summary */}
-              {selectedRentDue.rent_payments && selectedRentDue.rent_payments.length > 0 && (
-                <div className="p-4 rounded-lg bg-muted/30 border-t">
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">Total paid:</span>
-                    <span className="font-bold text-success">
-                      {formatCurrency(computeRentDueStatus(selectedRentDue).totalPaid)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center mt-1">
-                    <span className="text-muted-foreground">Remaining balance:</span>
-                    <span className={`font-bold ${computeRentDueStatus(selectedRentDue).balanceDue > 0 ? "text-warning" : ""}`}>
-                      {formatCurrency(computeRentDueStatus(selectedRentDue).balanceDue)}
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {/* Close Button */}
-              <div className="flex justify-end pt-2">
-                <Button variant="outline" onClick={() => setPaymentsViewDialogOpen(false)}>
-                  Close
-                </Button>
               </div>
-            </div>
-          )}
+            )}
+          </div>
+
+          <DialogFooter className="px-6 py-4 border-t flex-shrink-0">
+            <Button
+              variant="outline"
+              onClick={() => setPaymentsViewDialogOpen(false)}
+            >
+              Close
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
