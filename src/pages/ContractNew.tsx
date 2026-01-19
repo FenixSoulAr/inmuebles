@@ -100,6 +100,55 @@ export default function ContractNew() {
     }
   };
 
+  const generateRentDues = (
+    contractId: string,
+    propertyId: string,
+    tenantId: string,
+    startDate: string,
+    endDate: string,
+    monthlyRent: number
+  ) => {
+    const rentDues = [];
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const today = new Date();
+    
+    // Start from the contract start date, generate up to 12 months or until end date
+    let currentDate = new Date(start.getFullYear(), start.getMonth(), 1);
+    const maxMonths = 12;
+    let monthCount = 0;
+
+    while (currentDate <= end && monthCount < maxMonths) {
+      const periodMonth = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, "0")}`;
+      
+      // Due date is the 5th of each month (common in LATAM)
+      const dueDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 5);
+      
+      // Determine initial status
+      let status = "pending";
+      if (dueDate < today) {
+        status = "overdue";
+      }
+
+      rentDues.push({
+        contract_id: contractId,
+        property_id: propertyId,
+        tenant_id: tenantId,
+        period_month: periodMonth,
+        due_date: dueDate.toISOString().split("T")[0],
+        expected_amount: monthlyRent,
+        balance_due: monthlyRent,
+        status: status,
+      });
+
+      // Move to next month
+      currentDate.setMonth(currentDate.getMonth() + 1);
+      monthCount++;
+    }
+
+    return rentDues;
+  };
+
   const onSubmit = async (data: ContractFormData) => {
     setIsSubmitting(true);
 
@@ -133,21 +182,46 @@ export default function ContractNew() {
       }
 
       // Create contract
-      const { error } = await supabase.from("contracts").insert({
-        property_id: data.property_id,
-        tenant_id: data.tenant_id,
-        start_date: data.start_date,
-        end_date: data.end_date,
-        initial_rent: data.initial_rent,
-        current_rent: data.initial_rent,
-        deposit: data.deposit || null,
-        clauses_text: data.clauses_text || null,
-        adjustment_type: data.adjustment_type,
-        adjustment_frequency: data.adjustment_frequency || 12,
-        is_active: true,
-      });
+      const { data: contractData, error: contractError } = await supabase
+        .from("contracts")
+        .insert({
+          property_id: data.property_id,
+          tenant_id: data.tenant_id,
+          start_date: data.start_date,
+          end_date: data.end_date,
+          initial_rent: data.initial_rent,
+          current_rent: data.initial_rent,
+          deposit: data.deposit || null,
+          clauses_text: data.clauses_text || null,
+          adjustment_type: data.adjustment_type,
+          adjustment_frequency: data.adjustment_frequency || 12,
+          is_active: true,
+        })
+        .select("id")
+        .single();
 
-      if (error) throw error;
+      if (contractError) throw contractError;
+
+      // Generate rent dues for the next 12 months
+      const rentDues = generateRentDues(
+        contractData.id,
+        data.property_id,
+        data.tenant_id,
+        data.start_date,
+        data.end_date,
+        data.initial_rent
+      );
+
+      if (rentDues.length > 0) {
+        const { error: rentDuesError } = await supabase
+          .from("rent_dues")
+          .insert(rentDues);
+
+        if (rentDuesError) {
+          console.error("Error creating rent dues:", rentDuesError);
+          // Don't fail the whole operation, just log
+        }
+      }
 
       // Create tenancy link
       await supabase.from("tenancy_links").insert({
@@ -165,7 +239,7 @@ export default function ContractNew() {
 
       toast({
         title: "Contract created",
-        description: "The rental contract has been created successfully.",
+        description: `Contract created with ${rentDues.length} monthly rent dues.`,
       });
       navigate("/contracts");
     } catch (error) {
