@@ -156,8 +156,19 @@ export default function Rent() {
 
   const openPaymentDialog = (rentDue: RentDue) => {
     const { balanceDue } = computeRentDueStatus(rentDue);
+    
+    // Block if already fully paid
+    if (balanceDue === 0) {
+      toast({
+        title: "Already paid",
+        description: "This rent is already fully paid.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setSelectedRentDue(rentDue);
-    setPaymentAmount(balanceDue > 0 ? balanceDue.toString() : "");
+    setPaymentAmount(balanceDue.toString());
     setPaymentDate(new Date().toISOString().split("T")[0]);
     setPaymentMethod("transfer");
     setPaymentNotes("");
@@ -330,7 +341,7 @@ export default function Rent() {
       console.error("Error recording payment:", error);
       toast({
         title: "Error",
-        description: "Something went wrong. Please refresh.",
+        description: "Could not save payment. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -671,59 +682,71 @@ export default function Rent() {
           <div className="flex-1 overflow-y-auto px-6 py-4">
             {selectedRentDue && (
               <div className="space-y-4">
-                {/* Summary */}
-                <div className="grid grid-cols-2 gap-4 p-4 bg-muted rounded-lg">
+                {/* Payments List */}
+                <div className="space-y-3">
+                  {(selectedRentDue.rent_payments || []).length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      No payments recorded yet.
+                    </p>
+                  ) : (
+                    (selectedRentDue.rent_payments || [])
+                      .sort((a, b) => new Date(b.payment_date).getTime() - new Date(a.payment_date).getTime())
+                      .map((payment) => (
+                        <div
+                          key={payment.id}
+                          className="p-4 border rounded-lg space-y-2"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-semibold">{formatCurrency(payment.amount)}</span>
+                            <span className="text-sm text-muted-foreground">
+                              {formatDate(payment.payment_date)}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <span className="capitalize">{payment.method}</span>
+                            {payment.receipt_file_url && (
+                              <>
+                                <span>•</span>
+                                <a
+                                  href={payment.receipt_file_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-primary hover:underline flex items-center gap-1"
+                                >
+                                  <FileText className="w-3 h-3" />
+                                  Receipt
+                                </a>
+                              </>
+                            )}
+                          </div>
+                          {payment.notes && (
+                            <p className="text-sm text-muted-foreground mt-2">
+                              {payment.notes}
+                            </p>
+                          )}
+                        </div>
+                      ))
+                  )}
+                </div>
+
+                {/* Running totals at bottom */}
+                <div className="grid grid-cols-3 gap-4 p-4 bg-muted rounded-lg border-t">
                   <div>
                     <p className="text-sm text-muted-foreground">Expected</p>
                     <p className="font-semibold">{formatCurrency(selectedRentDue.expected_amount)}</p>
                   </div>
                   <div>
+                    <p className="text-sm text-muted-foreground">Total paid</p>
+                    <p className="font-semibold text-success">
+                      {formatCurrency(computeRentDueStatus(selectedRentDue).totalPaid)}
+                    </p>
+                  </div>
+                  <div>
                     <p className="text-sm text-muted-foreground">Balance due</p>
-                    <p className="font-semibold">
+                    <p className={`font-semibold ${computeRentDueStatus(selectedRentDue).balanceDue > 0 ? 'text-warning' : 'text-muted-foreground'}`}>
                       {formatCurrency(computeRentDueStatus(selectedRentDue).balanceDue)}
                     </p>
                   </div>
-                </div>
-
-                {/* Payments List */}
-                <div className="space-y-3">
-                  {(selectedRentDue.rent_payments || [])
-                    .sort((a, b) => new Date(b.payment_date).getTime() - new Date(a.payment_date).getTime())
-                    .map((payment) => (
-                      <div
-                        key={payment.id}
-                        className="p-4 border rounded-lg space-y-2"
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="font-semibold">{formatCurrency(payment.amount)}</span>
-                          <span className="text-sm text-muted-foreground">
-                            {formatDate(payment.payment_date)}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <span className="capitalize">{payment.method}</span>
-                          {payment.receipt_file_url && (
-                            <>
-                              <span>•</span>
-                              <a
-                                href={payment.receipt_file_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-primary hover:underline flex items-center gap-1"
-                              >
-                                <FileText className="w-3 h-3" />
-                                Receipt
-                              </a>
-                            </>
-                          )}
-                        </div>
-                        {payment.notes && (
-                          <p className="text-sm text-muted-foreground mt-2">
-                            {payment.notes}
-                          </p>
-                        )}
-                      </div>
-                    ))}
                 </div>
               </div>
             )}
