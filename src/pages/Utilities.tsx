@@ -38,7 +38,7 @@ const utilityTypeLabels: Record<string, string> = {
   electricity: "Electricity",
   gas: "Gas",
   water: "Water",
-  hoa: "HOA Fees",
+  hoa: "Building fees (HOA / Expensas)",
   insurance: "Insurance",
 };
 

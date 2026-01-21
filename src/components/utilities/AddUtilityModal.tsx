@@ -35,7 +35,7 @@ const utilityTypes = [
   { value: "electricity", label: "Electricity" },
   { value: "gas", label: "Gas" },
   { value: "water", label: "Water" },
-  { value: "hoa", label: "HOA Fees" },
+  { value: "hoa", label: "Building fees (HOA / Expensas)" },
   { value: "insurance", label: "Insurance" },
 ];
 
