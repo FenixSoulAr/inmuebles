@@ -115,6 +115,19 @@ export function AddUtilityModal({
     setStartMonth(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`);
   };
 
+  const getMonthIncrement = (freq: string): number => {
+    switch (freq) {
+      case "bimonthly":
+        return 2;
+      case "quarterly":
+        return 3;
+      case "annual":
+        return 12;
+      default:
+        return 1;
+    }
+  };
+
   const generateProofPeriods = (
     startMonthStr: string,
     freq: string
@@ -122,32 +135,15 @@ export function AddUtilityModal({
     const periods: string[] = [];
     const [startYear, startMonthNum] = startMonthStr.split("-").map(Number);
     const startDate = new Date(startYear, startMonthNum - 1);
-    const now = new Date();
-    
-    // Generate proofs for 12 months ahead from start month
-    const endDate = new Date(startYear, startMonthNum - 1 + 12);
-    
-    let monthIncrement: number;
-    switch (freq) {
-      case "bimonthly":
-        monthIncrement = 2;
-        break;
-      case "quarterly":
-        monthIncrement = 3;
-        break;
-      case "annual":
-        monthIncrement = 12;
-        break;
-      default:
-        monthIncrement = 1;
-    }
+    const monthIncrement = getMonthIncrement(freq);
 
-    let current = new Date(startDate);
-    while (current <= endDate) {
+    // Generate only 2 periods: current and next upcoming
+    for (let i = 0; i < 2; i++) {
+      const current = new Date(startDate);
+      current.setMonth(current.getMonth() + i * monthIncrement);
       const year = current.getFullYear();
       const month = String(current.getMonth() + 1).padStart(2, "0");
       periods.push(`${year}-${month}`);
-      current.setMonth(current.getMonth() + monthIncrement);
     }
 
     return periods;

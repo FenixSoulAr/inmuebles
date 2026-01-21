@@ -102,6 +102,15 @@ export function UploadProofModal({
         data: { publicUrl },
       } = supabase.storage.from("documents").getPublicUrl(fileName);
 
+      // Get the utility proof to find obligation details
+      const { data: proofData, error: fetchError } = await supabase
+        .from("utility_proofs")
+        .select("utility_obligation_id, period_month")
+        .eq("id", proofId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
       // Update the utility proof record
       const { error: updateError } = await supabase
         .from("utility_proofs")
@@ -113,6 +122,66 @@ export function UploadProofModal({
         .eq("id", proofId);
 
       if (updateError) throw updateError;
+
+      // Rolling generation: create next future period if needed
+      if (proofData) {
+        // Get obligation frequency
+        const { data: obligation } = await supabase
+          .from("utility_obligations")
+          .select("frequency")
+          .eq("id", proofData.utility_obligation_id)
+          .single();
+
+        if (obligation) {
+          // Calculate month increment based on frequency
+          const getMonthIncrement = (freq: string): number => {
+            switch (freq) {
+              case "bimonthly": return 2;
+              case "quarterly": return 3;
+              case "annual": return 12;
+              default: return 1;
+            }
+          };
+
+          const monthIncrement = getMonthIncrement(obligation.frequency);
+          const [year, month] = proofData.period_month.split("-").map(Number);
+          
+          // Find the furthest existing period for this obligation
+          const { data: existingProofs } = await supabase
+            .from("utility_proofs")
+            .select("period_month")
+            .eq("utility_obligation_id", proofData.utility_obligation_id)
+            .order("period_month", { ascending: false })
+            .limit(1);
+
+          if (existingProofs && existingProofs.length > 0) {
+            const [latestYear, latestMonth] = existingProofs[0].period_month.split("-").map(Number);
+            const latestDate = new Date(latestYear, latestMonth - 1);
+            latestDate.setMonth(latestDate.getMonth() + monthIncrement);
+            
+            const nextPeriod = `${latestDate.getFullYear()}-${String(latestDate.getMonth() + 1).padStart(2, "0")}`;
+
+            // Check if this period already exists
+            const { data: existingPeriod } = await supabase
+              .from("utility_proofs")
+              .select("id")
+              .eq("utility_obligation_id", proofData.utility_obligation_id)
+              .eq("period_month", nextPeriod)
+              .maybeSingle();
+
+            if (!existingPeriod) {
+              // Create the next period proof
+              await supabase
+                .from("utility_proofs")
+                .insert({
+                  utility_obligation_id: proofData.utility_obligation_id,
+                  period_month: nextPeriod,
+                  status: "not_submitted",
+                });
+            }
+          }
+        }
+      }
 
       toast({
         title: "Proof uploaded",
