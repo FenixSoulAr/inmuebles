@@ -7,8 +7,7 @@ import {
   Upload,
   FileText,
   Users,
-  Pencil,
-  Trash2,
+  Zap,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/ui/page-header";
@@ -34,6 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { AddUtilityModal } from "@/components/utilities/AddUtilityModal";
 
 interface Property {
   id: string;
@@ -60,6 +60,15 @@ interface OwnershipStake {
   share_percent: number;
 }
 
+interface UtilityObligation {
+  id: string;
+  type: string;
+  payer: string;
+  frequency: string;
+  due_day_of_month: number | null;
+  active: boolean;
+}
+
 const requiredCategories = ["deed", "bylaws"];
 
 export default function PropertyDetail() {
@@ -70,6 +79,7 @@ export default function PropertyDetail() {
   const [property, setProperty] = useState<Property | null>(null);
   const [documents, setDocuments] = useState<PropertyDocument[]>([]);
   const [stakes, setStakes] = useState<OwnershipStake[]>([]);
+  const [utilities, setUtilities] = useState<UtilityObligation[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -82,10 +92,11 @@ export default function PropertyDetail() {
 
   const fetchPropertyData = async () => {
     try {
-      const [propertyRes, docsRes, stakesRes] = await Promise.all([
+      const [propertyRes, docsRes, stakesRes, utilitiesRes] = await Promise.all([
         supabase.from("properties").select("*").eq("id", id).maybeSingle(),
         supabase.from("property_documents").select("*").eq("property_id", id).order("uploaded_at", { ascending: false }),
         supabase.from("ownership_stakes").select("*").eq("property_id", id),
+        supabase.from("utility_obligations").select("*").eq("property_id", id).eq("active", true),
       ]);
 
       if (propertyRes.error) throw propertyRes.error;
@@ -97,6 +108,7 @@ export default function PropertyDetail() {
       setProperty(propertyRes.data);
       setDocuments(docsRes.data || []);
       setStakes(stakesRes.data || []);
+      setUtilities(utilitiesRes.data || []);
     } catch (error) {
       console.error("Error fetching property:", error);
       toast({
@@ -210,6 +222,21 @@ export default function PropertyDetail() {
     other: "Other",
   };
 
+  const utilityTypeLabels: Record<string, string> = {
+    electricity: "Electricity",
+    gas: "Gas",
+    water: "Water",
+    hoa: "HOA Fees",
+    insurance: "Insurance",
+  };
+
+  const frequencyLabels: Record<string, string> = {
+    monthly: "Monthly",
+    bimonthly: "Bimonthly",
+    quarterly: "Quarterly",
+    annual: "Annual",
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -277,6 +304,7 @@ export default function PropertyDetail() {
       <Tabs defaultValue="documents" className="space-y-4">
         <TabsList>
           <TabsTrigger value="documents">Documents</TabsTrigger>
+          <TabsTrigger value="utilities">Utilities</TabsTrigger>
           <TabsTrigger value="ownership">Ownership</TabsTrigger>
         </TabsList>
 
@@ -364,6 +392,54 @@ export default function PropertyDetail() {
                           View
                         </a>
                       </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="utilities">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Utilities</CardTitle>
+              <AddUtilityModal
+                preselectedPropertyId={property.id}
+                onSuccess={fetchPropertyData}
+                triggerButton={
+                  <Button size="sm">
+                    <Zap className="w-4 h-4 mr-2" />
+                    Add utility
+                  </Button>
+                }
+              />
+            </CardHeader>
+            <CardContent>
+              {utilities.length === 0 ? (
+                <EmptyState
+                  icon={Zap}
+                  title="No utilities yet"
+                  description="Add a utility to start tracking proofs."
+                  className="py-8"
+                />
+              ) : (
+                <div className="space-y-3">
+                  {utilities.map((utility) => (
+                    <div
+                      key={utility.id}
+                      className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
+                    >
+                      <div>
+                        <p className="font-medium">
+                          {utilityTypeLabels[utility.type] || utility.type}
+                        </p>
+                        <p className="text-xs text-muted-foreground capitalize">
+                          {utility.payer} • {frequencyLabels[utility.frequency] || utility.frequency}
+                          {utility.due_day_of_month && ` • Due day ${utility.due_day_of_month}`}
+                        </p>
+                      </div>
+                      <StatusBadge variant={utility.active ? "active" : "ended"} />
                     </div>
                   ))}
                 </div>

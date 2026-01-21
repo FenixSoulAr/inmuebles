@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { EmptyState } from "@/components/ui/empty-state";
 import { useToast } from "@/hooks/use-toast";
 import {
   UtilitiesTable,
@@ -15,6 +16,7 @@ import {
   UtilityFilterStatus,
 } from "@/components/utilities/UtilitiesFilter";
 import { UploadProofModal } from "@/components/utilities/UploadProofModal";
+import { AddUtilityModal } from "@/components/utilities/AddUtilityModal";
 
 interface UtilityProofData {
   id: string;
@@ -196,7 +198,9 @@ export default function Utilities() {
       <PageHeader
         title="Utilities"
         description="Track utility payments and proofs of payment"
-      />
+      >
+        <AddUtilityModal onSuccess={fetchData} />
+      </PageHeader>
 
       {/* Helper text alert */}
       <Alert>
