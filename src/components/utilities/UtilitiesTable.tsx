@@ -51,8 +51,8 @@ export function UtilitiesTable({ proofs, onUploadProof, onViewProof }: Utilities
     return (
       <EmptyState
         icon={AlertTriangle}
-        title="No utility proofs found"
-        description="Utility proofs will appear here based on your filter."
+        title="No utilities yet"
+        description="Add a utility to start tracking proofs."
         className="py-12"
       />
     );
