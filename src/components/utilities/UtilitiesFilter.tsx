@@ -1,13 +1,14 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-export type UtilityFilterStatus = "all" | "overdue" | "not_submitted" | "paid_with_proof";
+export type UtilityFilterStatus = "pending" | "all" | "overdue" | "not_submitted" | "paid_with_proof";
 
 interface UtilitiesFilterProps {
   activeFilter: UtilityFilterStatus;
   onFilterChange: (filter: UtilityFilterStatus) => void;
   counts: {
     all: number;
+    pending: number;
     overdue: number;
     not_submitted: number;
     paid_with_proof: number;
@@ -16,6 +17,7 @@ interface UtilitiesFilterProps {
 
 export function UtilitiesFilter({ activeFilter, onFilterChange, counts }: UtilitiesFilterProps) {
   const filters: { value: UtilityFilterStatus; label: string }[] = [
+    { value: "pending", label: "Action needed" },
     { value: "all", label: "All" },
     { value: "overdue", label: "Overdue" },
     { value: "not_submitted", label: "Not submitted" },
@@ -27,7 +29,7 @@ export function UtilitiesFilter({ activeFilter, onFilterChange, counts }: Utilit
       {filters.map((filter) => {
         const count = counts[filter.value];
         const isActive = activeFilter === filter.value;
-        const isWarning = filter.value === "overdue" && count > 0;
+        const isWarning = (filter.value === "overdue" || filter.value === "pending") && counts.overdue > 0;
 
         return (
           <button
@@ -40,7 +42,7 @@ export function UtilitiesFilter({ activeFilter, onFilterChange, counts }: Utilit
                 ? isWarning
                   ? "bg-destructive text-destructive-foreground border-destructive"
                   : "bg-primary text-primary-foreground border-primary"
-                : isWarning
+                : isWarning && filter.value === "overdue"
                 ? "bg-destructive/10 text-destructive border-destructive/20 hover:bg-destructive/20"
                 : "bg-muted text-muted-foreground border-transparent hover:bg-muted/80"
             )}

@@ -45,9 +45,10 @@ const utilityTypeLabels: Record<string, string> = {
 export default function Utilities() {
   const [proofs, setProofs] = useState<UtilityProofRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<UtilityFilterStatus>("all");
+  const [filter, setFilter] = useState<UtilityFilterStatus>("pending");
   const [counts, setCounts] = useState({
     all: 0,
+    pending: 0,
     overdue: 0,
     not_submitted: 0,
     paid_with_proof: 0,
@@ -133,20 +134,18 @@ export default function Utilities() {
       });
 
       // Calculate counts
+      const overdueCount = processedProofs.filter((p) => p.status === "overdue").length;
+      const notSubmittedCount = processedProofs.filter((p) => p.status === "not_submitted").length;
       const newCounts = {
         all: processedProofs.length,
-        overdue: processedProofs.filter((p) => p.status === "overdue").length,
-        not_submitted: processedProofs.filter((p) => p.status === "not_submitted").length,
+        pending: overdueCount + notSubmittedCount,
+        overdue: overdueCount,
+        not_submitted: notSubmittedCount,
         paid_with_proof: processedProofs.filter((p) => p.status === "paid_with_proof").length,
       };
 
       setProofs(processedProofs);
       setCounts(newCounts);
-
-      // Default to showing actionable items (overdue + not submitted)
-      if (newCounts.overdue > 0 || newCounts.not_submitted > 0) {
-        setFilter("all");
-      }
     } catch (error) {
       console.error("Error fetching utilities:", error);
       toast({
@@ -161,6 +160,7 @@ export default function Utilities() {
 
   const filteredProofs = proofs.filter((proof) => {
     if (filter === "all") return true;
+    if (filter === "pending") return proof.status === "overdue" || proof.status === "not_submitted";
     return proof.status === filter;
   });
 
