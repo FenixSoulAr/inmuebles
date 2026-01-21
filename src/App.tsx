@@ -1,3 +1,4 @@
+import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -22,41 +23,52 @@ import Taxes from "./pages/Taxes";
 import Agenda from "./pages/Agenda";
 import Documents from "./pages/Documents";
 import NotFound from "./pages/NotFound";
-const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <AuthProvider>
-          <Routes>
-            <Route path="/signin" element={<SignIn />} />
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            <Route element={<AppLayout />}>
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/properties" element={<Properties />} />
-              <Route path="/properties/:id" element={<PropertyDetail />} />
-              <Route path="/tenants" element={<Tenants />} />
-              <Route path="/tenants/:id" element={<TenantDetail />} />
-              <Route path="/contracts" element={<Contracts />} />
-              <Route path="/contracts/new" element={<ContractNew />} />
-              <Route path="/contracts/:id" element={<ContractDetail />} />
-              <Route path="/rent" element={<Rent />} />
-              <Route path="/utilities" element={<Utilities />} />
-              <Route path="/utility-services" element={<UtilityObligations />} />
-              <Route path="/maintenance" element={<Maintenance />} />
-              <Route path="/taxes" element={<Taxes />} />
-              <Route path="/agenda" element={<Agenda />} />
-              <Route path="/documents" element={<Documents />} />
-            </Route>
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+// Create QueryClient as a module-level singleton
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000,
+      retry: 1,
+    },
+  },
+});
+
+const App: React.FC = () => {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <AuthProvider>
+            <Routes>
+              <Route path="/signin" element={<SignIn />} />
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route element={<AppLayout />}>
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/properties" element={<Properties />} />
+                <Route path="/properties/:id" element={<PropertyDetail />} />
+                <Route path="/tenants" element={<Tenants />} />
+                <Route path="/tenants/:id" element={<TenantDetail />} />
+                <Route path="/contracts" element={<Contracts />} />
+                <Route path="/contracts/new" element={<ContractNew />} />
+                <Route path="/contracts/:id" element={<ContractDetail />} />
+                <Route path="/rent" element={<Rent />} />
+                <Route path="/utilities" element={<Utilities />} />
+                <Route path="/utility-services" element={<UtilityObligations />} />
+                <Route path="/maintenance" element={<Maintenance />} />
+                <Route path="/taxes" element={<Taxes />} />
+                <Route path="/agenda" element={<Agenda />} />
+                <Route path="/documents" element={<Documents />} />
+              </Route>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </AuthProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;
