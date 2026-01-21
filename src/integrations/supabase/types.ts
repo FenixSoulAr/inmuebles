@@ -507,6 +507,7 @@ export type Database = {
       }
       tax_obligations: {
         Row: {
+          active: boolean
           amount: number | null
           created_at: string
           due_date: string
@@ -521,6 +522,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          active?: boolean
           amount?: number | null
           created_at?: string
           due_date: string
@@ -535,6 +537,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          active?: boolean
           amount?: number | null
           created_at?: string
           due_date?: string
