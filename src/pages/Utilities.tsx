@@ -13,7 +13,7 @@ import {
 } from "@/components/utilities/UtilitiesTable";
 import {
   UtilitiesFilter,
-  UtilityFilterStatus,
+  type UtilityFilterStatus,
 } from "@/components/utilities/UtilitiesFilter";
 import { UploadProofModal } from "@/components/utilities/UploadProofModal";
 import { AddUtilityModal } from "@/components/utilities/AddUtilityModal";
@@ -45,7 +45,8 @@ const utilityTypeLabels: Record<string, string> = {
 export default function Utilities() {
   const [proofs, setProofs] = useState<UtilityProofRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<UtilityFilterStatus>("pending");
+  // Default to showing action needed items (overdue + not submitted)
+  const [filter, setFilter] = useState<UtilityFilterStatus>("action_needed");
   const [counts, setCounts] = useState({
     all: 0,
     pending: 0,
@@ -160,7 +161,8 @@ export default function Utilities() {
 
   const filteredProofs = proofs.filter((proof) => {
     if (filter === "all") return true;
-    if (filter === "pending") return proof.status === "overdue" || proof.status === "not_submitted";
+    // "action_needed" is the default view showing overdue + not_submitted
+    if (filter === "action_needed") return proof.status === "overdue" || proof.status === "not_submitted";
     return proof.status === filter;
   });
 
