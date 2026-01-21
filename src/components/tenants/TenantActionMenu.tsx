@@ -49,8 +49,8 @@ export function TenantActionMenu({
   const checkDeletionEligibility = async () => {
     setCheckingHistory(true);
     try {
-      // Check for any linked records
-      const [contracts, tenancyLinks, rentPayments] = await Promise.all([
+      // Check for any linked records including rent_payments via rent_dues
+      const [contracts, tenancyLinks, rentDues] = await Promise.all([
         supabase.from("contracts").select("id").eq("tenant_id", tenant.id).limit(1),
         supabase.from("tenancy_links").select("id").eq("tenant_id", tenant.id).limit(1),
         supabase.from("rent_dues").select("id").eq("tenant_id", tenant.id).limit(1),
@@ -59,7 +59,7 @@ export function TenantActionMenu({
       const hasHistory =
         (contracts.data?.length || 0) > 0 ||
         (tenancyLinks.data?.length || 0) > 0 ||
-        (rentPayments.data?.length || 0) > 0;
+        (rentDues.data?.length || 0) > 0;
 
       setCanDelete(!hasHistory);
     } catch (error) {
@@ -125,6 +125,17 @@ export function TenantActionMenu({
   };
 
   const handleDelete = async () => {
+    // Double-check eligibility before deletion
+    if (!canDelete) {
+      toast({
+        title: "Cannot delete tenant",
+        description: "This tenant cannot be deleted because it has history. Deactivate it instead.",
+        variant: "destructive",
+      });
+      setDeleteModalOpen(false);
+      return;
+    }
+
     setIsProcessing(true);
     try {
       const { error } = await supabase
@@ -135,7 +146,7 @@ export function TenantActionMenu({
       if (error) throw error;
 
       toast({
-        title: "Tenant deleted permanently",
+        title: "Tenant deleted permanently.",
         description: "The tenant has been removed.",
       });
       setDeleteModalOpen(false);
@@ -144,7 +155,7 @@ export function TenantActionMenu({
       console.error("Error deleting tenant:", error);
       toast({
         title: "Error",
-        description: "Failed to delete tenant.",
+        description: "This tenant cannot be deleted because it has history. Deactivate it instead.",
         variant: "destructive",
       });
     } finally {
@@ -197,8 +208,8 @@ export function TenantActionMenu({
                 </div>
               </TooltipTrigger>
               {!canDelete && !checkingHistory && (
-                <TooltipContent>
-                  <p>Cannot delete because this tenant has history. Deactivate it instead.</p>
+                <TooltipContent side="left">
+                  <p>Cannot delete because this tenant has history. Deactivate instead.</p>
                 </TooltipContent>
               )}
             </Tooltip>
