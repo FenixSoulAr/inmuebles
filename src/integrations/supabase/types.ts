@@ -507,10 +507,12 @@ export type Database = {
       }
       tax_obligations: {
         Row: {
+          amount: number | null
           created_at: string
           due_date: string
           frequency: string
           id: string
+          notes: string | null
           property_id: string
           receipt_file_url: string | null
           responsible: string
@@ -519,10 +521,12 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          amount?: number | null
           created_at?: string
           due_date: string
           frequency?: string
           id?: string
+          notes?: string | null
           property_id: string
           receipt_file_url?: string | null
           responsible: string
@@ -531,10 +535,12 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          amount?: number | null
           created_at?: string
           due_date?: string
           frequency?: string
           id?: string
+          notes?: string | null
           property_id?: string
           receipt_file_url?: string | null
           responsible?: string
