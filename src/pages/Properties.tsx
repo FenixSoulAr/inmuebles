@@ -29,6 +29,9 @@ import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { EditPropertyModal } from "@/components/properties/EditPropertyModal";
+import { PropertyActionMenu } from "@/components/properties/PropertyActionMenu";
+import { Badge } from "@/components/ui/badge";
 
 interface Property {
   id: string;
@@ -36,6 +39,7 @@ interface Property {
   full_address: string;
   internal_identifier: string;
   status: string;
+  active: boolean;
   created_at: string;
 }
 
@@ -53,8 +57,11 @@ export default function Properties() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [activeFilter, setActiveFilter] = useState<string>("active");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -132,13 +139,22 @@ export default function Properties() {
     }
   };
 
+  const handleEdit = (property: Property) => {
+    setSelectedProperty(property);
+    setEditModalOpen(true);
+  };
+
   const filteredProperties = properties.filter((property) => {
     const matchesSearch =
       property.full_address.toLowerCase().includes(search.toLowerCase()) ||
       property.internal_identifier.toLowerCase().includes(search.toLowerCase());
     const matchesStatus =
       statusFilter === "all" || property.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    const matchesActive =
+      activeFilter === "all" ||
+      (activeFilter === "active" && property.active !== false) ||
+      (activeFilter === "inactive" && property.active === false);
+    return matchesSearch && matchesStatus && matchesActive;
   });
 
   const propertyTypeLabels: Record<string, string> = {
@@ -267,6 +283,16 @@ export default function Properties() {
             <SelectItem value="under_repair">Under Repair</SelectItem>
           </SelectContent>
         </Select>
+        <Select value={activeFilter} onValueChange={setActiveFilter}>
+          <SelectTrigger className="w-40">
+            <SelectValue placeholder="Active" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All</SelectItem>
+            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="inactive">Inactive</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Properties Grid */}
@@ -285,7 +311,9 @@ export default function Properties() {
           {filteredProperties.map((property) => (
             <Card
               key={property.id}
-              className="group hover:shadow-medium transition-shadow cursor-pointer"
+              className={`group hover:shadow-medium transition-shadow cursor-pointer ${
+                property.active === false ? "opacity-60" : ""
+              }`}
               onClick={() => navigate(`/properties/${property.id}`)}
             >
               <CardContent className="p-5">
@@ -295,13 +323,25 @@ export default function Properties() {
                       <Building2 className="w-5 h-5" />
                     </div>
                     <div>
-                      <p className="font-semibold">{property.internal_identifier}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold">{property.internal_identifier}</p>
+                        {property.active === false && (
+                          <Badge variant="secondary" className="text-xs">Inactive</Badge>
+                        )}
+                      </div>
                       <p className="text-xs text-muted-foreground">
                         {propertyTypeLabels[property.type] || property.type}
                       </p>
                     </div>
                   </div>
-                  <StatusBadge variant={property.status as any} />
+                  <div className="flex items-center gap-2">
+                    <StatusBadge variant={property.status as any} />
+                    <PropertyActionMenu
+                      property={property}
+                      onEdit={() => handleEdit(property)}
+                      onRefresh={fetchProperties}
+                    />
+                  </div>
                 </div>
                 <div className="flex items-start gap-2 text-sm text-muted-foreground">
                   <MapPin className="w-4 h-4 mt-0.5 shrink-0" />
@@ -320,6 +360,13 @@ export default function Properties() {
           ))}
         </div>
       )}
+
+      <EditPropertyModal
+        property={selectedProperty}
+        open={editModalOpen}
+        onOpenChange={setEditModalOpen}
+        onSuccess={fetchProperties}
+      />
     </div>
   );
 }

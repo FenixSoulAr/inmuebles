@@ -29,6 +29,9 @@ import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { EditTenantModal } from "@/components/tenants/EditTenantModal";
+import { TenantActionMenu } from "@/components/tenants/TenantActionMenu";
+import { Badge } from "@/components/ui/badge";
 
 interface Tenant {
   id: string;
@@ -54,9 +57,11 @@ export default function Tenants() {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("active");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -132,6 +137,11 @@ export default function Tenants() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleEdit = (tenant: Tenant) => {
+    setSelectedTenant(tenant);
+    setEditModalOpen(true);
   };
 
   const filteredTenants = tenants.filter((tenant) => {
@@ -221,7 +231,7 @@ export default function Tenants() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="ended">Ended</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -254,7 +264,7 @@ export default function Tenants() {
           <SelectContent>
             <SelectItem value="all">All Status</SelectItem>
             <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="ended">Ended</SelectItem>
+            <SelectItem value="inactive">Inactive</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -275,7 +285,9 @@ export default function Tenants() {
           {filteredTenants.map((tenant) => (
             <Card
               key={tenant.id}
-              className="group hover:shadow-medium transition-shadow cursor-pointer"
+              className={`group hover:shadow-medium transition-shadow cursor-pointer ${
+                tenant.status === "inactive" ? "opacity-60" : ""
+              }`}
               onClick={() => navigate(`/tenants/${tenant.id}`)}
             >
               <CardContent className="p-5">
@@ -285,13 +297,25 @@ export default function Tenants() {
                       {tenant.full_name.charAt(0).toUpperCase()}
                     </div>
                     <div>
-                      <p className="font-semibold">{tenant.full_name}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold">{tenant.full_name}</p>
+                        {tenant.status === "inactive" && (
+                          <Badge variant="secondary" className="text-xs">Inactive</Badge>
+                        )}
+                      </div>
                       {tenant.doc_id && (
                         <p className="text-xs text-muted-foreground">ID: {tenant.doc_id}</p>
                       )}
                     </div>
                   </div>
-                  <StatusBadge variant={tenant.status as any} />
+                  <div className="flex items-center gap-2">
+                    <StatusBadge variant={tenant.status as any} />
+                    <TenantActionMenu
+                      tenant={tenant}
+                      onEdit={() => handleEdit(tenant)}
+                      onRefresh={fetchTenants}
+                    />
+                  </div>
                 </div>
                 <div className="space-y-1 text-sm text-muted-foreground">
                   {tenant.email && (
@@ -320,6 +344,13 @@ export default function Tenants() {
           ))}
         </div>
       )}
+
+      <EditTenantModal
+        tenant={selectedTenant}
+        open={editModalOpen}
+        onOpenChange={setEditModalOpen}
+        onSuccess={fetchTenants}
+      />
     </div>
   );
 }
