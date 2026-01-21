@@ -17,14 +17,24 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { ContractActionMenu } from "@/components/contracts/ContractActionMenu";
+import { EditContractModal } from "@/components/contracts/EditContractModal";
 
 interface Contract {
   id: string;
   start_date: string;
   end_date: string;
   current_rent: number;
+  initial_rent: number;
+  deposit: number | null;
   is_active: boolean;
   adjustment_type: string;
+  adjustment_frequency: number | null;
+  clauses_text: string | null;
+  next_adjustment_date: string | null;
+  property_id: string;
+  tenant_id: string;
+  signed_contract_file_url: string | null;
   properties: {
     internal_identifier: string;
     full_address: string;
@@ -39,6 +49,9 @@ export default function Contracts() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
+  const [selectedContractHasRentDues, setSelectedContractHasRentDues] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -70,6 +83,19 @@ export default function Contracts() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleEdit = async (contract: Contract) => {
+    // Check if contract has rent dues
+    const { data } = await supabase
+      .from("rent_dues")
+      .select("id")
+      .eq("contract_id", contract.id)
+      .limit(1);
+
+    setSelectedContractHasRentDues((data?.length || 0) > 0);
+    setSelectedContract(contract);
+    setEditModalOpen(true);
   };
 
   const filteredContracts = contracts.filter((contract) => {
@@ -129,7 +155,7 @@ export default function Contracts() {
           <SelectContent>
             <SelectItem value="all">All</SelectItem>
             <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="inactive">Inactive</SelectItem>
+            <SelectItem value="inactive">Ended</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -150,7 +176,9 @@ export default function Contracts() {
           {filteredContracts.map((contract) => (
             <Card
               key={contract.id}
-              className="group hover:shadow-medium transition-shadow cursor-pointer"
+              className={`group hover:shadow-medium transition-shadow cursor-pointer ${
+                !contract.is_active ? "opacity-60" : ""
+              }`}
               onClick={() => navigate(`/contracts/${contract.id}`)}
             >
               <CardContent className="p-5">
@@ -164,7 +192,14 @@ export default function Contracts() {
                       <p className="text-sm text-muted-foreground">{contract.tenants.full_name}</p>
                     </div>
                   </div>
-                  <StatusBadge variant={contract.is_active ? "active" : "ended"} />
+                  <div className="flex items-center gap-2">
+                    <StatusBadge variant={contract.is_active ? "active" : "ended"} />
+                    <ContractActionMenu
+                      contract={contract}
+                      onEdit={() => handleEdit(contract)}
+                      onRefresh={fetchContracts}
+                    />
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 text-sm">
@@ -191,6 +226,14 @@ export default function Contracts() {
           ))}
         </div>
       )}
+
+      <EditContractModal
+        contract={selectedContract}
+        open={editModalOpen}
+        onOpenChange={setEditModalOpen}
+        onSuccess={fetchContracts}
+        hasRentDues={selectedContractHasRentDues}
+      />
     </div>
   );
 }
