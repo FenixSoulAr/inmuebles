@@ -16,12 +16,12 @@ import ContractNew from "./pages/ContractNew";
 import ContractDetail from "./pages/ContractDetail";
 import Rent from "./pages/Rent";
 import Utilities from "./pages/Utilities";
+import UtilityObligations from "./pages/UtilityObligations";
 import Maintenance from "./pages/Maintenance";
 import Taxes from "./pages/Taxes";
 import Agenda from "./pages/Agenda";
 import Documents from "./pages/Documents";
 import NotFound from "./pages/NotFound";
-
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -45,6 +45,7 @@ const App = () => (
               <Route path="/contracts/:id" element={<ContractDetail />} />
               <Route path="/rent" element={<Rent />} />
               <Route path="/utilities" element={<Utilities />} />
+              <Route path="/utility-services" element={<UtilityObligations />} />
               <Route path="/maintenance" element={<Maintenance />} />
               <Route path="/taxes" element={<Taxes />} />
               <Route path="/agenda" element={<Agenda />} />
