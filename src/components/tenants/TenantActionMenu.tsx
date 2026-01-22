@@ -81,8 +81,7 @@ export function TenantActionMenu({
       if (error) throw error;
 
       toast({
-        title: "Tenant deactivated",
-        description: "The tenant has been deactivated.",
+        title: "Tenant deactivated.",
       });
       onRefresh();
     } catch (error) {
