@@ -41,6 +41,7 @@
     "tenants": "Tenants",
     "contracts": "Contracts",
     "rent": "Rent",
+    "paymentProofs": "Payment Proofs",
     "utilityProofs": "Utility Proofs",
     "utilityServices": "Utility Services",
     "maintenance": "Maintenance",

@@ -117,9 +117,13 @@ export type Database = {
           is_active: boolean
           next_adjustment_date: string | null
           property_id: string
+          public_submission_token: string | null
           signed_contract_file_url: string | null
           start_date: string
           tenant_id: string
+          token_created_at: string | null
+          token_rotated_at: string | null
+          token_status: string
           updated_at: string
         }
         Insert: {
@@ -136,9 +140,13 @@ export type Database = {
           is_active?: boolean
           next_adjustment_date?: string | null
           property_id: string
+          public_submission_token?: string | null
           signed_contract_file_url?: string | null
           start_date: string
           tenant_id: string
+          token_created_at?: string | null
+          token_rotated_at?: string | null
+          token_status?: string
           updated_at?: string
         }
         Update: {
@@ -155,9 +163,13 @@ export type Database = {
           is_active?: boolean
           next_adjustment_date?: string | null
           property_id?: string
+          public_submission_token?: string | null
           signed_contract_file_url?: string | null
           start_date?: string
           tenant_id?: string
+          token_created_at?: string | null
+          token_rotated_at?: string | null
+          token_status?: string
           updated_at?: string
         }
         Relationships: [
@@ -293,6 +305,69 @@ export type Database = {
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_proofs: {
+        Row: {
+          amount: number
+          comment: string | null
+          contract_id: string
+          created_at: string
+          files: string[]
+          id: string
+          paid_at: string
+          period: string
+          rejection_reason: string | null
+          replaces_proof_id: string | null
+          service_type: string | null
+          status: string
+          type: string
+        }
+        Insert: {
+          amount: number
+          comment?: string | null
+          contract_id: string
+          created_at?: string
+          files?: string[]
+          id?: string
+          paid_at?: string
+          period: string
+          rejection_reason?: string | null
+          replaces_proof_id?: string | null
+          service_type?: string | null
+          status?: string
+          type: string
+        }
+        Update: {
+          amount?: number
+          comment?: string | null
+          contract_id?: string
+          created_at?: string
+          files?: string[]
+          id?: string
+          paid_at?: string
+          period?: string
+          rejection_reason?: string | null
+          replaces_proof_id?: string | null
+          service_type?: string | null
+          status?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_proofs_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_proofs_replaces_proof_id_fkey"
+            columns: ["replaces_proof_id"]
+            isOneToOne: false
+            referencedRelation: "payment_proofs"
             referencedColumns: ["id"]
           },
         ]

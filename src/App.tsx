@@ -16,6 +16,8 @@ import Contracts from "./pages/Contracts";
 import ContractNew from "./pages/ContractNew";
 import ContractDetail from "./pages/ContractDetail";
 import Rent from "./pages/Rent";
+import PaymentProofs from "./pages/PaymentProofs";
+import PublicSubmit from "./pages/PublicSubmit";
 import Utilities from "./pages/Utilities";
 import UtilityObligations from "./pages/UtilityObligations";
 import Maintenance from "./pages/Maintenance";
@@ -44,6 +46,7 @@ const App: React.FC = () => {
           <AuthProvider>
             <Routes>
               <Route path="/signin" element={<SignIn />} />
+              <Route path="/submit/:token" element={<PublicSubmit />} />
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route element={<AppLayout />}>
                 <Route path="/dashboard" element={<Dashboard />} />
@@ -55,6 +58,7 @@ const App: React.FC = () => {
                 <Route path="/contracts/new" element={<ContractNew />} />
                 <Route path="/contracts/:id" element={<ContractDetail />} />
                 <Route path="/rent" element={<Rent />} />
+                <Route path="/payment-proofs" element={<PaymentProofs />} />
                 <Route path="/utilities" element={<Utilities />} />
                 <Route path="/utility-services" element={<UtilityObligations />} />
                 <Route path="/maintenance" element={<Maintenance />} />
