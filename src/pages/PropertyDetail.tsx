@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   Building2,
   MapPin,
@@ -34,6 +35,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { AddUtilityModal } from "@/components/utilities/AddUtilityModal";
+import { PropertyValuations } from "@/components/properties/PropertyValuations";
 
 interface Property {
   id: string;
@@ -69,17 +71,27 @@ interface UtilityObligation {
   active: boolean;
 }
 
+interface Valuation {
+  id: string;
+  valuation_amount: number;
+  valuation_date: string;
+  notes: string | null;
+  created_at: string;
+}
+
 const requiredCategories = ["deed", "bylaws"];
 
 export default function PropertyDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   const [property, setProperty] = useState<Property | null>(null);
   const [documents, setDocuments] = useState<PropertyDocument[]>([]);
   const [stakes, setStakes] = useState<OwnershipStake[]>([]);
   const [utilities, setUtilities] = useState<UtilityObligation[]>([]);
+  const [valuations, setValuations] = useState<Valuation[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -92,11 +104,12 @@ export default function PropertyDetail() {
 
   const fetchPropertyData = async () => {
     try {
-      const [propertyRes, docsRes, stakesRes, utilitiesRes] = await Promise.all([
+      const [propertyRes, docsRes, stakesRes, utilitiesRes, valuationsRes] = await Promise.all([
         supabase.from("properties").select("*").eq("id", id).maybeSingle(),
         supabase.from("property_documents").select("*").eq("property_id", id).order("uploaded_at", { ascending: false }),
         supabase.from("ownership_stakes").select("*").eq("property_id", id),
         supabase.from("utility_obligations").select("*").eq("property_id", id).eq("active", true),
+        supabase.from("property_valuations").select("*").eq("property_id", id).order("valuation_date", { ascending: false }),
       ]);
 
       if (propertyRes.error) throw propertyRes.error;
@@ -109,11 +122,12 @@ export default function PropertyDetail() {
       setDocuments(docsRes.data || []);
       setStakes(stakesRes.data || []);
       setUtilities(utilitiesRes.data || []);
+      setValuations(valuationsRes.data || []);
     } catch (error) {
       console.error("Error fetching property:", error);
       toast({
-        title: "Error",
-        description: "Something went wrong. Please refresh.",
+        title: t("common.error"),
+        description: t("common.errorGeneric"),
         variant: "destructive",
       });
     } finally {
@@ -124,49 +138,30 @@ export default function PropertyDetail() {
   const handleFileUpload = async () => {
     if (!selectedFile || !property) return;
 
-    // Validate file
-    const maxSize = 10 * 1024 * 1024; // 10MB
+    const maxSize = 10 * 1024 * 1024;
     if (selectedFile.size > maxSize) {
-      toast({
-        title: "Error",
-        description: "File is too large.",
-        variant: "destructive",
-      });
+      toast({ title: t("common.error"), description: t("propertyDetail.fileTooLarge"), variant: "destructive" });
       return;
     }
 
     const allowedTypes = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
     if (!allowedTypes.includes(selectedFile.type)) {
-      toast({
-        title: "Error",
-        description: "File type not supported.",
-        variant: "destructive",
-      });
+      toast({ title: t("common.error"), description: t("propertyDetail.fileTypeNotSupported"), variant: "destructive" });
       return;
     }
 
     setUploading(true);
-
     try {
-      // Generate file name: YYYY-MM-DD__Category__PropertyId
       const date = new Date().toISOString().split("T")[0];
       const ext = selectedFile.name.split(".").pop();
       const generatedName = `${date}__${selectedCategory}__${property.internal_identifier}.${ext}`;
-
-      // Upload to storage
       const filePath = `${property.id}/${generatedName}`;
-      const { error: uploadError } = await supabase.storage
-        .from("documents")
-        .upload(filePath, selectedFile);
 
+      const { error: uploadError } = await supabase.storage.from("documents").upload(filePath, selectedFile);
       if (uploadError) throw uploadError;
 
-      // Get public URL
-      const { data: urlData } = supabase.storage
-        .from("documents")
-        .getPublicUrl(filePath);
+      const { data: urlData } = supabase.storage.from("documents").getPublicUrl(filePath);
 
-      // Save document record
       const { error: dbError } = await supabase.from("property_documents").insert({
         property_id: property.id,
         category: selectedCategory,
@@ -174,24 +169,15 @@ export default function PropertyDetail() {
         original_file_name: selectedFile.name,
         generated_name: generatedName,
       });
-
       if (dbError) throw dbError;
 
-      toast({
-        title: "File uploaded.",
-        description: "Document has been saved successfully.",
-      });
-
+      toast({ title: t("propertyDetail.fileUploaded"), description: t("propertyDetail.fileUploadedDesc") });
       setUploadDialogOpen(false);
       setSelectedFile(null);
       fetchPropertyData();
     } catch (error) {
       console.error("Upload error:", error);
-      toast({
-        title: "Error",
-        description: "Something went wrong. Please refresh.",
-        variant: "destructive",
-      });
+      toast({ title: t("common.error"), description: t("common.errorGeneric"), variant: "destructive" });
     } finally {
       setUploading(false);
     }
@@ -199,42 +185,39 @@ export default function PropertyDetail() {
 
   const getChecklistStatus = () => {
     const uploadedCategories = documents.map((d) => d.category);
-    const hasRequired = requiredCategories.every((cat) =>
-      uploadedCategories.includes(cat)
-    );
-    return hasRequired ? "complete" : "incomplete";
+    return requiredCategories.every((cat) => uploadedCategories.includes(cat)) ? "complete" : "incomplete";
   };
 
   const propertyTypeLabels: Record<string, string> = {
-    apartment: "Apartment",
-    house: "House",
-    commercial: "Commercial",
-    land: "Land",
-    other: "Other",
+    apartment: t("properties.apartment"),
+    house: t("properties.house"),
+    commercial: t("properties.commercial"),
+    land: t("properties.land"),
+    other: t("properties.other"),
   };
 
   const categoryLabels: Record<string, string> = {
-    deed: "Deed",
-    bylaws: "Bylaws",
-    plans: "Plans",
-    insurance: "Insurance",
-    tax: "Tax",
-    other: "Other",
+    deed: t("propertyDetail.deed"),
+    bylaws: t("propertyDetail.bylaws"),
+    plans: t("propertyDetail.plans"),
+    insurance: t("propertyDetail.insurance"),
+    tax: t("propertyDetail.taxDoc"),
+    other: t("propertyDetail.otherDoc"),
   };
 
   const utilityTypeLabels: Record<string, string> = {
-    electricity: "Electricity",
-    gas: "Gas",
-    water: "Water",
-    hoa: "Building fees (HOA / Expensas)",
-    insurance: "Insurance",
+    electricity: t("utilities.electricity"),
+    gas: t("utilities.gas"),
+    water: t("utilities.water"),
+    hoa: t("utilities.hoa"),
+    insurance: t("utilities.insuranceUtility"),
   };
 
   const frequencyLabels: Record<string, string> = {
-    monthly: "Monthly",
-    bimonthly: "Bimonthly",
-    quarterly: "Quarterly",
-    annual: "Annual",
+    monthly: t("frequency.monthly"),
+    bimonthly: t("frequency.bimonthly"),
+    quarterly: t("frequency.quarterly"),
+    annual: t("frequency.annual"),
   };
 
   if (loading) {
@@ -249,21 +232,15 @@ export default function PropertyDetail() {
 
   return (
     <div>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="mb-4"
-        onClick={() => navigate("/properties")}
-      >
+      <Button variant="ghost" size="sm" className="mb-4" onClick={() => navigate("/properties")}>
         <ArrowLeft className="w-4 h-4 mr-2" />
-        Back to Properties
+        {t("properties.backToProperties")}
       </Button>
 
       <PageHeader title={property.internal_identifier}>
         <StatusBadge variant={property.status as any} />
       </PageHeader>
 
-      {/* Property Info Card */}
       <Card className="mb-6">
         <CardContent className="p-6">
           <div className="grid gap-6 md:grid-cols-2">
@@ -274,9 +251,7 @@ export default function PropertyDetail() {
                 </div>
                 <div>
                   <p className="font-semibold text-lg">{property.internal_identifier}</p>
-                  <p className="text-muted-foreground">
-                    {propertyTypeLabels[property.type] || property.type}
-                  </p>
+                  <p className="text-muted-foreground">{propertyTypeLabels[property.type] || property.type}</p>
                 </div>
               </div>
               <div className="flex items-start gap-2 text-muted-foreground">
@@ -286,77 +261,62 @@ export default function PropertyDetail() {
             </div>
             <div className="space-y-4">
               <div>
-                <p className="text-sm text-muted-foreground">Document Checklist</p>
+                <p className="text-sm text-muted-foreground">{t("properties.documentChecklist")}</p>
                 <StatusBadge variant={getChecklistStatus()} className="mt-1" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Created</p>
-                <p className="font-medium">
-                  {new Date(property.created_at).toLocaleDateString()}
-                </p>
+                <p className="text-sm text-muted-foreground">{t("properties.created")}</p>
+                <p className="font-medium">{new Date(property.created_at).toLocaleDateString()}</p>
               </div>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Tabs */}
       <Tabs defaultValue="documents" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="documents">Documents</TabsTrigger>
-          <TabsTrigger value="utilities">Utilities</TabsTrigger>
-          <TabsTrigger value="ownership">Ownership</TabsTrigger>
+          <TabsTrigger value="documents">{t("propertyDetail.documents")}</TabsTrigger>
+          <TabsTrigger value="valuations">{t("propertyDetail.valuations")}</TabsTrigger>
+          <TabsTrigger value="utilities">{t("propertyDetail.utilities")}</TabsTrigger>
+          <TabsTrigger value="ownership">{t("propertyDetail.ownership")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="documents">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Documents</CardTitle>
+              <CardTitle>{t("propertyDetail.documents")}</CardTitle>
               <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
                 <DialogTrigger asChild>
                   <Button size="sm">
                     <Upload className="w-4 h-4 mr-2" />
-                    Upload file
+                    {t("propertyDetail.uploadFile")}
                   </Button>
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>Upload Document</DialogTitle>
+                    <DialogTitle>{t("propertyDetail.uploadDocument")}</DialogTitle>
                   </DialogHeader>
                   <div className="space-y-4 mt-4">
                     <div className="space-y-2">
-                      <Label>Category</Label>
+                      <Label>{t("propertyDetail.category")}</Label>
                       <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="deed">Deed</SelectItem>
-                          <SelectItem value="bylaws">Bylaws</SelectItem>
-                          <SelectItem value="plans">Plans</SelectItem>
-                          <SelectItem value="insurance">Insurance</SelectItem>
-                          <SelectItem value="tax">Tax</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
+                          {Object.entries(categoryLabels).map(([key, label]) => (
+                            <SelectItem key={key} value={key}>{label}</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label>File</Label>
-                      <Input
-                        type="file"
-                        accept=".pdf,.jpg,.jpeg,.png,.webp"
-                        onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Max 10MB. PDF, JPG, PNG, WebP supported.
-                      </p>
+                      <Label>{t("propertyDetail.file")}</Label>
+                      <Input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} />
+                      <p className="text-xs text-muted-foreground">{t("propertyDetail.fileMaxSize")}</p>
                     </div>
                     <div className="flex justify-end gap-3 pt-4">
-                      <Button variant="outline" onClick={() => setUploadDialogOpen(false)}>
-                        Cancel
-                      </Button>
+                      <Button variant="outline" onClick={() => setUploadDialogOpen(false)}>{t("common.cancel")}</Button>
                       <Button onClick={handleFileUpload} disabled={!selectedFile || uploading}>
-                        {uploading ? "Uploading..." : "Upload file"}
+                        {uploading ? t("common.uploading") : t("propertyDetail.uploadFile")}
                       </Button>
                     </div>
                   </div>
@@ -365,32 +325,20 @@ export default function PropertyDetail() {
             </CardHeader>
             <CardContent>
               {documents.length === 0 ? (
-                <EmptyState
-                  icon={FileText}
-                  title="No documents"
-                  description="Upload your first document to get started."
-                  className="py-8"
-                />
+                <EmptyState icon={FileText} title={t("propertyDetail.noDocuments")} description={t("propertyDetail.noDocumentsDesc")} className="py-8" />
               ) : (
                 <div className="space-y-3">
                   {documents.map((doc) => (
-                    <div
-                      key={doc.id}
-                      className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
-                    >
+                    <div key={doc.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
                       <div className="flex items-center gap-3">
                         <FileText className="w-5 h-5 text-muted-foreground" />
                         <div>
                           <p className="font-medium">{doc.generated_name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {categoryLabels[doc.category]} • {new Date(doc.uploaded_at).toLocaleDateString()}
-                          </p>
+                          <p className="text-xs text-muted-foreground">{categoryLabels[doc.category]} • {new Date(doc.uploaded_at).toLocaleDateString()}</p>
                         </div>
                       </div>
                       <Button variant="outline" size="sm" asChild>
-                        <a href={doc.file_url} target="_blank" rel="noopener noreferrer">
-                          View
-                        </a>
+                        <a href={doc.file_url} target="_blank" rel="noopener noreferrer">{t("common.view")}</a>
                       </Button>
                     </div>
                   ))}
@@ -400,43 +348,30 @@ export default function PropertyDetail() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="valuations">
+          <PropertyValuations propertyId={property.id} valuations={valuations} onRefresh={fetchPropertyData} />
+        </TabsContent>
+
         <TabsContent value="utilities">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Utilities</CardTitle>
-              <AddUtilityModal
-                preselectedPropertyId={property.id}
-                onSuccess={fetchPropertyData}
-                triggerButton={
-                  <Button size="sm">
-                    <Zap className="w-4 h-4 mr-2" />
-                    Add utility
-                  </Button>
-                }
-              />
+              <CardTitle>{t("propertyDetail.utilities")}</CardTitle>
+              <AddUtilityModal preselectedPropertyId={property.id} onSuccess={fetchPropertyData} triggerButton={
+                <Button size="sm"><Zap className="w-4 h-4 mr-2" />{t("propertyDetail.addUtility")}</Button>
+              } />
             </CardHeader>
             <CardContent>
               {utilities.length === 0 ? (
-                <EmptyState
-                  icon={Zap}
-                  title="No utilities yet"
-                  description="Add a utility to start tracking proofs."
-                  className="py-8"
-                />
+                <EmptyState icon={Zap} title={t("propertyDetail.noUtilities")} description={t("propertyDetail.noUtilitiesDesc")} className="py-8" />
               ) : (
                 <div className="space-y-3">
                   {utilities.map((utility) => (
-                    <div
-                      key={utility.id}
-                      className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
-                    >
+                    <div key={utility.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
                       <div>
-                        <p className="font-medium">
-                          {utilityTypeLabels[utility.type] || utility.type}
-                        </p>
+                        <p className="font-medium">{utilityTypeLabels[utility.type] || utility.type}</p>
                         <p className="text-xs text-muted-foreground capitalize">
                           {utility.payer} • {frequencyLabels[utility.frequency] || utility.frequency}
-                          {utility.due_day_of_month && ` • Due day ${utility.due_day_of_month}`}
+                          {utility.due_day_of_month && ` • ${t("utilityServices.dueDay")} ${utility.due_day_of_month}`}
                         </p>
                       </div>
                       <StatusBadge variant={utility.active ? "active" : "ended"} />
@@ -450,29 +385,17 @@ export default function PropertyDetail() {
 
         <TabsContent value="ownership">
           <Card>
-            <CardHeader>
-              <CardTitle>Ownership Stakes</CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle>{t("propertyDetail.ownershipStakes")}</CardTitle></CardHeader>
             <CardContent>
               {stakes.length === 0 ? (
-                <EmptyState
-                  icon={Users}
-                  title="No ownership records"
-                  description="Add ownership stakes to track property shares."
-                  className="py-8"
-                />
+                <EmptyState icon={Users} title={t("propertyDetail.noOwnership")} description={t("propertyDetail.noOwnershipDesc")} className="py-8" />
               ) : (
                 <div className="space-y-3">
                   {stakes.map((stake) => (
-                    <div
-                      key={stake.id}
-                      className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
-                    >
+                    <div key={stake.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
                       <div>
                         <p className="font-medium">{stake.holder_name}</p>
-                        <p className="text-xs text-muted-foreground capitalize">
-                          {stake.holder_type}
-                        </p>
+                        <p className="text-xs text-muted-foreground capitalize">{stake.holder_type}</p>
                       </div>
                       <span className="font-semibold">{stake.share_percent}%</span>
                     </div>

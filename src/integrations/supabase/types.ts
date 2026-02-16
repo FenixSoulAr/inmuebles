@@ -403,6 +403,41 @@ export type Database = {
           },
         ]
       }
+      property_valuations: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          property_id: string
+          valuation_amount: number
+          valuation_date: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          property_id: string
+          valuation_amount: number
+          valuation_date: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          property_id?: string
+          valuation_amount?: number
+          valuation_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_valuations_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rent_dues: {
         Row: {
           balance_due: number
