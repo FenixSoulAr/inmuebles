@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Home, Mail, Lock, Eye, EyeOff, Loader2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,14 +13,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 
-const authSchema = z.object({
-  email: z.string().min(1, "Email is required.").email("Enter a valid email address."),
-  password: z.string().min(6, "Password must be at least 6 characters."),
-});
-
-type AuthFormData = z.infer<typeof authSchema>;
-
 export default function SignIn() {
+  const { t } = useTranslation();
+
+  const authSchema = z.object({
+    email: z.string().min(1, t("auth.emailRequired")).email(t("auth.emailInvalid")),
+    password: z.string().min(6, t("auth.passwordMin")),
+  });
+
+  type AuthFormData = z.infer<typeof authSchema>;
+
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<"signin" | "signup">("signin");
@@ -47,8 +50,8 @@ export default function SignIn() {
         const { error } = await signIn(data.email, data.password);
         if (error) {
           toast({
-            title: "Sign in failed",
-            description: error.message || "Invalid email or password.",
+            title: t("auth.signInFailed"),
+            description: t("auth.signInFailedDesc"),
             variant: "destructive",
           });
         } else {
@@ -59,29 +62,29 @@ export default function SignIn() {
         if (error) {
           if (error.message.includes("already registered")) {
             toast({
-              title: "Account exists",
-              description: "This email is already registered. Please sign in instead.",
+              title: t("auth.accountExists"),
+              description: t("auth.accountExistsDesc"),
               variant: "destructive",
             });
           } else {
             toast({
-              title: "Sign up failed",
-              description: error.message || "Something went wrong. Please try again.",
+              title: t("auth.signUpFailed"),
+              description: error.message || t("common.errorGeneric"),
               variant: "destructive",
             });
           }
         } else {
           toast({
-            title: "Account created!",
-            description: "Welcome to PropManage. Let's get started.",
+            title: t("auth.accountCreated"),
+            description: t("auth.accountCreatedDesc"),
           });
           navigate("/dashboard");
         }
       }
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Something went wrong. Please refresh.",
+        title: t("common.error"),
+        description: t("common.errorGeneric"),
         variant: "destructive",
       });
     } finally {
@@ -99,27 +102,25 @@ export default function SignIn() {
           </div>
           <div>
             <h1 className="text-2xl font-bold tracking-tight">PropManage</h1>
-            <p className="text-sm text-muted-foreground">Property Management for LATAM</p>
+            <p className="text-sm text-muted-foreground">{t("auth.subtitle")}</p>
           </div>
         </div>
 
         <Card className="shadow-elevated">
           <CardHeader className="space-y-1 pb-4">
-            <CardTitle className="text-xl">Welcome</CardTitle>
-            <CardDescription>
-              Manage your properties, tenants, and finances in one place.
-            </CardDescription>
+            <CardTitle className="text-xl">{t("auth.welcome")}</CardTitle>
+            <CardDescription>{t("auth.manageDescription")}</CardDescription>
           </CardHeader>
           <CardContent>
             <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as "signin" | "signup"); reset(); }}>
               <TabsList className="grid w-full grid-cols-2 mb-6">
-                <TabsTrigger value="signin">Sign In</TabsTrigger>
-                <TabsTrigger value="signup">Sign Up</TabsTrigger>
+                <TabsTrigger value="signin">{t("auth.signIn")}</TabsTrigger>
+                <TabsTrigger value="signup">{t("auth.signUp")}</TabsTrigger>
               </TabsList>
 
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email">{t("auth.email")}</Label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
@@ -136,7 +137,7 @@ export default function SignIn() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
+                  <Label htmlFor="password">{t("auth.password")}</Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
@@ -151,11 +152,7 @@ export default function SignIn() {
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                     >
-                      {showPassword ? (
-                        <EyeOff className="w-4 h-4" />
-                      ) : (
-                        <Eye className="w-4 h-4" />
-                      )}
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
                   {errors.password && (
@@ -167,10 +164,10 @@ export default function SignIn() {
                   {isLoading ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      {activeTab === "signin" ? "Signing in..." : "Creating account..."}
+                      {activeTab === "signin" ? t("auth.signingIn") : t("auth.creatingAccount")}
                     </>
                   ) : (
-                    activeTab === "signin" ? "Sign In" : "Create Account"
+                    activeTab === "signin" ? t("auth.signIn") : t("auth.createAccount")
                   )}
                 </Button>
               </form>
@@ -179,7 +176,7 @@ export default function SignIn() {
         </Card>
 
         <p className="text-center text-sm text-muted-foreground mt-6">
-          Secure property management for landlords across Latin America.
+          {t("auth.tagline")}
         </p>
       </div>
     </div>

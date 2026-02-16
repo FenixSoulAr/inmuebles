@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Plus, DollarSign, Upload, X, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -89,6 +90,7 @@ export default function Dashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (user) {
@@ -543,15 +545,15 @@ export default function Dashboard() {
 
   return (
     <div>
-      <PageHeader title="Dashboard" description="Overview of your property portfolio">
+      <PageHeader title={t("dashboard.title")} description={t("properties.description")}>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => navigate("/rent")}>
             <DollarSign className="w-4 h-4 mr-2" />
-            Record payment
+            {t("dashboard.recordPayment")}
           </Button>
           <Button onClick={() => navigate("/properties")}>
             <Plus className="w-4 h-4 mr-2" />
-            Add property
+            {t("properties.addProperty")}
           </Button>
         </div>
       </PageHeader>
@@ -593,7 +595,7 @@ export default function Dashboard() {
       <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
         <DialogContent className="flex flex-col max-h-[90vh] sm:max-w-[600px]">
           <DialogHeader className="flex-shrink-0">
-            <DialogTitle>Record payment</DialogTitle>
+            <DialogTitle>{t("rent.recordPaymentTitle")}</DialogTitle>
             <DialogDescription>
               {selectedRentDue && (
                 <>
@@ -685,10 +687,10 @@ export default function Dashboard() {
 
           <DialogFooter className="flex-shrink-0 pt-4 border-t">
             <Button variant="outline" onClick={() => setPaymentDialogOpen(false)}>
-              Cancel
+              {t("common.cancel")}
             </Button>
             <Button onClick={handlePaymentSubmit} disabled={isSubmitting}>
-              {isSubmitting ? "Saving..." : "Save payment"}
+              {isSubmitting ? t("common.saving") : t("common.save")}
             </Button>
           </DialogFooter>
         </DialogContent>
