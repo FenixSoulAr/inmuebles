@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Zap, AlertCircle } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { PageHeader } from "@/components/ui/page-header";
@@ -7,14 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useToast } from "@/hooks/use-toast";
-import {
-  UtilitiesTable,
-  UtilityProofRow,
-} from "@/components/utilities/UtilitiesTable";
-import {
-  UtilitiesFilter,
-  type UtilityFilterStatus,
-} from "@/components/utilities/UtilitiesFilter";
+import { UtilitiesTable, UtilityProofRow } from "@/components/utilities/UtilitiesTable";
+import { UtilitiesFilter, type UtilityFilterStatus } from "@/components/utilities/UtilitiesFilter";
 import { UploadProofModal } from "@/components/utilities/UploadProofModal";
 import { AddUtilityModal } from "@/components/utilities/AddUtilityModal";
 
@@ -34,18 +29,19 @@ interface UtilityProofData {
   };
 }
 
-const utilityTypeLabels: Record<string, string> = {
-  electricity: "Electricity",
-  gas: "Gas",
-  water: "Water",
-  hoa: "Building fees (HOA / Expensas)",
-  insurance: "Insurance",
-};
-
 export default function Utilities() {
+  const { t } = useTranslation();
+
+  const utilityTypeLabels: Record<string, string> = {
+    electricity: t("utilities.electricity"),
+    gas: t("utilities.gas"),
+    water: t("utilities.water"),
+    hoa: t("utilities.hoa"),
+    insurance: t("utilities.insuranceUtility"),
+  };
+
   const [proofs, setProofs] = useState<UtilityProofRow[]>([]);
   const [loading, setLoading] = useState(true);
-  // Default to showing action needed items (overdue + not submitted)
   const [filter, setFilter] = useState<UtilityFilterStatus>("action_needed");
   const [counts, setCounts] = useState({
     all: 0,
@@ -150,8 +146,8 @@ export default function Utilities() {
     } catch (error) {
       console.error("Error fetching utilities:", error);
       toast({
-        title: "Error",
-        description: "Something went wrong. Please refresh.",
+        title: t("common.error"),
+        description: t("common.errorGeneric"),
         variant: "destructive",
       });
     } finally {
@@ -198,8 +194,8 @@ export default function Utilities() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Utilities"
-        description="Track utility payments and proofs of payment"
+        title={t("utilities.title")}
+        description={t("utilities.description")}
       >
         <AddUtilityModal onSuccess={fetchData} />
       </PageHeader>
@@ -208,7 +204,7 @@ export default function Utilities() {
       <Alert>
         <AlertCircle className="h-4 w-4" />
         <AlertDescription>
-          Utilities require proof of payment. Missing proofs will trigger alerts.
+          {t("utilities.helperText")}
         </AlertDescription>
       </Alert>
 
@@ -218,7 +214,7 @@ export default function Utilities() {
           <Card className={counts.overdue > 0 ? "border-destructive/50" : ""}>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                Overdue
+                {t("utilities.overdue")}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -230,7 +226,7 @@ export default function Utilities() {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                Not submitted
+                {t("utilities.notSubmitted")}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -240,7 +236,7 @@ export default function Utilities() {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                Paid with proof
+                {t("utilities.paidWithProof")}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -250,7 +246,7 @@ export default function Utilities() {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total
+                {t("utilities.total")}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -266,7 +262,7 @@ export default function Utilities() {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="flex items-center gap-2">
               <Zap className="w-5 h-5" />
-              Utility proofs
+              {t("utilities.utilityProofs")}
             </CardTitle>
             <UtilitiesFilter
               activeFilter={filter}
