@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   Building2,
   LayoutDashboard,
@@ -25,26 +26,28 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-
-const navItems = [
-  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-  { title: "Properties", url: "/properties", icon: Building2 },
-  { title: "Tenants", url: "/tenants", icon: Users },
-  { title: "Contracts", url: "/contracts", icon: FileText },
-  { title: "Rent", url: "/rent", icon: DollarSign },
-  { title: "Utility Proofs", url: "/utilities", icon: Zap },
-  { title: "Utility Services", url: "/utility-services", icon: Zap },
-  { title: "Maintenance", url: "/maintenance", icon: Wrench },
-  { title: "Taxes", url: "/taxes", icon: Receipt },
-  { title: "Agenda", url: "/agenda", icon: Calendar },
-  { title: "Documents", url: "/documents", icon: FolderOpen },
-];
+import { LanguageSelector } from "./LanguageSelector";
 
 export function AppSidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut } = useAuth();
+  const { t } = useTranslation();
+
+  const navItems = [
+    { title: t("nav.dashboard"), url: "/dashboard", icon: LayoutDashboard },
+    { title: t("nav.properties"), url: "/properties", icon: Building2 },
+    { title: t("nav.tenants"), url: "/tenants", icon: Users },
+    { title: t("nav.contracts"), url: "/contracts", icon: FileText },
+    { title: t("nav.rent"), url: "/rent", icon: DollarSign },
+    { title: t("nav.utilityProofs"), url: "/utilities", icon: Zap },
+    { title: t("nav.utilityServices"), url: "/utility-services", icon: Zap },
+    { title: t("nav.maintenance"), url: "/maintenance", icon: Wrench },
+    { title: t("nav.taxes"), url: "/taxes", icon: Receipt },
+    { title: t("nav.agenda"), url: "/agenda", icon: Calendar },
+    { title: t("nav.documents"), url: "/documents", icon: FolderOpen },
+  ];
 
   const isActive = (path: string) => {
     if (path === "/dashboard") {
@@ -100,7 +103,7 @@ export function AppSidebar() {
             );
 
             return (
-              <li key={item.title}>
+              <li key={item.url}>
                 {collapsed ? (
                   <Tooltip delayDuration={0}>
                     <TooltipTrigger asChild>{NavButton}</TooltipTrigger>
@@ -121,6 +124,8 @@ export function AppSidebar() {
       <div className="p-2 border-t border-sidebar-border">
         <Separator className="mb-2 bg-sidebar-border" />
         
+        <LanguageSelector collapsed={collapsed} />
+
         {collapsed ? (
           <Tooltip delayDuration={0}>
             <TooltipTrigger asChild>
@@ -128,21 +133,21 @@ export function AppSidebar() {
                 variant="ghost"
                 size="icon"
                 onClick={handleSignOut}
-                className="w-full text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                className="w-full text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground mt-1"
               >
                 <LogOut className="w-5 h-5" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="right">Sign out</TooltipContent>
+            <TooltipContent side="right">{t("common.signOut")}</TooltipContent>
           </Tooltip>
         ) : (
           <Button
             variant="ghost"
             onClick={handleSignOut}
-            className="w-full justify-start gap-3 text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            className="w-full justify-start gap-3 text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground mt-1"
           >
             <LogOut className="w-5 h-5" />
-            <span>Sign out</span>
+            <span>{t("common.signOut")}</span>
           </Button>
         )}
 
