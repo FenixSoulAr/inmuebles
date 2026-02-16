@@ -41,6 +41,7 @@
     "tenants": "Inquilinos",
     "contracts": "Contratos",
     "rent": "Alquileres",
+    "paymentProofs": "Comprobantes",
     "utilityProofs": "Comprobantes de servicios",
     "utilityServices": "Servicios",
     "maintenance": "Mantenimiento",

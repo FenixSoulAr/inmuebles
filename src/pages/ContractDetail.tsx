@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { ArrowLeft, FileText, Calendar, DollarSign, RefreshCw, Loader2, Building2, User } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -8,6 +9,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { ContractPublicLink } from "@/components/contracts/ContractPublicLink";
 
 interface Contract {
   id: string;
@@ -20,6 +22,8 @@ interface Contract {
   adjustment_type: string;
   adjustment_frequency: number | null;
   clauses_text: string | null;
+  public_submission_token: string | null;
+  token_status: string;
   properties: {
     internal_identifier: string;
     full_address: string;
@@ -39,6 +43,8 @@ export default function ContractDetail() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { t, i18n } = useTranslation();
+  const isEs = i18n.language?.startsWith("es");
 
   useEffect(() => {
     if (user && id) fetchContract();
@@ -52,7 +58,7 @@ export default function ContractDetail() {
           *,
           properties(internal_identifier, full_address),
           tenants(full_name, email, phone)
-        `)
+        ` as any)
         .eq("id", id)
         .maybeSingle();
 
@@ -68,7 +74,7 @@ export default function ContractDetail() {
         return;
       }
       
-      setContract(data);
+      setContract(data as unknown as Contract);
     } catch (error) {
       console.error("Error fetching contract:", error);
       toast({
@@ -299,10 +305,22 @@ export default function ContractDetail() {
             </CardContent>
           </Card>
 
+        {/* Public Link */}
+          {contract.is_active && (
+            <ContractPublicLink
+              contractId={contract.id}
+              token={contract.public_submission_token}
+              tokenStatus={contract.token_status}
+              propertyName={contract.properties.internal_identifier}
+              tenantName={contract.tenants.full_name}
+              onUpdate={fetchContract}
+            />
+          )}
+
           {/* Quick Actions */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Quick Actions</CardTitle>
+              <CardTitle className="text-base">{t("contracts.quickActions")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               <Button
@@ -312,7 +330,7 @@ export default function ContractDetail() {
                 onClick={() => navigate("/rent")}
               >
                 <DollarSign className="w-4 h-4 mr-2" />
-                View Rent Dues
+                {t("contracts.viewRentDues")}
               </Button>
               <Button
                 variant="outline"
@@ -321,7 +339,7 @@ export default function ContractDetail() {
                 onClick={() => navigate("/documents")}
               >
                 <FileText className="w-4 h-4 mr-2" />
-                View Documents
+                {t("contracts.viewDocuments")}
               </Button>
             </CardContent>
           </Card>

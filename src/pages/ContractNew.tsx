@@ -147,6 +147,9 @@ export default function ContractNew() {
           adjustment_type: data.adjustment_type,
           adjustment_frequency: data.adjustment_frequency || 12,
           is_active: true,
+          public_submission_token: Array.from(crypto.getRandomValues(new Uint8Array(32))).map(b => b.toString(16).padStart(2, '0')).join(''),
+          token_status: 'active',
+          token_created_at: new Date().toISOString(),
         })
         .select("id")
         .single();
