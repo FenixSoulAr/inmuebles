@@ -75,7 +75,7 @@ export default function Properties() {
   const fetchProperties = async () => {
     try {
       const { data, error } = await supabase
-        .from("properties").select("*").order("created_at", { ascending: false });
+        .from("properties").select("*").order("internal_identifier", { ascending: true });
       if (error) throw error;
       setProperties(data || []);
     } catch (error) {

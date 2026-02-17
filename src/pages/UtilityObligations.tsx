@@ -46,7 +46,7 @@ export default function UtilityObligations() {
     try {
       const { data: obligations, error: obligationsError } = await supabase.from("utility_obligations")
         .select(`id, type, payer, frequency, due_day_of_month, active, properties (id, internal_identifier)`)
-        .order("created_at", { ascending: false });
+        .order("type", { ascending: true });
       if (obligationsError) throw obligationsError;
       const { data: proofs, error: proofsError } = await supabase.from("utility_proofs").select("utility_obligation_id, file_url");
       if (proofsError) throw proofsError;
@@ -61,6 +61,8 @@ export default function UtilityObligations() {
         active: ob.active, property: { id: ob.properties.id, internal_identifier: ob.properties.internal_identifier },
         proofCount: proofsByObligation[ob.id]?.count || 0, hasUploads: proofsByObligation[ob.id]?.hasUploads || false,
       }));
+      // Sort by property name asc
+      processed.sort((a, b) => a.property.internal_identifier.localeCompare(b.property.internal_identifier));
       setUtilities(processed);
     } catch (error) {
       console.error("Error fetching utilities:", error);

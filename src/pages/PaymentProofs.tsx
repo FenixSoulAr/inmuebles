@@ -203,7 +203,7 @@ export default function PaymentProofs() {
           tenants(full_name),
           payment_proofs!obligations_payment_proof_id_fkey(id, amount, paid_at, files, status, rejection_reason, comment)
         `)
-        .order("due_date", { ascending: false });
+        .order("period", { ascending: true });
 
       if (error) throw error;
 
@@ -246,6 +246,12 @@ export default function PaymentProofs() {
         };
       });
 
+      // Sort by period asc, then property name asc
+      obls.sort((a, b) => {
+        const periodCmp = a.period.localeCompare(b.period);
+        if (periodCmp !== 0) return periodCmp;
+        return (a.properties?.internal_identifier || "").localeCompare(b.properties?.internal_identifier || "");
+      });
       setObligations(obls);
     } catch (err) {
       console.error("Error fetching obligations:", err);
