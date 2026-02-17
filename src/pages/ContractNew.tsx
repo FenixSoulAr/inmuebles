@@ -43,6 +43,7 @@ const contractSchema = z.object({
   clauses_text: z.string().optional(),
   adjustment_type: z.string().min(1),
   adjustment_frequency: z.number().optional(),
+  submission_language: z.string().min(1),
 }).refine((data) => new Date(data.end_date) > new Date(data.start_date), {
   message: "End date must be after start date.",
   path: ["end_date"],
@@ -71,6 +72,7 @@ export default function ContractNew() {
       adjustment_type: "manual",
       adjustment_frequency: 12,
       rent_due_day: 5,
+      submission_language: "es",
     },
   });
 
@@ -150,6 +152,7 @@ export default function ContractNew() {
           adjustment_type: data.adjustment_type,
           adjustment_frequency: data.adjustment_frequency || 12,
           is_active: true,
+          submission_language: data.submission_language,
           public_submission_token: Array.from(crypto.getRandomValues(new Uint8Array(32))).map(b => b.toString(16).padStart(2, '0')).join(''),
           token_status: 'active',
           token_created_at: new Date().toISOString(),
@@ -378,6 +381,26 @@ export default function ContractNew() {
                 placeholder="Enter any special terms or conditions..."
                 rows={4}
                 {...register("clauses_text")}
+              />
+            </div>
+
+            {/* Submission Language */}
+            <div className="space-y-2">
+              <Label>Tenant Form Language</Label>
+              <Controller
+                name="submission_language"
+                control={control}
+                render={({ field }) => (
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="es">Español</SelectItem>
+                      <SelectItem value="en">English</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
               />
             </div>
 

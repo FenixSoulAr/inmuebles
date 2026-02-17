@@ -30,7 +30,7 @@ Deno.serve(async (req) => {
     const { data: contract, error } = await supabase
       .from("contracts")
       .select(`
-        id, is_active, token_status,
+        id, is_active, token_status, submission_language,
         properties(internal_identifier, full_address),
         tenants(full_name, preferred_language)
       `)
@@ -46,8 +46,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    const tenantData = contract.tenants as any;
-    const language = tenantData?.preferred_language || "es";
+    // Contract-level language takes priority, then tenant preference, then 'es'
+    const language = contract.submission_language || 
+      (contract.tenants as any)?.preferred_language || "es";
 
     return new Response(
       JSON.stringify({

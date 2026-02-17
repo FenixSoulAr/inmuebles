@@ -30,6 +30,7 @@ const contractSchema = z.object({
   adjustment_type: z.string().min(1),
   adjustment_frequency: z.coerce.number().min(1).optional(),
   next_adjustment_date: z.string().optional(),
+  submission_language: z.string().min(1),
 });
 
 type ContractFormData = z.infer<typeof contractSchema>;
@@ -50,6 +51,7 @@ interface Contract {
   tenant_id: string;
   public_submission_token: string | null;
   token_status: string;
+  submission_language?: string;
 }
 
 interface EditContractModalProps {
@@ -89,6 +91,7 @@ export function EditContractModal({
         adjustment_type: contract.adjustment_type,
         adjustment_frequency: contract.adjustment_frequency || 12,
         next_adjustment_date: contract.next_adjustment_date || "",
+        submission_language: contract.submission_language || "es",
       });
     }
   }, [contract, open, reset]);
@@ -117,6 +120,7 @@ export function EditContractModal({
         end_date: newEndDate,
         clauses_text: data.clauses_text || null,
         is_active: shouldBeActive,
+        submission_language: data.submission_language,
       };
 
       // Only allow changing adjustment settings if no rent dues exist
@@ -274,6 +278,22 @@ export function EditContractModal({
               rows={4}
               {...register("clauses_text")}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Tenant Form Language</Label>
+            <Select
+              value={watch("submission_language")}
+              onValueChange={(value) => setValue("submission_language", value)}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="es">Español</SelectItem>
+                <SelectItem value="en">English</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="flex justify-end gap-3 pt-4">
