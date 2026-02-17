@@ -2,3 +2,12 @@ project_id = "gkcuzhmwdfqdslbtgtyk"
 
 [functions.generate-rent-dues]
 verify_jwt = false
+
+[functions.ensure-obligations]
+verify_jwt = false
+
+[functions.get-public-contract]
+verify_jwt = false
+
+[functions.submit-payment-proof]
+verify_jwt = false

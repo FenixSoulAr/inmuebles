@@ -39,6 +39,7 @@ const contractSchema = z.object({
   end_date: z.string().min(1, "End date is required."),
   initial_rent: z.number().min(0.01, "Enter a valid amount greater than 0."),
   deposit: z.number().optional(),
+  rent_due_day: z.number().min(1).max(28).optional(),
   clauses_text: z.string().optional(),
   adjustment_type: z.string().min(1),
   adjustment_frequency: z.number().optional(),
@@ -69,6 +70,7 @@ export default function ContractNew() {
     defaultValues: {
       adjustment_type: "manual",
       adjustment_frequency: 12,
+      rent_due_day: 5,
     },
   });
 
@@ -143,6 +145,7 @@ export default function ContractNew() {
           initial_rent: data.initial_rent,
           current_rent: data.initial_rent,
           deposit: data.deposit || null,
+          rent_due_day: data.rent_due_day || 5,
           clauses_text: data.clauses_text || null,
           adjustment_type: data.adjustment_type,
           adjustment_frequency: data.adjustment_frequency || 12,
@@ -299,7 +302,7 @@ export default function ContractNew() {
             </div>
 
             {/* Financial */}
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-3">
               <div className="space-y-2">
                 <Label htmlFor="initial_rent">Monthly Rent *</Label>
                 <Input
@@ -321,6 +324,16 @@ export default function ContractNew() {
                   step="0.01"
                   placeholder="0.00"
                   {...register("deposit", { valueAsNumber: true })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="rent_due_day">Due Day (1-28)</Label>
+                <Input
+                  type="number"
+                  id="rent_due_day"
+                  min="1"
+                  max="28"
+                  {...register("rent_due_day", { valueAsNumber: true })}
                 />
               </div>
             </div>
