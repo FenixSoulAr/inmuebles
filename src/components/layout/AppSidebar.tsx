@@ -73,7 +73,7 @@ export function AppSidebar() {
           </div>
           {!collapsed && (
             <span className="text-lg font-semibold tracking-tight animate-fade-in">
-              PropManage
+              MyRentaHub
             </span>
           )}
         </div>

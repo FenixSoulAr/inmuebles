@@ -101,7 +101,7 @@ export default function SignIn() {
             <Home className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">PropManage</h1>
+            <h1 className="text-2xl font-bold tracking-tight">MyRentaHub</h1>
             <p className="text-sm text-muted-foreground">{t("auth.subtitle")}</p>
           </div>
         </div>
