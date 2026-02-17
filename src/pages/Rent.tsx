@@ -343,6 +343,33 @@ export default function Rent() {
 
       if (updateError) throw updateError;
 
+      // Sync obligation status when rent is fully paid
+      if (newStatus === "paid") {
+        // Find the matching obligation for this contract/period
+        const { data: matchingObl } = await supabase
+          .from("obligations")
+          .select("id, payment_proof_id")
+          .eq("contract_id", selectedRentDue.contract_id)
+          .eq("period", selectedRentDue.period_month)
+          .eq("kind", "rent")
+          .maybeSingle();
+
+        if (matchingObl) {
+          await supabase
+            .from("obligations")
+            .update({ status: "approved" })
+            .eq("id", matchingObl.id);
+
+          // Also approve linked payment proof if exists
+          if (matchingObl.payment_proof_id) {
+            await supabase
+              .from("payment_proofs")
+              .update({ status: "approved" })
+              .eq("id", matchingObl.payment_proof_id);
+          }
+        }
+      }
+
       if (exceedsBalance) {
         toast({
           title: t("rent.paymentSaved"),
