@@ -324,38 +324,32 @@ export default function PaymentProofs() {
     return path; // Store the path, not the public URL
   };
 
-  // --- Signed URL helper for viewing files ---
-  const getSignedUrl = async (filePathOrUrl: string): Promise<string> => {
-    // If it's already a full URL with /object/public/, extract bucket and path
-    const publicMatch = filePathOrUrl.match(/\/storage\/v1\/object\/public\/([^/]+)\/(.+)/);
-    if (publicMatch) {
-      const [, bucket, path] = publicMatch;
-      const { data } = await supabase.storage.from(bucket).createSignedUrl(path, 300);
-      return data?.signedUrl || filePathOrUrl;
-    }
-    // If it's already a signed URL or external URL, return as is
-    if (filePathOrUrl.startsWith("http")) {
-      // Try to extract bucket/path from any supabase storage URL
-      const storageMatch = filePathOrUrl.match(/\/storage\/v1\/(?:object|s3)\/[^/]+\/([^/]+)\/(.+)/);
-      if (storageMatch) {
-        const [, bucket, path] = storageMatch;
-        const { data } = await supabase.storage.from(bucket).createSignedUrl(path, 300);
-        return data?.signedUrl || filePathOrUrl;
-      }
+  // --- Proxy URL builder: serves files from our own domain to avoid adblock ---
+  const getProxyUrl = (filePathOrUrl: string, download = false): string => {
+    const base = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/serve-file`;
+    const params = new URLSearchParams();
+
+    // If it's a full supabase storage URL, pass it as-is for the function to parse
+    if (filePathOrUrl.startsWith("http") && filePathOrUrl.includes("/storage/v1/")) {
+      params.set("url", filePathOrUrl);
+    } else if (filePathOrUrl.startsWith("http")) {
+      // External URL, can't proxy — return as-is
       return filePathOrUrl;
+    } else {
+      // Relative path — assume proof-files bucket
+      params.set("bucket", "proof-files");
+      params.set("path", filePathOrUrl);
     }
-    // It's a relative path, assume proof-files bucket first, then documents
-    const { data } = await supabase.storage.from("proof-files").createSignedUrl(filePathOrUrl, 300);
-    if (data?.signedUrl) return data.signedUrl;
-    const { data: data2 } = await supabase.storage.from("documents").createSignedUrl(filePathOrUrl, 300);
-    return data2?.signedUrl || filePathOrUrl;
+
+    if (download) params.set("download", "1");
+    return `${base}?${params.toString()}`;
   };
 
-  const openFiles = async (files: string[]) => {
+  const openFiles = (files: string[]) => {
     setViewFiles(files);
     setFilesOpen(true);
-    // Generate signed URLs
-    const urls = await Promise.all(files.map((f) => getSignedUrl(f)));
+    // Build proxy URLs synchronously — no async needed
+    const urls = files.map((f) => getProxyUrl(f));
     setSignedUrls(urls);
   };
 
@@ -1079,7 +1073,7 @@ export default function PaymentProofs() {
         </DialogContent>
       </Dialog>
 
-      {/* Files dialog with signed URLs */}
+      {/* Files dialog — proxied through our domain */}
       <Dialog open={filesOpen} onOpenChange={(open) => { setFilesOpen(open); if (!open) setSignedUrls([]); }}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
@@ -1087,34 +1081,57 @@ export default function PaymentProofs() {
           </DialogHeader>
           <div className="grid gap-4">
             {viewFiles.map((originalUrl, i) => {
-              const url = signedUrls[i] || originalUrl;
-              const isImage = url.match(/\.(jpg|jpeg|png|webp)($|\?)/i) || originalUrl.match(/\.(jpg|jpeg|png|webp)($|\?)/i);
+              const viewUrl = signedUrls[i] || getProxyUrl(originalUrl);
+              const downloadUrl = getProxyUrl(originalUrl, true);
+              const isImage = originalUrl.match(/\.(jpg|jpeg|png|webp)($|\?)/i);
+              const isPdf = originalUrl.match(/\.pdf($|\?)/i);
               return (
-                <div key={i}>
-                  {isImage ? (
-                    <a href={url} target="_blank" rel="noopener noreferrer">
-                      <img src={url} alt={`Attachment ${i + 1}`} className="w-full rounded-lg border cursor-pointer hover:opacity-90 transition-opacity" />
-                    </a>
-                  ) : (
-                    <a
-                      href={url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 p-3 rounded-lg border hover:bg-muted"
-                    >
-                      <FileCheck className="w-5 h-5 text-primary" />
-                      <span className="text-sm">{isEs ? `Archivo ${i + 1}` : `File ${i + 1}`}</span>
-                    </a>
+                <div key={i} className="space-y-2">
+                  {isImage && (
+                    <img src={viewUrl} alt={`Attachment ${i + 1}`} className="w-full rounded-lg border" />
                   )}
+                  {isPdf && (
+                    <iframe src={viewUrl} className="w-full h-96 rounded-lg border" title={`PDF ${i + 1}`} />
+                  )}
+                  <div className="flex gap-2">
+                    <Button
+                      variant="default"
+                      size="sm"
+                      asChild
+                    >
+                      <a href={downloadUrl} download rel="noopener noreferrer">
+                        <Upload className="w-4 h-4 mr-2 rotate-180" />
+                        {isEs ? "Descargar" : "Download"}
+                      </a>
+                    </Button>
+                    {(isImage || isPdf) && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        asChild
+                      >
+                        <a href={viewUrl} target="_blank" rel="noopener noreferrer">
+                          <Eye className="w-4 h-4 mr-2" />
+                          {isEs ? "Ver" : "View"}
+                        </a>
+                      </Button>
+                    )}
+                    {!isImage && !isPdf && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        asChild
+                      >
+                        <a href={viewUrl} target="_blank" rel="noopener noreferrer">
+                          <FileCheck className="w-5 h-5 mr-2" />
+                          {isEs ? `Archivo ${i + 1}` : `File ${i + 1}`}
+                        </a>
+                      </Button>
+                    )}
+                  </div>
                 </div>
               );
             })}
-            {signedUrls.length === 0 && viewFiles.length > 0 && (
-              <div className="flex items-center justify-center py-4">
-                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-                <span className="ml-2 text-sm text-muted-foreground">{isEs ? "Cargando..." : "Loading..."}</span>
-              </div>
-            )}
           </div>
         </DialogContent>
       </Dialog>
