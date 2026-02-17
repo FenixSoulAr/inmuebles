@@ -252,10 +252,17 @@ export default function PaymentProofs() {
       );
     }
 
+    const now = new Date();
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
     if (activeTab === "action") {
-      return filtered.filter((o) => ["pending_send", "awaiting_review", "rejected"].includes(o.status));
+      return filtered.filter(
+        (o) =>
+          ["pending_send", "awaiting_review", "rejected"].includes(o.status) &&
+          o.period <= currentMonth
+      );
     }
-    if (activeTab === "pending_send") return filtered.filter((o) => o.status === "pending_send");
+    if (activeTab === "pending_send") return filtered.filter((o) => o.status === "pending_send" && o.period <= currentMonth);
     if (activeTab === "awaiting_review") return filtered.filter((o) => o.status === "awaiting_review");
     if (activeTab === "approved") return filtered.filter((o) => o.status === "paid_confirmed");
     if (activeTab === "rejected") return filtered.filter((o) => o.status === "rejected");
