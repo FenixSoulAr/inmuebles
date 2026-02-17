@@ -900,6 +900,7 @@ export type Database = {
           id: string
           owner_user_id: string
           phone: string | null
+          preferred_language: string
           status: string
           updated_at: string
         }
@@ -911,6 +912,7 @@ export type Database = {
           id?: string
           owner_user_id: string
           phone?: string | null
+          preferred_language?: string
           status?: string
           updated_at?: string
         }
@@ -922,6 +924,7 @@ export type Database = {
           id?: string
           owner_user_id?: string
           phone?: string | null
+          preferred_language?: string
           status?: string
           updated_at?: string
         }

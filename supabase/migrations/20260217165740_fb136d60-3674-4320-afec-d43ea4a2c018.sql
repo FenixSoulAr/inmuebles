@@ -1,0 +1,1 @@
+ALTER TABLE public.tenants ADD COLUMN preferred_language text NOT NULL DEFAULT 'es';

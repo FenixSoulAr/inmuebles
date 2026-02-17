@@ -27,6 +27,7 @@ const tenantSchema = z.object({
   email: z.string().email("Enter a valid email.").optional().or(z.literal("")),
   phone: z.string().optional(),
   status: z.string().min(1),
+  preferred_language: z.string().min(1),
 });
 
 type TenantFormData = z.infer<typeof tenantSchema>;
@@ -38,6 +39,7 @@ interface Tenant {
   email: string | null;
   phone: string | null;
   status: string;
+  preferred_language?: string;
 }
 
 interface EditTenantModalProps {
@@ -75,6 +77,7 @@ export function EditTenantModal({
         email: tenant.email || "",
         phone: tenant.phone || "",
         status: tenant.status,
+        preferred_language: tenant.preferred_language || "es",
       });
     }
   }, [tenant, open, reset]);
@@ -91,6 +94,7 @@ export function EditTenantModal({
           email: data.email || null,
           phone: data.phone || null,
           status: data.status,
+          preferred_language: data.preferred_language,
         })
         .eq("id", tenant.id);
 
@@ -174,6 +178,22 @@ export function EditTenantModal({
               <SelectContent>
                 <SelectItem value="active">Active</SelectItem>
                 <SelectItem value="inactive">Inactive</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Preferred Language (public form)</Label>
+            <Select
+              value={watch("preferred_language")}
+              onValueChange={(value) => setValue("preferred_language", value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select language" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="es">Español</SelectItem>
+                <SelectItem value="en">English</SelectItem>
               </SelectContent>
             </Select>
           </div>

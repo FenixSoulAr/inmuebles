@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
       .select(`
         id, is_active, token_status,
         properties(internal_identifier, full_address),
-        tenants(full_name)
+        tenants(full_name, preferred_language)
       `)
       .eq("public_submission_token", token)
       .maybeSingle();
@@ -46,11 +46,15 @@ Deno.serve(async (req) => {
       );
     }
 
+    const tenantData = contract.tenants as any;
+    const language = tenantData?.preferred_language || "es";
+
     return new Response(
       JSON.stringify({
         contract_id: contract.id,
         property: contract.properties,
         tenant: contract.tenants,
+        language,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
