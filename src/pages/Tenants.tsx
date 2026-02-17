@@ -59,7 +59,7 @@ export default function Tenants() {
 
   const fetchTenants = async () => {
     try {
-      const { data, error } = await supabase.from("tenants").select("*").order("created_at", { ascending: false });
+      const { data, error } = await supabase.from("tenants").select("*").order("full_name", { ascending: true });
       if (error) throw error;
       setTenants(data || []);
     } catch (error) {

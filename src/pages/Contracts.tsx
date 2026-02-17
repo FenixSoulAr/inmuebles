@@ -44,9 +44,16 @@ export default function Contracts() {
     try {
       const { data, error } = await supabase.from("contracts")
         .select(`*, properties(internal_identifier, full_address), tenants(full_name)`)
-        .order("created_at", { ascending: false });
+        .order("start_date", { ascending: false });
       if (error) throw error;
-      setContracts(data || []);
+      // Sort by property name asc, then start_date desc
+      const sorted = (data || []).sort((a: any, b: any) => {
+        const propCmp = (a.properties?.internal_identifier || "").localeCompare(b.properties?.internal_identifier || "");
+        if (propCmp !== 0) return propCmp;
+        return new Date(b.start_date).getTime() - new Date(a.start_date).getTime();
+      });
+      setContracts(sorted);
+      if (error) throw error;
     } catch (error) {
       console.error("Error fetching contracts:", error);
       toast({ title: t("common.error"), description: t("common.errorGeneric"), variant: "destructive" });

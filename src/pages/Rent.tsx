@@ -200,6 +200,7 @@ export default function Rent() {
       }
 
       // Additional client-side filter: exclude periods beyond contract endDate
+      // Then sort by period_month asc, property name asc
       const contractEndMap = new Map(activeContracts.map((c) => [c.id, c.end_date]));
       const filtered = (data || []).filter((rd: any) => {
         const endDate = contractEndMap.get(rd.contract_id);
@@ -210,6 +211,12 @@ export default function Rent() {
         ...rd,
         obligation_status: oblMap.get(`${rd.contract_id}|${rd.period_month}`) || null,
       }));
+
+      filtered.sort((a: any, b: any) => {
+        const periodCmp = a.period_month.localeCompare(b.period_month);
+        if (periodCmp !== 0) return periodCmp;
+        return (a.properties?.internal_identifier || "").localeCompare(b.properties?.internal_identifier || "");
+      });
 
       setRentDues(filtered);
     } catch (error) {
