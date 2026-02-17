@@ -11,13 +11,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Table,
   TableBody,
   TableCell,
@@ -69,14 +62,6 @@ const SERVICE_TYPE_LABELS: Record<string, { es: string; en: string }> = {
   internet: { es: "Internet", en: "Internet" },
   seguro: { es: "Seguro", en: "Insurance" },
   otro: { es: "Otro", en: "Other" },
-};
-
-const STATUS_MAP = {
-  pending_send: { es: "Pendiente de envío", en: "Pending submission" },
-  awaiting_review: { es: "Recibido", en: "Received" },
-  approved: { es: "Aprobado", en: "Approved" },
-  rejected: { es: "Rechazado", en: "Rejected" },
-  replaced: { es: "Reemplazado", en: "Replaced" },
 };
 
 export default function PaymentProofs() {
@@ -154,7 +139,7 @@ export default function PaymentProofs() {
         .from("obligations")
         .update({ status: "approved" })
         .eq("id", obl.id);
-      toast({ title: isEs ? "Comprobante aprobado" : "Proof approved" });
+      toast({ title: t("obligations.proofApproved") });
       fetchObligations();
     } catch {
       toast({ title: t("common.error"), variant: "destructive" });
@@ -178,7 +163,7 @@ export default function PaymentProofs() {
         .from("obligations")
         .update({ status: "rejected" })
         .eq("id", selectedObligation.id);
-      toast({ title: isEs ? "Comprobante rechazado" : "Proof rejected" });
+      toast({ title: t("obligations.proofRejected") });
       setRejectDialogOpen(false);
       fetchObligations();
     } catch {
@@ -200,20 +185,15 @@ export default function PaymentProofs() {
   };
 
   const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount);
+    new Intl.NumberFormat(isEs ? "es-AR" : "en-US", { style: "currency", currency: "USD" }).format(amount);
 
   const getKindLabel = (obl: Obligation) => {
-    if (obl.kind === "rent") return isEs ? "Alquiler" : "Rent";
+    if (obl.kind === "rent") return t("obligations.rent");
     if (obl.service_type) {
       const label = SERVICE_TYPE_LABELS[obl.service_type];
       return label ? (isEs ? label.es : label.en) : obl.service_type;
     }
-    return isEs ? "Servicio" : "Service";
-  };
-
-  const getStatusLabel = (status: string) => {
-    const s = STATUS_MAP[status as keyof typeof STATUS_MAP];
-    return s ? (isEs ? s.es : s.en) : status;
+    return t("obligations.service");
   };
 
   // Filter by tab
@@ -231,7 +211,6 @@ export default function PaymentProofs() {
     }
 
     if (activeTab === "action") {
-      // Default view: pending_send + awaiting_review (actionable items)
       return filtered.filter((o) => o.status === "pending_send" || o.status === "awaiting_review");
     }
     if (activeTab === "pending_send") return filtered.filter((o) => o.status === "pending_send");
@@ -303,8 +282,8 @@ export default function PaymentProofs() {
   return (
     <div>
       <PageHeader
-        title={isEs ? "Comprobantes" : "Proofs & Obligations"}
-        description={isEs ? "Obligaciones mensuales y comprobantes de pago" : "Monthly obligations and payment proofs"}
+        title={t("obligations.title")}
+        description={t("obligations.description")}
       >
         <Button
           variant="outline"
@@ -313,7 +292,7 @@ export default function PaymentProofs() {
           disabled={ensuring}
         >
           {ensuring ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
-          {isEs ? "Actualizar" : "Refresh"}
+          {t("common.refresh")}
         </Button>
       </PageHeader>
 
@@ -321,46 +300,30 @@ export default function PaymentProofs() {
         <SearchBar
           value={search}
           onChange={setSearch}
-          placeholder={isEs ? "Buscar por propiedad o inquilino..." : "Search by property or tenant..."}
+          placeholder={t("obligations.searchPlaceholder")}
           className="flex-1 max-w-md"
         />
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-4">
         <TabsList>
-          <TabsTrigger value="action">
-            {isEs ? "Por gestionar" : "Action needed"}
-          </TabsTrigger>
-          <TabsTrigger value="pending_send">
-            {isEs ? "Pendientes" : "Pending"}
-          </TabsTrigger>
-          <TabsTrigger value="awaiting_review">
-            {isEs ? "Recibidos" : "Received"}
-          </TabsTrigger>
-          <TabsTrigger value="approved">
-            {isEs ? "Aprobados" : "Approved"}
-          </TabsTrigger>
-          <TabsTrigger value="rejected">
-            {isEs ? "Rechazados" : "Rejected"}
-          </TabsTrigger>
-          <TabsTrigger value="all">
-            {isEs ? "Todos" : "All"}
-          </TabsTrigger>
+          <TabsTrigger value="action">{t("obligations.actionNeeded")}</TabsTrigger>
+          <TabsTrigger value="pending_send">{t("obligations.pending")}</TabsTrigger>
+          <TabsTrigger value="awaiting_review">{t("obligations.received")}</TabsTrigger>
+          <TabsTrigger value="approved">{t("obligations.approved")}</TabsTrigger>
+          <TabsTrigger value="rejected">{t("obligations.rejected")}</TabsTrigger>
+          <TabsTrigger value="all">{t("obligations.all")}</TabsTrigger>
         </TabsList>
       </Tabs>
 
       {filtered.length === 0 ? (
         <EmptyState
           icon={FileCheck}
-          title={isEs ? "Sin obligaciones" : "No obligations"}
+          title={t("obligations.noObligations")}
           description={
             activeTab === "action"
-              ? isEs
-                ? "No hay obligaciones que requieran atención."
-                : "No obligations require attention."
-              : isEs
-              ? "No hay obligaciones en este estado."
-              : "No obligations in this status."
+              ? t("obligations.noActionNeeded")
+              : t("obligations.noInStatus")
           }
           className="py-12"
         />
@@ -371,11 +334,11 @@ export default function PaymentProofs() {
               <Table className="min-w-[900px]">
                 <TableHeader>
                   <TableRow>
-                    <TableHead>{isEs ? "Propiedad" : "Property"}</TableHead>
-                    <TableHead>{isEs ? "Inquilino" : "Tenant"}</TableHead>
-                    <TableHead>{isEs ? "Concepto" : "Type"}</TableHead>
-                    <TableHead>{isEs ? "Período" : "Period"}</TableHead>
-                    <TableHead className="text-right">{isEs ? "Monto" : "Amount"}</TableHead>
+                    <TableHead>{t("common.property")}</TableHead>
+                    <TableHead>{t("common.tenant")}</TableHead>
+                    <TableHead>{t("obligations.concept")}</TableHead>
+                    <TableHead>{t("common.period")}</TableHead>
+                    <TableHead className="text-right">{t("common.amount")}</TableHead>
                     <TableHead>{t("common.status")}</TableHead>
                     <TableHead className="text-right">{t("common.actions")}</TableHead>
                   </TableRow>
@@ -391,17 +354,15 @@ export default function PaymentProofs() {
       <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{isEs ? "Rechazar comprobante" : "Reject proof"}</DialogTitle>
-            <DialogDescription>
-              {isEs ? "Indicá el motivo del rechazo (opcional)." : "Provide a reason for rejection (optional)."}
-            </DialogDescription>
+            <DialogTitle>{t("obligations.rejectProof")}</DialogTitle>
+            <DialogDescription>{t("obligations.rejectDesc")}</DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
-            <Label>{isEs ? "Motivo" : "Reason"}</Label>
+            <Label>{t("obligations.reason")}</Label>
             <Textarea
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
-              placeholder={isEs ? "Motivo del rechazo..." : "Rejection reason..."}
+              placeholder={t("obligations.reasonPlaceholder")}
               rows={3}
             />
           </div>
@@ -410,7 +371,7 @@ export default function PaymentProofs() {
               {t("common.cancel")}
             </Button>
             <Button variant="destructive" onClick={handleReject}>
-              {isEs ? "Rechazar" : "Reject"}
+              {t("obligations.reject")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -420,7 +381,7 @@ export default function PaymentProofs() {
       <Dialog open={filesDialogOpen} onOpenChange={setFilesDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>{isEs ? "Adjuntos" : "Attachments"}</DialogTitle>
+            <DialogTitle>{t("obligations.attachments")}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4">
             {viewFiles.map((url, i) => (
@@ -435,7 +396,7 @@ export default function PaymentProofs() {
                     className="flex items-center gap-2 p-3 rounded-lg border hover:bg-muted"
                   >
                     <FileCheck className="w-5 h-5 text-primary" />
-                    <span className="text-sm">{isEs ? `Archivo ${i + 1}` : `File ${i + 1}`}</span>
+                    <span className="text-sm">{t("obligations.file", { num: i + 1 })}</span>
                   </a>
                 )}
               </div>

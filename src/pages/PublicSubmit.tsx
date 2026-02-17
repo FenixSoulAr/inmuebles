@@ -199,14 +199,8 @@ export default function PublicSubmit() {
         <Card className="max-w-md w-full">
           <CardContent className="pt-6 text-center space-y-4">
             <AlertTriangle className="w-12 h-12 text-warning mx-auto" />
-            <h2 className="text-xl font-semibold">
-              {isEs ? "Link inválido o vencido" : "Invalid or expired link"}
-            </h2>
-            <p className="text-muted-foreground">
-              {isEs
-                ? "Este enlace ya no está disponible. Contactá a tu propietario para obtener uno nuevo."
-                : "This link is no longer available. Contact your landlord for a new one."}
-            </p>
+            <h2 className="text-xl font-semibold">{t("publicSubmit.invalidLink")}</h2>
+            <p className="text-muted-foreground">{t("publicSubmit.invalidDesc")}</p>
           </CardContent>
         </Card>
       </div>
@@ -219,14 +213,12 @@ export default function PublicSubmit() {
         <Card className="max-w-md w-full">
           <CardContent className="pt-6 text-center space-y-4">
             <CheckCircle2 className="w-12 h-12 text-success mx-auto" />
-            <h2 className="text-xl font-semibold">
-              {isEs ? "¡Comprobante enviado!" : "Proof submitted!"}
-            </h2>
+            <h2 className="text-xl font-semibold">{t("publicSubmit.proofSubmitted")}</h2>
             <p className="text-muted-foreground text-sm">
-              {isEs ? `Número de comprobante: ${proofId.slice(0, 8)}` : `Proof number: ${proofId.slice(0, 8)}`}
+              {t("publicSubmit.proofNumber", { id: proofId.slice(0, 8) })}
             </p>
             <Button onClick={() => { setSubmitted(false); setFiles([]); setAmount(""); setComment(""); }}>
-              {isEs ? "Enviar otro comprobante" : "Submit another proof"}
+              {t("publicSubmit.submitAnother")}
             </Button>
           </CardContent>
         </Card>
@@ -257,18 +249,18 @@ export default function PublicSubmit() {
         {/* Form */}
         <Card>
           <CardHeader>
-            <CardTitle>{isEs ? "Enviar comprobante de pago" : "Submit payment proof"}</CardTitle>
+            <CardTitle>{t("publicSubmit.submitProof")}</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Payment type */}
               <div className="space-y-2">
-                <Label>{isEs ? "Tipo de pago" : "Payment type"}</Label>
+                <Label>{t("publicSubmit.paymentType")}</Label>
                 <Select value={type} onValueChange={(v) => setType(v as "rent" | "service")}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="rent">{isEs ? "Alquiler" : "Rent"}</SelectItem>
-                    <SelectItem value="service">{isEs ? "Servicio" : "Service"}</SelectItem>
+                    <SelectItem value="rent">{t("obligations.rent")}</SelectItem>
+                    <SelectItem value="service">{t("obligations.service")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -276,9 +268,9 @@ export default function PublicSubmit() {
               {/* Service type */}
               {type === "service" && (
                 <div className="space-y-2">
-                  <Label>{isEs ? "Tipo de servicio" : "Service type"}</Label>
+                  <Label>{t("publicSubmit.serviceTypeLabel")}</Label>
                   <Select value={serviceType} onValueChange={setServiceType}>
-                    <SelectTrigger><SelectValue placeholder={isEs ? "Seleccionar..." : "Select..."} /></SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder={t("publicSubmit.selectPlaceholder")} /></SelectTrigger>
                     <SelectContent>
                       {SERVICE_TYPES.map((st) => (
                         <SelectItem key={st.value} value={st.value}>
@@ -292,13 +284,13 @@ export default function PublicSubmit() {
 
               {/* Period */}
               <div className="space-y-2">
-                <Label>{isEs ? "Período (Mes/Año)" : "Period (Month/Year)"}</Label>
+                <Label>{t("publicSubmit.periodLabel")}</Label>
                 <Input type="month" value={period} onChange={(e) => setPeriod(e.target.value)} required />
               </div>
 
               {/* Amount */}
               <div className="space-y-2">
-                <Label>{isEs ? "Monto" : "Amount"}</Label>
+                <Label>{t("common.amount")}</Label>
                 <Input
                   type="number"
                   step="0.01"
@@ -312,14 +304,14 @@ export default function PublicSubmit() {
 
               {/* Payment date */}
               <div className="space-y-2">
-                <Label>{isEs ? "Fecha de pago" : "Payment date"}</Label>
+                <Label>{t("publicSubmit.paymentDate")}</Label>
                 <Input type="date" value={paidAt} onChange={(e) => setPaidAt(e.target.value)} required />
               </div>
 
               {/* Files */}
               <div className="space-y-2">
-                <Label>{isEs ? "Adjuntos (1-3 archivos)" : "Attachments (1-3 files)"}</Label>
-                <p className="text-xs text-muted-foreground">JPG, PNG, PDF — {isEs ? "máx 10MB" : "max 10MB"}</p>
+                <Label>{t("publicSubmit.attachments")}</Label>
+                <p className="text-xs text-muted-foreground">{t("publicSubmit.attachmentsHint")}</p>
                 {files.length < 3 && (
                   <div>
                     <input
@@ -332,7 +324,7 @@ export default function PublicSubmit() {
                     />
                     <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
                       <Upload className="w-4 h-4 mr-2" />
-                      {isEs ? "Subir archivo" : "Upload file"}
+                      {t("publicSubmit.uploadFile")}
                     </Button>
                   </div>
                 )}
@@ -352,11 +344,11 @@ export default function PublicSubmit() {
 
               {/* Comment */}
               <div className="space-y-2">
-                <Label>{isEs ? "Comentario (opcional)" : "Comment (optional)"}</Label>
+                <Label>{t("publicSubmit.commentOptional")}</Label>
                 <Textarea
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
-                  placeholder={isEs ? "Alguna nota adicional..." : "Any additional notes..."}
+                  placeholder={t("publicSubmit.commentPlaceholder")}
                   rows={2}
                 />
               </div>
@@ -367,9 +359,9 @@ export default function PublicSubmit() {
                 disabled={submitting || !files.length || !amount}
               >
                 {submitting ? (
-                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{isEs ? "Enviando..." : "Submitting..."}</>
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{t("common.submitting")}</>
                 ) : (
-                  isEs ? "Enviar comprobante" : "Submit proof"
+                  t("publicSubmit.submitButton")
                 )}
               </Button>
             </form>
@@ -381,19 +373,15 @@ export default function PublicSubmit() {
       <Dialog open={duplicateDialogOpen} onOpenChange={setDuplicateDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{isEs ? "Comprobante existente" : "Existing proof"}</DialogTitle>
-            <DialogDescription>
-              {isEs
-                ? "Ya existe un comprobante para este período y concepto. ¿Qué querés hacer?"
-                : "A proof already exists for this period and type. What would you like to do?"}
-            </DialogDescription>
+            <DialogTitle>{t("publicSubmit.existingProof")}</DialogTitle>
+            <DialogDescription>{t("publicSubmit.duplicateDesc")}</DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button variant="outline" onClick={handleAdditional}>
-              {isEs ? "Crear adicional" : "Create additional"}
+              {t("publicSubmit.createAdditional")}
             </Button>
             <Button onClick={handleReplace}>
-              {isEs ? "Reemplazar" : "Replace"}
+              {t("publicSubmit.replace")}
             </Button>
           </DialogFooter>
         </DialogContent>
