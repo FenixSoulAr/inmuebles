@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { FileCheck, Eye, CheckCircle, XCircle, Building2 } from "lucide-react";
+import { FileCheck, Eye, CheckCircle, XCircle, Building2, Loader2, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { PageHeader } from "@/components/ui/page-header";
@@ -9,6 +9,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -36,24 +37,27 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 
-interface PaymentProof {
+interface Obligation {
   id: string;
   contract_id: string;
-  type: string;
-  service_type: string | null;
   period: string;
-  amount: number;
-  paid_at: string;
-  comment: string | null;
-  files: string[];
+  kind: string;
+  service_type: string | null;
+  due_date: string;
+  expected_amount: number | null;
   status: string;
-  rejection_reason: string | null;
-  replaces_proof_id: string | null;
-  created_at: string;
-  contracts: {
-    properties: { internal_identifier: string };
-    tenants: { full_name: string };
-  };
+  payment_proof_id: string | null;
+  properties: { internal_identifier: string };
+  tenants: { full_name: string };
+  payment_proofs: {
+    id: string;
+    amount: number;
+    paid_at: string;
+    files: string[];
+    status: string;
+    rejection_reason: string | null;
+    comment: string | null;
+  } | null;
 }
 
 const SERVICE_TYPE_LABELS: Record<string, { es: string; en: string }> = {
@@ -67,84 +71,116 @@ const SERVICE_TYPE_LABELS: Record<string, { es: string; en: string }> = {
   otro: { es: "Otro", en: "Other" },
 };
 
+const STATUS_MAP = {
+  pending_send: { es: "Pendiente de envío", en: "Pending submission" },
+  awaiting_review: { es: "Recibido", en: "Received" },
+  approved: { es: "Aprobado", en: "Approved" },
+  rejected: { es: "Rechazado", en: "Rejected" },
+  replaced: { es: "Reemplazado", en: "Replaced" },
+};
+
 export default function PaymentProofs() {
   const { t, i18n } = useTranslation();
   const isEs = i18n.language?.startsWith("es");
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const [proofs, setProofs] = useState<PaymentProof[]>([]);
+  const [obligations, setObligations] = useState<Obligation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [ensuring, setEnsuring] = useState(false);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [typeFilter, setTypeFilter] = useState("all");
+  const [activeTab, setActiveTab] = useState("action");
 
   // Reject dialog
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
-  const [selectedProof, setSelectedProof] = useState<PaymentProof | null>(null);
+  const [selectedObligation, setSelectedObligation] = useState<Obligation | null>(null);
 
   // Files dialog
   const [filesDialogOpen, setFilesDialogOpen] = useState(false);
   const [viewFiles, setViewFiles] = useState<string[]>([]);
 
   useEffect(() => {
-    if (user) fetchProofs();
+    if (user) {
+      ensureAndFetch();
+    }
   }, [user]);
 
-  const fetchProofs = async () => {
+  const ensureObligations = async () => {
+    setEnsuring(true);
+    try {
+      await supabase.functions.invoke("ensure-obligations");
+    } catch (err) {
+      console.error("Error ensuring obligations:", err);
+    } finally {
+      setEnsuring(false);
+    }
+  };
+
+  const ensureAndFetch = async () => {
+    await ensureObligations();
+    await fetchObligations();
+  };
+
+  const fetchObligations = async () => {
     try {
       const { data, error } = await supabase
-        .from("payment_proofs")
+        .from("obligations")
         .select(`
           *,
-          contracts(
-            properties(internal_identifier),
-            tenants(full_name)
-          )
+          properties(internal_identifier),
+          tenants(full_name),
+          payment_proofs(id, amount, paid_at, files, status, rejection_reason, comment)
         `)
-        .order("created_at", { ascending: false });
+        .order("due_date", { ascending: false });
 
       if (error) throw error;
-      setProofs((data as unknown as PaymentProof[]) || []);
+      setObligations((data as unknown as Obligation[]) || []);
     } catch (err) {
-      console.error("Error fetching proofs:", err);
+      console.error("Error fetching obligations:", err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleApprove = async (proof: PaymentProof) => {
+  const handleApprove = async (obl: Obligation) => {
+    if (!obl.payment_proof_id) return;
     try {
-      const { error } = await supabase
+      await supabase
         .from("payment_proofs")
         .update({ status: "approved" })
-        .eq("id", proof.id);
-      if (error) throw error;
+        .eq("id", obl.payment_proof_id);
+      await supabase
+        .from("obligations")
+        .update({ status: "approved" })
+        .eq("id", obl.id);
       toast({ title: isEs ? "Comprobante aprobado" : "Proof approved" });
-      fetchProofs();
+      fetchObligations();
     } catch {
       toast({ title: t("common.error"), variant: "destructive" });
     }
   };
 
-  const openReject = (proof: PaymentProof) => {
-    setSelectedProof(proof);
+  const openReject = (obl: Obligation) => {
+    setSelectedObligation(obl);
     setRejectReason("");
     setRejectDialogOpen(true);
   };
 
   const handleReject = async () => {
-    if (!selectedProof) return;
+    if (!selectedObligation?.payment_proof_id) return;
     try {
-      const { error } = await supabase
+      await supabase
         .from("payment_proofs")
         .update({ status: "rejected", rejection_reason: rejectReason || null })
-        .eq("id", selectedProof.id);
-      if (error) throw error;
+        .eq("id", selectedObligation.payment_proof_id);
+      await supabase
+        .from("obligations")
+        .update({ status: "rejected" })
+        .eq("id", selectedObligation.id);
       toast({ title: isEs ? "Comprobante rechazado" : "Proof rejected" });
       setRejectDialogOpen(false);
-      fetchProofs();
+      fetchObligations();
     } catch {
       toast({ title: t("common.error"), variant: "destructive" });
     }
@@ -157,23 +193,56 @@ export default function PaymentProofs() {
 
   const formatMonth = (period: string) => {
     const [year, month] = period.split("-");
-    return new Date(parseInt(year), parseInt(month) - 1).toLocaleDateString(isEs ? "es-AR" : "en-US", {
-      month: "long",
-      year: "numeric",
-    });
+    return new Date(parseInt(year), parseInt(month) - 1).toLocaleDateString(
+      isEs ? "es-AR" : "en-US",
+      { month: "long", year: "numeric" }
+    );
   };
 
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount);
 
-  const filtered = proofs.filter((p) => {
-    const matchesSearch =
-      p.contracts.properties.internal_identifier.toLowerCase().includes(search.toLowerCase()) ||
-      p.contracts.tenants.full_name.toLowerCase().includes(search.toLowerCase());
-    const matchesStatus = statusFilter === "all" || p.status === statusFilter;
-    const matchesType = typeFilter === "all" || p.type === typeFilter;
-    return matchesSearch && matchesStatus && matchesType;
-  });
+  const getKindLabel = (obl: Obligation) => {
+    if (obl.kind === "rent") return isEs ? "Alquiler" : "Rent";
+    if (obl.service_type) {
+      const label = SERVICE_TYPE_LABELS[obl.service_type];
+      return label ? (isEs ? label.es : label.en) : obl.service_type;
+    }
+    return isEs ? "Servicio" : "Service";
+  };
+
+  const getStatusLabel = (status: string) => {
+    const s = STATUS_MAP[status as keyof typeof STATUS_MAP];
+    return s ? (isEs ? s.es : s.en) : status;
+  };
+
+  // Filter by tab
+  const getFilteredByTab = () => {
+    let filtered = obligations;
+
+    // Search filter
+    if (search) {
+      const q = search.toLowerCase();
+      filtered = filtered.filter(
+        (o) =>
+          o.properties?.internal_identifier?.toLowerCase().includes(q) ||
+          o.tenants?.full_name?.toLowerCase().includes(q)
+      );
+    }
+
+    if (activeTab === "action") {
+      // Default view: pending_send + awaiting_review (actionable items)
+      return filtered.filter((o) => o.status === "pending_send" || o.status === "awaiting_review");
+    }
+    if (activeTab === "pending_send") return filtered.filter((o) => o.status === "pending_send");
+    if (activeTab === "awaiting_review") return filtered.filter((o) => o.status === "awaiting_review");
+    if (activeTab === "approved") return filtered.filter((o) => o.status === "approved");
+    if (activeTab === "rejected") return filtered.filter((o) => o.status === "rejected");
+    if (activeTab === "all") return filtered;
+    return filtered;
+  };
+
+  const filtered = getFilteredByTab();
 
   if (loading) {
     return (
@@ -183,49 +252,116 @@ export default function PaymentProofs() {
     );
   }
 
+  const renderRow = (obl: Obligation) => (
+    <TableRow key={obl.id}>
+      <TableCell>
+        <div className="flex items-center gap-2">
+          <Building2 className="w-4 h-4 text-primary shrink-0" />
+          <span className="font-medium">{obl.properties?.internal_identifier}</span>
+        </div>
+      </TableCell>
+      <TableCell className="text-muted-foreground">{obl.tenants?.full_name}</TableCell>
+      <TableCell>
+        <span className="capitalize">{getKindLabel(obl)}</span>
+      </TableCell>
+      <TableCell>{formatMonth(obl.period)}</TableCell>
+      <TableCell className="text-right font-semibold">
+        {obl.payment_proofs?.amount
+          ? formatCurrency(obl.payment_proofs.amount)
+          : obl.expected_amount
+          ? formatCurrency(obl.expected_amount)
+          : "—"}
+      </TableCell>
+      <TableCell>
+        <StatusBadge variant={obl.status as any} />
+        {obl.payment_proofs?.rejection_reason && (
+          <p className="text-xs text-destructive mt-1">{obl.payment_proofs.rejection_reason}</p>
+        )}
+      </TableCell>
+      <TableCell className="text-right">
+        <div className="flex items-center justify-end gap-1">
+          {obl.payment_proofs?.files && obl.payment_proofs.files.length > 0 && (
+            <Button size="sm" variant="ghost" onClick={() => openFiles(obl.payment_proofs!.files)}>
+              <Eye className="w-4 h-4" />
+            </Button>
+          )}
+          {obl.status === "awaiting_review" && (
+            <>
+              <Button size="sm" variant="ghost" className="text-success" onClick={() => handleApprove(obl)}>
+                <CheckCircle className="w-4 h-4" />
+              </Button>
+              <Button size="sm" variant="ghost" className="text-destructive" onClick={() => openReject(obl)}>
+                <XCircle className="w-4 h-4" />
+              </Button>
+            </>
+          )}
+        </div>
+      </TableCell>
+    </TableRow>
+  );
+
   return (
     <div>
       <PageHeader
-        title={isEs ? "Comprobantes de pago" : "Payment Proofs"}
-        description={isEs ? "Revisá y gestioná los comprobantes enviados por inquilinos" : "Review and manage proofs submitted by tenants"}
-      />
+        title={isEs ? "Comprobantes" : "Proofs & Obligations"}
+        description={isEs ? "Obligaciones mensuales y comprobantes de pago" : "Monthly obligations and payment proofs"}
+      >
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={ensureAndFetch}
+          disabled={ensuring}
+        >
+          {ensuring ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+          {isEs ? "Actualizar" : "Refresh"}
+        </Button>
+      </PageHeader>
 
-      <div className="flex flex-col sm:flex-row gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row gap-4 mb-4">
         <SearchBar
           value={search}
           onChange={setSearch}
           placeholder={isEs ? "Buscar por propiedad o inquilino..." : "Search by property or tenant..."}
           className="flex-1 max-w-md"
         />
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-40">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t("common.allStatus")}</SelectItem>
-            <SelectItem value="pending">{isEs ? "Pendiente" : "Pending"}</SelectItem>
-            <SelectItem value="approved">{isEs ? "Aprobado" : "Approved"}</SelectItem>
-            <SelectItem value="rejected">{isEs ? "Rechazado" : "Rejected"}</SelectItem>
-            <SelectItem value="replaced">{isEs ? "Reemplazado" : "Replaced"}</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={typeFilter} onValueChange={setTypeFilter}>
-          <SelectTrigger className="w-40">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t("common.all")}</SelectItem>
-            <SelectItem value="rent">{isEs ? "Alquiler" : "Rent"}</SelectItem>
-            <SelectItem value="service">{isEs ? "Servicio" : "Service"}</SelectItem>
-          </SelectContent>
-        </Select>
       </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-4">
+        <TabsList>
+          <TabsTrigger value="action">
+            {isEs ? "Por gestionar" : "Action needed"}
+          </TabsTrigger>
+          <TabsTrigger value="pending_send">
+            {isEs ? "Pendientes" : "Pending"}
+          </TabsTrigger>
+          <TabsTrigger value="awaiting_review">
+            {isEs ? "Recibidos" : "Received"}
+          </TabsTrigger>
+          <TabsTrigger value="approved">
+            {isEs ? "Aprobados" : "Approved"}
+          </TabsTrigger>
+          <TabsTrigger value="rejected">
+            {isEs ? "Rechazados" : "Rejected"}
+          </TabsTrigger>
+          <TabsTrigger value="all">
+            {isEs ? "Todos" : "All"}
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       {filtered.length === 0 ? (
         <EmptyState
           icon={FileCheck}
-          title={isEs ? "Sin comprobantes" : "No payment proofs"}
-          description={isEs ? "Los comprobantes enviados por inquilinos aparecerán aquí." : "Proofs submitted by tenants will appear here."}
+          title={isEs ? "Sin obligaciones" : "No obligations"}
+          description={
+            activeTab === "action"
+              ? isEs
+                ? "No hay obligaciones que requieran atención."
+                : "No obligations require attention."
+              : isEs
+              ? "No hay obligaciones en este estado."
+              : "No obligations in this status."
+          }
           className="py-12"
         />
       ) : (
@@ -237,60 +373,14 @@ export default function PaymentProofs() {
                   <TableRow>
                     <TableHead>{isEs ? "Propiedad" : "Property"}</TableHead>
                     <TableHead>{isEs ? "Inquilino" : "Tenant"}</TableHead>
-                    <TableHead>{isEs ? "Tipo" : "Type"}</TableHead>
+                    <TableHead>{isEs ? "Concepto" : "Type"}</TableHead>
                     <TableHead>{isEs ? "Período" : "Period"}</TableHead>
                     <TableHead className="text-right">{isEs ? "Monto" : "Amount"}</TableHead>
                     <TableHead>{t("common.status")}</TableHead>
                     <TableHead className="text-right">{t("common.actions")}</TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody>
-                  {filtered.map((p) => (
-                    <TableRow key={p.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Building2 className="w-4 h-4 text-primary shrink-0" />
-                          <span className="font-medium">{p.contracts.properties.internal_identifier}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">{p.contracts.tenants.full_name}</TableCell>
-                      <TableCell>
-                        <span className="capitalize">
-                          {p.type === "rent"
-                            ? isEs ? "Alquiler" : "Rent"
-                            : p.service_type
-                              ? (SERVICE_TYPE_LABELS[p.service_type]?.[isEs ? "es" : "en"] || p.service_type)
-                              : isEs ? "Servicio" : "Service"}
-                        </span>
-                      </TableCell>
-                      <TableCell>{formatMonth(p.period)}</TableCell>
-                      <TableCell className="text-right font-semibold">{formatCurrency(p.amount)}</TableCell>
-                      <TableCell>
-                        <StatusBadge variant={p.status as any} />
-                        {p.rejection_reason && (
-                          <p className="text-xs text-destructive mt-1">{p.rejection_reason}</p>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button size="sm" variant="ghost" onClick={() => openFiles(p.files)}>
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                          {p.status === "pending" && (
-                            <>
-                              <Button size="sm" variant="ghost" className="text-success" onClick={() => handleApprove(p)}>
-                                <CheckCircle className="w-4 h-4" />
-                              </Button>
-                              <Button size="sm" variant="ghost" className="text-destructive" onClick={() => openReject(p)}>
-                                <XCircle className="w-4 h-4" />
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
+                <TableBody>{filtered.map(renderRow)}</TableBody>
               </Table>
             </div>
           </CardContent>
@@ -316,8 +406,12 @@ export default function PaymentProofs() {
             />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setRejectDialogOpen(false)}>{t("common.cancel")}</Button>
-            <Button variant="destructive" onClick={handleReject}>{isEs ? "Rechazar" : "Reject"}</Button>
+            <Button variant="outline" onClick={() => setRejectDialogOpen(false)}>
+              {t("common.cancel")}
+            </Button>
+            <Button variant="destructive" onClick={handleReject}>
+              {isEs ? "Rechazar" : "Reject"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -334,7 +428,12 @@ export default function PaymentProofs() {
                 {url.match(/\.(jpg|jpeg|png)$/i) ? (
                   <img src={url} alt={`Attachment ${i + 1}`} className="w-full rounded-lg border" />
                 ) : (
-                  <a href={url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-3 rounded-lg border hover:bg-muted">
+                  <a
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 p-3 rounded-lg border hover:bg-muted"
+                  >
                     <FileCheck className="w-5 h-5 text-primary" />
                     <span className="text-sm">{isEs ? `Archivo ${i + 1}` : `File ${i + 1}`}</span>
                   </a>

@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { ContractPublicLink } from "@/components/contracts/ContractPublicLink";
+import { ContractServices } from "@/components/contracts/ContractServices";
 
 interface Contract {
   id: string;
@@ -24,6 +25,8 @@ interface Contract {
   clauses_text: string | null;
   public_submission_token: string | null;
   token_status: string;
+  rent_due_day: number;
+  currency: string | null;
   properties: {
     internal_identifier: string;
     full_address: string;
@@ -65,11 +68,7 @@ export default function ContractDetail() {
       if (error) throw error;
       
       if (!data) {
-        toast({
-          title: "Not found",
-          description: "Contract not found.",
-          variant: "destructive",
-        });
+        toast({ title: "Not found", description: "Contract not found.", variant: "destructive" });
         navigate("/contracts");
         return;
       }
@@ -77,11 +76,7 @@ export default function ContractDetail() {
       setContract(data as unknown as Contract);
     } catch (error) {
       console.error("Error fetching contract:", error);
-      toast({
-        title: "Error",
-        description: "Something went wrong. Please refresh.",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: "Something went wrong.", variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -89,17 +84,12 @@ export default function ContractDetail() {
 
   const handleRegenerateRentSchedule = async () => {
     if (!contract) return;
-
     setRegenerating(true);
     try {
       const response = await supabase.functions.invoke("generate-rent-dues", {
         body: { contract_id: contract.id },
       });
-
-      if (response.error) {
-        throw response.error;
-      }
-
+      if (response.error) throw response.error;
       const result = response.data;
       toast({
         title: "Rent schedule updated",
@@ -109,31 +99,17 @@ export default function ContractDetail() {
       });
     } catch (error) {
       console.error("Error regenerating rent schedule:", error);
-      toast({
-        title: "Error",
-        description: "Failed to regenerate rent schedule. Please try again.",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: "Failed to regenerate rent schedule.", variant: "destructive" });
     } finally {
       setRegenerating(false);
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(amount);
-  };
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount);
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      weekday: "short",
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
+  const formatDate = (dateString: string) =>
+    new Date(dateString).toLocaleDateString("en-US", { weekday: "short", month: "long", day: "numeric", year: "numeric" });
 
   const adjustmentLabels: Record<string, string> = {
     ipc: "IPC (Consumer Price Index)",
@@ -150,18 +126,11 @@ export default function ContractDetail() {
     );
   }
 
-  if (!contract) {
-    return null;
-  }
+  if (!contract) return null;
 
   return (
     <div>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="mb-4"
-        onClick={() => navigate("/contracts")}
-      >
+      <Button variant="ghost" size="sm" className="mb-4" onClick={() => navigate("/contracts")}>
         <ArrowLeft className="w-4 h-4 mr-2" />
         Back to Contracts
       </Button>
@@ -173,15 +142,9 @@ export default function ContractDetail() {
         {contract.is_active && (
           <Button onClick={handleRegenerateRentSchedule} disabled={regenerating}>
             {regenerating ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Regenerating...
-              </>
+              <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Regenerating...</>
             ) : (
-              <>
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Regenerate rent schedule
-              </>
+              <><RefreshCw className="w-4 h-4 mr-2" />Regenerate rent schedule</>
             )}
           </Button>
         )}
@@ -190,7 +153,6 @@ export default function ContractDetail() {
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Main Info */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Contract Status Card */}
           <Card>
             <CardHeader className="pb-4">
               <div className="flex items-center justify-between">
@@ -224,9 +186,11 @@ export default function ContractDetail() {
                 </div>
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">Deposit</p>
-                  <p className="font-medium">
-                    {contract.deposit ? formatCurrency(contract.deposit) : "—"}
-                  </p>
+                  <p className="font-medium">{contract.deposit ? formatCurrency(contract.deposit) : "—"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">{isEs ? "Día de vencimiento" : "Rent due day"}</p>
+                  <p className="font-medium">{contract.rent_due_day || 5}</p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">Adjustment Settings</p>
@@ -234,31 +198,30 @@ export default function ContractDetail() {
                     {adjustmentLabels[contract.adjustment_type] || contract.adjustment_type}
                   </p>
                   {contract.adjustment_frequency && (
-                    <p className="text-sm text-muted-foreground">
-                      Every {contract.adjustment_frequency} months
-                    </p>
+                    <p className="text-sm text-muted-foreground">Every {contract.adjustment_frequency} months</p>
                   )}
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Additional Clauses */}
           {contract.clauses_text && (
             <Card>
-              <CardHeader>
-                <CardTitle>Additional Clauses</CardTitle>
-              </CardHeader>
+              <CardHeader><CardTitle>Additional Clauses</CardTitle></CardHeader>
               <CardContent>
                 <p className="text-sm whitespace-pre-wrap">{contract.clauses_text}</p>
               </CardContent>
             </Card>
           )}
+
+          {/* Contract Services */}
+          {contract.is_active && (
+            <ContractServices contractId={contract.id} rentDueDay={contract.rent_due_day || 5} />
+          )}
         </div>
 
         {/* Sidebar */}
         <div className="space-y-6">
-          {/* Property Card */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
@@ -268,21 +231,13 @@ export default function ContractDetail() {
             </CardHeader>
             <CardContent>
               <p className="font-semibold">{contract.properties.internal_identifier}</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                {contract.properties.full_address}
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-3 w-full"
-                onClick={() => navigate(`/properties/${id}`)}
-              >
+              <p className="text-sm text-muted-foreground mt-1">{contract.properties.full_address}</p>
+              <Button variant="outline" size="sm" className="mt-3 w-full" onClick={() => navigate(`/properties/${id}`)}>
                 View Property
               </Button>
             </CardContent>
           </Card>
 
-          {/* Tenant Card */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
@@ -292,20 +247,11 @@ export default function ContractDetail() {
             </CardHeader>
             <CardContent>
               <p className="font-semibold">{contract.tenants.full_name}</p>
-              {contract.tenants.email && (
-                <p className="text-sm text-muted-foreground mt-1">
-                  {contract.tenants.email}
-                </p>
-              )}
-              {contract.tenants.phone && (
-                <p className="text-sm text-muted-foreground">
-                  {contract.tenants.phone}
-                </p>
-              )}
+              {contract.tenants.email && <p className="text-sm text-muted-foreground mt-1">{contract.tenants.email}</p>}
+              {contract.tenants.phone && <p className="text-sm text-muted-foreground">{contract.tenants.phone}</p>}
             </CardContent>
           </Card>
 
-        {/* Public Link */}
           {contract.is_active && (
             <ContractPublicLink
               contractId={contract.id}
@@ -317,27 +263,20 @@ export default function ContractDetail() {
             />
           )}
 
-          {/* Quick Actions */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base">{t("contracts.quickActions")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full justify-start"
-                onClick={() => navigate("/rent")}
-              >
+              <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => navigate("/rent")}>
                 <DollarSign className="w-4 h-4 mr-2" />
                 {t("contracts.viewRentDues")}
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full justify-start"
-                onClick={() => navigate("/documents")}
-              >
+              <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => navigate("/payment-proofs")}>
+                <FileText className="w-4 h-4 mr-2" />
+                {isEs ? "Ver comprobantes" : "View proofs"}
+              </Button>
+              <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => navigate("/documents")}>
                 <FileText className="w-4 h-4 mr-2" />
                 {t("contracts.viewDocuments")}
               </Button>

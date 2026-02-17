@@ -26,7 +26,6 @@ Deno.serve(async (req) => {
       replaces_proof_id,
     } = body;
 
-    // Validate required fields
     if (!token || !type || !period || !amount || !paid_at || !files?.length) {
       return new Response(
         JSON.stringify({ error: "missing_fields" }),
@@ -56,7 +55,7 @@ Deno.serve(async (req) => {
     // Validate token
     const { data: contract, error: contractError } = await supabase
       .from("contracts")
-      .select("id, is_active, token_status")
+      .select("id, is_active, token_status, property_id, tenant_id, rent_due_day, current_rent, currency")
       .eq("public_submission_token", token)
       .maybeSingle();
 
@@ -69,42 +68,81 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Check for duplicates
-    let duplicateQuery = supabase
-      .from("payment_proofs")
-      .select("id, status, created_at")
+    // Resolve or create the obligation
+    const kind = type;
+    const svcType = type === "service" ? service_type : null;
+    const [year, month] = period.split("-").map(Number);
+    const dueDay = contract.rent_due_day || 5;
+    const dueDate = new Date(year, month - 1, Math.min(dueDay, 28));
+
+    // Try to find existing obligation
+    let oblQuery = supabase
+      .from("obligations")
+      .select("id, payment_proof_id, status")
       .eq("contract_id", contract.id)
       .eq("period", period)
-      .eq("type", type)
-      .in("status", ["pending", "approved"]);
+      .eq("kind", kind);
 
-    if (type === "service" && service_type) {
-      duplicateQuery = duplicateQuery.eq("service_type", service_type);
+    if (svcType) {
+      oblQuery = oblQuery.eq("service_type", svcType);
+    } else {
+      oblQuery = oblQuery.is("service_type", null);
     }
 
-    const { data: duplicates, error: dupError } = await duplicateQuery;
-    if (dupError) throw dupError;
+    const { data: existingObls } = await oblQuery;
+    let obligation = existingObls?.[0] || null;
 
-    if (duplicates && duplicates.length > 0 && !action) {
-      // Return duplicate info - let client decide
-      return new Response(
-        JSON.stringify({
-          duplicate: true,
-          existing_proof_id: duplicates[0].id,
-          existing_status: duplicates[0].status,
-        }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    // Create obligation if it doesn't exist
+    if (!obligation) {
+      const expectedAmount = kind === "rent" ? contract.current_rent : null;
+      const { data: newObl, error: oblError } = await supabase
+        .from("obligations")
+        .insert({
+          contract_id: contract.id,
+          tenant_id: contract.tenant_id,
+          property_id: contract.property_id,
+          period,
+          kind,
+          service_type: svcType,
+          due_date: dueDate.toISOString().split("T")[0],
+          expected_amount: expectedAmount,
+          currency: contract.currency || "ARS",
+          status: "pending_send",
+        })
+        .select("id, payment_proof_id, status")
+        .single();
+
+      if (oblError) throw oblError;
+      obligation = newObl;
+    }
+
+    // Check for duplicates - obligation already has a proof linked
+    if (obligation.payment_proof_id && !action) {
+      // Check the linked proof status
+      const { data: linkedProof } = await supabase
+        .from("payment_proofs")
+        .select("id, status")
+        .eq("id", obligation.payment_proof_id)
+        .single();
+
+      if (linkedProof && ["pending", "approved"].includes(linkedProof.status)) {
+        return new Response(
+          JSON.stringify({
+            duplicate: true,
+            existing_proof_id: linkedProof.id,
+            existing_status: linkedProof.status,
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
     // If replacing, mark old as replaced
     if (action === "replace" && replaces_proof_id) {
-      const { error: replaceError } = await supabase
+      await supabase
         .from("payment_proofs")
         .update({ status: "replaced" })
         .eq("id", replaces_proof_id);
-
-      if (replaceError) throw replaceError;
     }
 
     // Create new proof
@@ -121,11 +159,21 @@ Deno.serve(async (req) => {
         files,
         status: "pending",
         replaces_proof_id: action === "replace" ? replaces_proof_id : null,
+        obligation_id: obligation.id,
       })
       .select("id")
       .single();
 
     if (insertError) throw insertError;
+
+    // Update obligation to link to this proof and set status
+    await supabase
+      .from("obligations")
+      .update({
+        payment_proof_id: proof.id,
+        status: "awaiting_review",
+      })
+      .eq("id", obligation.id);
 
     return new Response(
       JSON.stringify({ success: true, proof_id: proof.id }),

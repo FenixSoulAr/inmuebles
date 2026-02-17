@@ -102,6 +102,44 @@ export type Database = {
           },
         ]
       }
+      contract_services: {
+        Row: {
+          active: boolean
+          contract_id: string
+          created_at: string
+          due_day: number | null
+          expected_amount: number | null
+          id: string
+          service_type: string
+        }
+        Insert: {
+          active?: boolean
+          contract_id: string
+          created_at?: string
+          due_day?: number | null
+          expected_amount?: number | null
+          id?: string
+          service_type: string
+        }
+        Update: {
+          active?: boolean
+          contract_id?: string
+          created_at?: string
+          due_day?: number | null
+          expected_amount?: number | null
+          id?: string
+          service_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_services_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contracts: {
         Row: {
           adjustment_frequency: number | null
@@ -109,6 +147,7 @@ export type Database = {
           clause_flags: Json | null
           clauses_text: string | null
           created_at: string
+          currency: string | null
           current_rent: number
           deposit: number | null
           end_date: string
@@ -118,6 +157,7 @@ export type Database = {
           next_adjustment_date: string | null
           property_id: string
           public_submission_token: string | null
+          rent_due_day: number | null
           signed_contract_file_url: string | null
           start_date: string
           tenant_id: string
@@ -132,6 +172,7 @@ export type Database = {
           clause_flags?: Json | null
           clauses_text?: string | null
           created_at?: string
+          currency?: string | null
           current_rent: number
           deposit?: number | null
           end_date: string
@@ -141,6 +182,7 @@ export type Database = {
           next_adjustment_date?: string | null
           property_id: string
           public_submission_token?: string | null
+          rent_due_day?: number | null
           signed_contract_file_url?: string | null
           start_date: string
           tenant_id: string
@@ -155,6 +197,7 @@ export type Database = {
           clause_flags?: Json | null
           clauses_text?: string | null
           created_at?: string
+          currency?: string | null
           current_rent?: number
           deposit?: number | null
           end_date?: string
@@ -164,6 +207,7 @@ export type Database = {
           next_adjustment_date?: string | null
           property_id?: string
           public_submission_token?: string | null
+          rent_due_day?: number | null
           signed_contract_file_url?: string | null
           start_date?: string
           tenant_id?: string
@@ -274,6 +318,83 @@ export type Database = {
           },
         ]
       }
+      obligations: {
+        Row: {
+          contract_id: string
+          created_at: string
+          currency: string | null
+          due_date: string
+          expected_amount: number | null
+          id: string
+          kind: string
+          payment_proof_id: string | null
+          period: string
+          property_id: string
+          service_type: string | null
+          status: string
+          tenant_id: string
+        }
+        Insert: {
+          contract_id: string
+          created_at?: string
+          currency?: string | null
+          due_date: string
+          expected_amount?: number | null
+          id?: string
+          kind: string
+          payment_proof_id?: string | null
+          period: string
+          property_id: string
+          service_type?: string | null
+          status?: string
+          tenant_id: string
+        }
+        Update: {
+          contract_id?: string
+          created_at?: string
+          currency?: string | null
+          due_date?: string
+          expected_amount?: number | null
+          id?: string
+          kind?: string
+          payment_proof_id?: string | null
+          period?: string
+          property_id?: string
+          service_type?: string | null
+          status?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "obligations_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obligations_payment_proof_id_fkey"
+            columns: ["payment_proof_id"]
+            isOneToOne: false
+            referencedRelation: "payment_proofs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obligations_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obligations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ownership_stakes: {
         Row: {
           created_at: string
@@ -317,6 +438,7 @@ export type Database = {
           created_at: string
           files: string[]
           id: string
+          obligation_id: string | null
           paid_at: string
           period: string
           rejection_reason: string | null
@@ -332,6 +454,7 @@ export type Database = {
           created_at?: string
           files?: string[]
           id?: string
+          obligation_id?: string | null
           paid_at?: string
           period: string
           rejection_reason?: string | null
@@ -347,6 +470,7 @@ export type Database = {
           created_at?: string
           files?: string[]
           id?: string
+          obligation_id?: string | null
           paid_at?: string
           period?: string
           rejection_reason?: string | null
@@ -361,6 +485,13 @@ export type Database = {
             columns: ["contract_id"]
             isOneToOne: false
             referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_proofs_obligation_id_fkey"
+            columns: ["obligation_id"]
+            isOneToOne: false
+            referencedRelation: "obligations"
             referencedColumns: ["id"]
           },
           {
