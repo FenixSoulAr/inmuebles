@@ -227,15 +227,29 @@ export default function Taxes() {
       </div>
 
       {filteredFiscalStatuses.length === 0 && inactiveTaxes.length === 0 ? (
-        <EmptyState icon={Receipt} title={t("taxes.noTaxes")} description={t("taxes.noTaxesDesc")}
-          action={{ label: t("taxes.addTax"), onClick: () => setAddModalOpen(true) }} />
+        <EmptyState
+          icon={Receipt}
+          title={isEs ? "Sin obligaciones fiscales" : "No tax obligations"}
+          description={isEs ? "Agregá los impuestos y tasas asociados a cada propiedad para hacer seguimiento de vencimientos y pagos." : "Add tax obligations per property to track due dates and payments."}
+          action={{ label: isEs ? "Agregar impuesto" : "Add tax", onClick: () => setAddModalOpen(true) }}
+        />
       ) : (
         <>
           {filteredFiscalStatuses.length === 0 && activeFilter !== "all" ? (
-            <EmptyState icon={Receipt}
-              title={isEs ? "Sin impuestos en este filtro" : "No taxes for this filter"}
-              description={isEs ? "Probá con otro filtro." : "Try a different filter."}
-              className="py-8"
+            <EmptyState
+              icon={Receipt}
+              title={
+                activeFilter === "upcoming"
+                  ? (isEs ? "Sin vencimientos próximos" : "No upcoming due dates")
+                  : (isEs ? "Sin impuestos pendientes" : "No pending taxes")
+              }
+              description={
+                activeFilter === "upcoming"
+                  ? (isEs ? "No hay impuestos que venzan en los próximos 30 días." : "No taxes due in the next 30 days.")
+                  : (isEs ? "No hay impuestos con estado pendiente de pago." : "No taxes pending payment.")
+              }
+              className="py-10"
+              compact
             />
           ) : (
             <>

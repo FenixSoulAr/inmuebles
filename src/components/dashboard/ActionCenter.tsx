@@ -112,8 +112,9 @@ export function ActionCenter({
                 <div className="p-6 pt-0">
                   <EmptyState
                     icon={CheckCircle2}
-                    title="Sin pagos vencidos"
-                    description="No hay alquileres vencidos. Todo al día."
+                    title="Sin mora acumulada"
+                    description="No hay alquileres vencidos de meses anteriores."
+                    compact
                     className="py-8"
                   />
                 </div>
@@ -173,8 +174,9 @@ export function ActionCenter({
                 <div className="p-6 pt-0">
                   <EmptyState
                     icon={CheckCircle2}
-                    title="Nada vence pronto"
-                    description="No hay alquileres con vencimiento en los próximos 7 días."
+                    title="Sin vencimientos próximos"
+                    description="No hay alquileres que venzan en los próximos 7 días."
+                    compact
                     className="py-8"
                   />
                 </div>
@@ -222,8 +224,9 @@ export function ActionCenter({
                 <div className="p-6 pt-0">
                   <EmptyState
                     icon={CheckCircle2}
-                    title="Sin comprobantes faltantes"
-                    description="Todos los pagos confirmados tienen su comprobante adjunto."
+                    title="Documentación completa"
+                    description="Todos los pagos confirmados tienen comprobante adjunto."
+                    compact
                     className="py-8"
                   />
                 </div>
