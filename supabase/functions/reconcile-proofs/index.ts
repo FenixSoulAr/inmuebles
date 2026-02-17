@@ -132,33 +132,44 @@ Deno.serve(async (req) => {
       }
     }
 
-    // --- Phase 2: Sync obligations with paid rent_dues ---
+    // --- Phase 2: Sync rent obligation statuses from actual payments ---
     let rentSynced = 0;
     try {
-      // Find obligations that are pending_send but have a paid rent_due
-      const { data: paidRentDues } = await supabase
-        .from("rent_dues")
-        .select("contract_id, period_month")
-        .eq("status", "paid");
+      // Get all rent obligations that might need status sync
+      const { data: rentObls } = await supabase
+        .from("obligations")
+        .select("id, status, expected_amount, due_date, payment_proof_id")
+        .eq("kind", "rent")
+        .in("status", ["pending_send", "upcoming", "awaiting_review"]);
 
-      if (paidRentDues && paidRentDues.length > 0) {
-        for (const rd of paidRentDues) {
-          const { data: obl } = await supabase
-            .from("obligations")
-            .select("id, status, payment_proof_id")
-            .eq("contract_id", rd.contract_id)
-            .eq("period", rd.period_month)
-            .eq("kind", "rent")
-            .in("status", ["pending_send", "upcoming", "awaiting_review"])
-            .maybeSingle();
+      if (rentObls && rentObls.length > 0) {
+        for (const obl of rentObls) {
+          // Sum actual payments from the payments table
+          const { data: payments } = await supabase
+            .from("payments")
+            .select("amount")
+            .eq("obligation_id", obl.id);
 
-          if (obl) {
+          const totalPaid = (payments || []).reduce((s: number, p: any) => s + Number(p.amount), 0);
+          if (totalPaid <= 0) continue; // No payments recorded, skip
+
+          const expected = obl.expected_amount ?? 0;
+          const balanceDue = Math.max(expected - totalPaid, 0);
+
+          let newStatus: string;
+          if (balanceDue <= 0) {
+            newStatus = "confirmed";
+          } else {
+            newStatus = "partial";
+          }
+
+          if (newStatus !== obl.status) {
             await supabase
               .from("obligations")
-              .update({ status: "confirmed" })
+              .update({ status: newStatus })
               .eq("id", obl.id);
 
-            if (obl.payment_proof_id) {
+            if (newStatus === "confirmed" && obl.payment_proof_id) {
               await supabase
                 .from("payment_proofs")
                 .update({ status: "approved" })
