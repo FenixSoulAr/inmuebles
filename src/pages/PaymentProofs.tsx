@@ -135,7 +135,7 @@ export default function PaymentProofs() {
           *,
           properties(internal_identifier),
           tenants(full_name),
-          payment_proofs(id, amount, paid_at, files, status, rejection_reason, comment)
+          payment_proofs!obligations_payment_proof_id_fkey(id, amount, paid_at, files, status, rejection_reason, comment)
         `)
         .order("due_date", { ascending: false });
 
