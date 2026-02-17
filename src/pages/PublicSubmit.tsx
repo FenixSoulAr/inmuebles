@@ -28,6 +28,7 @@ interface ContractInfo {
   contract_id: string;
   property: { internal_identifier: string; full_address: string };
   tenant: { full_name: string };
+  language?: string;
 }
 
 const SERVICE_TYPES = [
@@ -44,6 +45,16 @@ const SERVICE_TYPES = [
 export default function PublicSubmit() {
   const { token } = useParams<{ token: string }>();
   const { t, i18n } = useTranslation();
+
+  // Also support ?lang=es|en override
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const langParam = params.get("lang");
+    if (langParam && ["es", "en"].includes(langParam)) {
+      i18n.changeLanguage(langParam);
+    }
+  }, [i18n]);
+
   const isEs = i18n.language?.startsWith("es");
 
   const [contractInfo, setContractInfo] = useState<ContractInfo | null>(null);
@@ -89,6 +100,10 @@ export default function PublicSubmit() {
         setInvalid(true);
         return;
       }
+
+      // Override i18n language based on tenant preference
+      const lang = data.language || "es";
+      i18n.changeLanguage(lang);
 
       setContractInfo(data);
     } catch {
