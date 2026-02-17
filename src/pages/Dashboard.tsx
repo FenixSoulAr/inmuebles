@@ -72,7 +72,7 @@ export default function Dashboard() {
             id, period, due_date, expected_amount, status, kind, payment_proof_id, currency,
             properties(internal_identifier),
             tenants(full_name),
-            payment_proofs!obligations_payment_proof_id_fkey(id, files, amount, status)
+            payment_proofs!obligations_payment_proof_id_fkey(id, files, amount, status, proof_status)
           `)
           .eq("kind", "rent")
           .order("period", { ascending: true }),
@@ -142,9 +142,11 @@ export default function Dashboard() {
       const rentOverdue = overdueObls.reduce((s: number, o: any) => s + o.balanceDue, 0);
 
       // --- KPI 4: Comprobantes faltantes ---
-      // Confirmed rent obligations (balance <= 0) with NO payment that has an attachment
+      // Confirmed rent obligations (balance <= 0) with NO attachment AND proof_status != approved_without_proof
       const confirmedRentObls = enriched.filter((o) => o.balanceDue <= 0);
       const missingProofsCount = confirmedRentObls.filter((o) => {
+        // Exclude explicitly approved-without-proof
+        if (o.payment_proofs?.proof_status === "approved_without_proof") return false;
         const oblPayments = o.payments || [];
         const hasAttachment = oblPayments.some((p: any) => p.attachment_url);
         const hasProofFile = o.payment_proofs?.files?.length > 0;
@@ -180,6 +182,7 @@ export default function Dashboard() {
       // --- Action Center: Missing proofs (for display) ---
       const missingProofItems: MissingProofItem[] = confirmedRentObls
         .filter((o) => {
+          if (o.payment_proofs?.proof_status === "approved_without_proof") return false;
           const oblPayments = o.payments || [];
           const hasAttachment = oblPayments.some((p: any) => p.attachment_url);
           const hasProofFile = o.payment_proofs?.files?.length > 0;
