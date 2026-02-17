@@ -116,6 +116,7 @@ Deno.serve(async (req) => {
         const rentKey = `${period}|rent|`;
         if (!existingKeys.has(rentKey)) {
           const dueDate = new Date(year, month - 1, Math.min(rentDueDay, 28));
+          const dueDateStr = dueDate.toISOString().split("T")[0];
           toInsert.push({
             contract_id: contract.id,
             tenant_id: contract.tenant_id,
@@ -123,10 +124,10 @@ Deno.serve(async (req) => {
             period,
             kind: "rent",
             service_type: null,
-            due_date: dueDate.toISOString().split("T")[0],
+            due_date: dueDateStr,
             expected_amount: contract.current_rent,
             currency: contract.currency || "ARS",
-            status: dueDate.toISOString().split("T")[0] < todayStr ? "pending_send" : "pending_send",
+            status: dueDateStr < todayStr ? "pending_send" : "upcoming",
           });
         }
 
@@ -137,6 +138,7 @@ Deno.serve(async (req) => {
             if (!existingKeys.has(svcKey)) {
               const svcDueDay = svc.due_day || rentDueDay;
               const dueDate = new Date(year, month - 1, Math.min(svcDueDay, 28));
+              const svcDueDateStr = dueDate.toISOString().split("T")[0];
               toInsert.push({
                 contract_id: contract.id,
                 tenant_id: contract.tenant_id,
@@ -144,10 +146,10 @@ Deno.serve(async (req) => {
                 period,
                 kind: "service",
                 service_type: svc.service_type,
-                due_date: dueDate.toISOString().split("T")[0],
+                due_date: svcDueDateStr,
                 expected_amount: svc.expected_amount || null,
                 currency: contract.currency || "ARS",
-                status: "pending_send",
+                status: svcDueDateStr < todayStr ? "pending_send" : "upcoming",
               });
             }
           }

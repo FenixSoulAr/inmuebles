@@ -231,13 +231,13 @@ export default function PaymentProofs() {
     }
 
     if (activeTab === "action") {
-      return filtered.filter((o) => o.status === "pending_send" || o.status === "awaiting_review");
+      return filtered.filter((o) => ["pending_send", "awaiting_review", "rejected"].includes(o.status));
     }
     if (activeTab === "pending_send") return filtered.filter((o) => o.status === "pending_send");
     if (activeTab === "awaiting_review") return filtered.filter((o) => o.status === "awaiting_review");
     if (activeTab === "approved") return filtered.filter((o) => o.status === "approved");
     if (activeTab === "rejected") return filtered.filter((o) => o.status === "rejected");
-    if (activeTab === "all") return filtered;
+    if (activeTab === "all") return filtered.filter((o) => o.status !== "upcoming");
     return filtered;
   };
 
