@@ -111,6 +111,7 @@ export function EditContractModal({
       const newEndDate = data.end_date;
       const wasInactive = !contract.is_active;
       const shouldBeActive = today <= newEndDate;
+      const endDateReduced = newEndDate < contract.end_date;
 
       const updateData: Record<string, unknown> = {
         end_date: newEndDate,
@@ -131,7 +132,6 @@ export function EditContractModal({
       // Handle token logic based on activation status
       if (shouldBeActive) {
         if (!contract.public_submission_token) {
-          // Generate new token
           const newToken = Array.from(crypto.getRandomValues(new Uint8Array(32)))
             .map((b) => b.toString(16).padStart(2, "0"))
             .join("");
@@ -142,7 +142,6 @@ export function EditContractModal({
           updateData.token_status = "active";
         }
       } else {
-        // Contract expired
         updateData.token_status = "disabled";
       }
 
@@ -152,6 +151,28 @@ export function EditContractModal({
         .eq("id", contract.id);
 
       if (error) throw error;
+
+      // If endDate was reduced, clean up future obligations beyond new endDate
+      if (endDateReduced) {
+        const d = new Date(newEndDate);
+        const cutoffPeriod = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+
+        const { data: toDelete } = await supabase
+          .from("obligations")
+          .select("id, status")
+          .eq("contract_id", contract.id)
+          .gt("period", cutoffPeriod);
+
+        if (toDelete && toDelete.length > 0) {
+          const deletableIds = toDelete
+            .filter((o) => o.status !== "approved")
+            .map((o) => o.id);
+
+          if (deletableIds.length > 0) {
+            await supabase.from("obligations").delete().in("id", deletableIds);
+          }
+        }
+      }
 
       if (wasInactive && shouldBeActive) {
         toast({
