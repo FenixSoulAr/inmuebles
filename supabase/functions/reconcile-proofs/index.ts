@@ -132,9 +132,50 @@ Deno.serve(async (req) => {
       }
     }
 
+    // --- Phase 2: Sync obligations with paid rent_dues ---
+    let rentSynced = 0;
+    try {
+      // Find obligations that are pending_send but have a paid rent_due
+      const { data: paidRentDues } = await supabase
+        .from("rent_dues")
+        .select("contract_id, period_month")
+        .eq("status", "paid");
+
+      if (paidRentDues && paidRentDues.length > 0) {
+        for (const rd of paidRentDues) {
+          const { data: obl } = await supabase
+            .from("obligations")
+            .select("id, status, payment_proof_id")
+            .eq("contract_id", rd.contract_id)
+            .eq("period", rd.period_month)
+            .eq("kind", "rent")
+            .in("status", ["pending_send", "upcoming", "awaiting_review"])
+            .maybeSingle();
+
+          if (obl) {
+            await supabase
+              .from("obligations")
+              .update({ status: "approved" })
+              .eq("id", obl.id);
+
+            if (obl.payment_proof_id) {
+              await supabase
+                .from("payment_proofs")
+                .update({ status: "approved" })
+                .eq("id", obl.payment_proof_id);
+            }
+            rentSynced++;
+          }
+        }
+      }
+    } catch (syncErr) {
+      errors.push(`Rent sync error: ${String(syncErr)}`);
+    }
+
     return new Response(
       JSON.stringify({
         reconciled,
+        rent_synced: rentSynced,
         total_orphans: orphanProofs.length,
         errors: errors.length > 0 ? errors : undefined,
       }),
