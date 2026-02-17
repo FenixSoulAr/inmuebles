@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { DollarSign, Building2, Upload, X, FileText, Eye } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -89,6 +90,8 @@ function computeRentDueStatus(rentDue: RentDue): {
 }
 
 export default function Rent() {
+  const { t, i18n } = useTranslation();
+  const isEs = i18n.language?.startsWith("es");
   const [rentDues, setRentDues] = useState<RentDue[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -112,7 +115,6 @@ export default function Rent() {
 
   const fetchRentDues = async () => {
     try {
-      // First get properties owned by this user
       const { data: userProperties, error: propError } = await supabase
         .from("properties")
         .select("id")
@@ -128,7 +130,6 @@ export default function Rent() {
 
       const propertyIds = userProperties.map((p) => p.id);
 
-      // Fetch rent dues with payments for those properties
       const { data, error } = await supabase
         .from("rent_dues")
         .select(`
@@ -145,8 +146,8 @@ export default function Rent() {
     } catch (error) {
       console.error("Error fetching rent dues:", error);
       toast({
-        title: "Error",
-        description: "Something went wrong. Please refresh.",
+        title: t("common.error"),
+        description: t("common.errorGeneric"),
         variant: "destructive",
       });
     } finally {
@@ -157,11 +158,10 @@ export default function Rent() {
   const openPaymentDialog = (rentDue: RentDue) => {
     const { balanceDue } = computeRentDueStatus(rentDue);
     
-    // Block if already fully paid
     if (balanceDue === 0) {
       toast({
-        title: "Already paid",
-        description: "This rent is already fully paid.",
+        title: t("rent.alreadyPaid"),
+        description: t("rent.alreadyPaidDesc"),
         variant: "destructive",
       });
       return;
@@ -185,22 +185,20 @@ export default function Rent() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file size (max 10MB)
     if (file.size > 10 * 1024 * 1024) {
       toast({
-        title: "Error",
-        description: "File is too large. Maximum size is 10MB.",
+        title: t("common.error"),
+        description: t("rent.fileTooLarge"),
         variant: "destructive",
       });
       return;
     }
 
-    // Validate file type
     const allowedTypes = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
     if (!allowedTypes.includes(file.type)) {
       toast({
-        title: "Error",
-        description: "File type not supported. Please upload PDF, JPG, PNG, or WebP.",
+        title: t("common.error"),
+        description: t("rent.fileNotSupported"),
         variant: "destructive",
       });
       return;
@@ -244,8 +242,8 @@ export default function Rent() {
     const amount = parseFloat(paymentAmount);
     if (isNaN(amount) || amount <= 0) {
       toast({
-        title: "Error",
-        description: "Enter a valid amount greater than 0.",
+        title: t("common.error"),
+        description: t("rent.validAmount"),
         variant: "destructive",
       });
       return;
@@ -253,8 +251,8 @@ export default function Rent() {
 
     if (!paymentDate) {
       toast({
-        title: "Error",
-        description: "Payment date is required.",
+        title: t("common.error"),
+        description: t("rent.dateRequired"),
         variant: "destructive",
       });
       return;
@@ -266,13 +264,11 @@ export default function Rent() {
     setIsSubmitting(true);
 
     try {
-      // Upload receipt if provided
       let receiptUrl: string | null = null;
       if (receiptFile) {
         receiptUrl = await uploadReceipt(selectedRentDue.id);
       }
 
-      // Create payment record (always a NEW row)
       const { error: paymentError } = await supabase.from("rent_payments").insert({
         rent_due_id: selectedRentDue.id,
         payment_date: paymentDate,
@@ -284,7 +280,6 @@ export default function Rent() {
 
       if (paymentError) throw paymentError;
 
-      // Calculate new balance and status after this payment
       const currentTotalPaid = (selectedRentDue.rent_payments || []).reduce(
         (sum, p) => sum + Number(p.amount),
         0
@@ -303,7 +298,6 @@ export default function Rent() {
         newStatus = "due";
       }
 
-      // Update rent due with new balance and status
       const { error: updateError } = await supabase
         .from("rent_dues")
         .update({
@@ -316,18 +310,18 @@ export default function Rent() {
 
       if (exceedsBalance) {
         toast({
-          title: "Payment saved",
-          description: "Payment saved. Amount exceeds the remaining balance.",
+          title: t("rent.paymentSaved"),
+          description: t("rent.exceedsBalance"),
         });
       } else if (newBalance > 0) {
         toast({
-          title: "Payment saved",
-          description: `Payment saved. Balance still due: ${formatCurrency(newBalance)}`,
+          title: t("rent.paymentSaved"),
+          description: t("rent.balanceStillDue", { amount: formatCurrency(newBalance) }),
         });
       } else {
         toast({
-          title: "Payment complete",
-          description: "Rent has been fully paid.",
+          title: t("rent.paymentComplete"),
+          description: t("rent.rentFullyPaid"),
         });
       }
 
@@ -340,8 +334,8 @@ export default function Rent() {
     } catch (error) {
       console.error("Error recording payment:", error);
       toast({
-        title: "Error",
-        description: "Could not save payment. Please try again.",
+        title: t("common.error"),
+        description: t("rent.couldNotSave"),
         variant: "destructive",
       });
     } finally {
@@ -359,7 +353,7 @@ export default function Rent() {
   });
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
+    return new Intl.NumberFormat(isEs ? "es-AR" : "en-US", {
       style: "currency",
       currency: "USD",
     }).format(amount);
@@ -367,14 +361,14 @@ export default function Rent() {
 
   const formatMonth = (periodMonth: string) => {
     const [year, month] = periodMonth.split("-");
-    return new Date(parseInt(year), parseInt(month) - 1).toLocaleDateString("en-US", {
-      month: "long",
-      year: "numeric",
-    });
+    return new Date(parseInt(year), parseInt(month) - 1).toLocaleDateString(
+      isEs ? "es-AR" : "en-US",
+      { month: "long", year: "numeric" }
+    );
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
+    return new Date(dateString).toLocaleDateString(isEs ? "es-AR" : "en-US", {
       month: "short",
       day: "numeric",
       year: "numeric",
@@ -391,42 +385,42 @@ export default function Rent() {
 
   return (
     <div>
-      <PageHeader title="Rent" description="Track rent payments and balances" />
+      <PageHeader title={t("rent.title")} description={t("rent.description")} />
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
         <SearchBar
           value={search}
           onChange={setSearch}
-          placeholder="Search by property or tenant..."
+          placeholder={t("rent.searchPlaceholder")}
           className="flex-1 max-w-md"
         />
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-40">
-            <SelectValue placeholder="Status" />
+            <SelectValue placeholder={t("common.status")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="paid">Paid</SelectItem>
-            <SelectItem value="partial">Partial</SelectItem>
-            <SelectItem value="overdue">Overdue</SelectItem>
-            <SelectItem value="due">Due</SelectItem>
+            <SelectItem value="all">{t("common.allStatus")}</SelectItem>
+            <SelectItem value="paid">{t("rent.paid")}</SelectItem>
+            <SelectItem value="partial">{t("rent.partial")}</SelectItem>
+            <SelectItem value="overdue">{t("rent.overdue")}</SelectItem>
+            <SelectItem value="due">{t("rent.due")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       <Tabs defaultValue="ledger" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="ledger">Ledger</TabsTrigger>
-          <TabsTrigger value="calendar">Calendar</TabsTrigger>
+          <TabsTrigger value="ledger">{t("rent.ledger")}</TabsTrigger>
+          <TabsTrigger value="calendar">{t("rent.calendar")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="ledger">
           {filteredRentDues.length === 0 ? (
             <EmptyState
               icon={DollarSign}
-              title="No rent dues yet"
-              description="Create an active contract to generate rent dues."
+              title={t("rent.noRentDues")}
+              description={t("rent.noRentDuesDesc")}
               className="py-12"
             />
           ) : (
@@ -436,15 +430,15 @@ export default function Rent() {
                   <Table className="min-w-[900px]">
                     <TableHeader className="sticky top-0 bg-card z-10">
                       <TableRow>
-                        <TableHead className="whitespace-nowrap">Property</TableHead>
-                        <TableHead className="whitespace-nowrap">Tenant</TableHead>
-                        <TableHead className="whitespace-nowrap">Period</TableHead>
-                        <TableHead className="whitespace-nowrap">Due Date</TableHead>
-                        <TableHead className="text-right whitespace-nowrap">Expected</TableHead>
-                        <TableHead className="text-right whitespace-nowrap">Total Paid</TableHead>
-                        <TableHead className="text-right whitespace-nowrap">Balance Due</TableHead>
-                        <TableHead className="whitespace-nowrap">Status</TableHead>
-                        <TableHead className="text-right whitespace-nowrap">Actions</TableHead>
+                        <TableHead className="whitespace-nowrap">{t("rent.property")}</TableHead>
+                        <TableHead className="whitespace-nowrap">{t("rent.tenant")}</TableHead>
+                        <TableHead className="whitespace-nowrap">{t("rent.period")}</TableHead>
+                        <TableHead className="whitespace-nowrap">{t("rent.dueDate")}</TableHead>
+                        <TableHead className="text-right whitespace-nowrap">{t("rent.expected")}</TableHead>
+                        <TableHead className="text-right whitespace-nowrap">{t("rent.totalPaid")}</TableHead>
+                        <TableHead className="text-right whitespace-nowrap">{t("rent.balanceDue")}</TableHead>
+                        <TableHead className="whitespace-nowrap">{t("common.status")}</TableHead>
+                        <TableHead className="text-right whitespace-nowrap">{t("common.actions")}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -495,12 +489,12 @@ export default function Rent() {
                                     onClick={() => openPaymentsViewDialog(rd)}
                                   >
                                     <Eye className="w-4 h-4 mr-1" />
-                                    View ({paymentCount})
+                                    {t("rent.viewPayments", { count: paymentCount })}
                                   </Button>
                                 )}
                                 {derivedStatus !== "paid" && (
                                   <Button size="sm" onClick={() => openPaymentDialog(rd)}>
-                                    Record payment
+                                    {t("rent.recordPayment")}
                                   </Button>
                                 )}
                               </div>
@@ -521,8 +515,8 @@ export default function Rent() {
             <CardContent className="py-12">
               <EmptyState
                 icon={DollarSign}
-                title="Calendar view coming soon"
-                description="View rent dues in a calendar format."
+                title={t("rent.calendarSoon")}
+                description={t("rent.calendarDesc")}
               />
             </CardContent>
           </Card>
@@ -533,7 +527,7 @@ export default function Rent() {
       <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
         <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col p-0">
           <DialogHeader className="px-6 pt-6 pb-4 border-b flex-shrink-0">
-            <DialogTitle>Record payment</DialogTitle>
+            <DialogTitle>{t("rent.recordPaymentTitle")}</DialogTitle>
             <DialogDescription>
               {selectedRentDue && (
                 <>
@@ -545,14 +539,12 @@ export default function Rent() {
           
           <div className="flex-1 overflow-y-auto px-6 py-4">
             <div className="space-y-6">
-              {/* Helper text */}
               <p className="text-sm text-muted-foreground">
-                You can record multiple payments for the same rent due.
+                {t("rent.multiplePaymentsHint")}
               </p>
 
-              {/* Payment Date */}
               <div className="space-y-2">
-                <Label htmlFor="paymentDate">Payment date</Label>
+                <Label htmlFor="paymentDate">{t("rent.paymentDate")}</Label>
                 <Input
                   id="paymentDate"
                   type="date"
@@ -561,9 +553,8 @@ export default function Rent() {
                 />
               </div>
 
-              {/* Amount */}
               <div className="space-y-2">
-                <Label htmlFor="paymentAmount">Amount</Label>
+                <Label htmlFor="paymentAmount">{t("rent.amount")}</Label>
                 <Input
                   id="paymentAmount"
                   type="number"
@@ -575,42 +566,39 @@ export default function Rent() {
                 />
                 {selectedRentDue && (
                   <p className="text-sm text-muted-foreground">
-                    Balance due: {formatCurrency(computeRentDueStatus(selectedRentDue).balanceDue)}
+                    {t("rent.balanceDue")}: {formatCurrency(computeRentDueStatus(selectedRentDue).balanceDue)}
                   </p>
                 )}
               </div>
 
-              {/* Method */}
               <div className="space-y-2">
-                <Label htmlFor="paymentMethod">Payment method</Label>
+                <Label htmlFor="paymentMethod">{t("rent.method")}</Label>
                 <Select value={paymentMethod} onValueChange={setPaymentMethod}>
                   <SelectTrigger id="paymentMethod">
-                    <SelectValue placeholder="Select method" />
+                    <SelectValue placeholder={t("rent.selectMethod")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="transfer">Transfer</SelectItem>
-                    <SelectItem value="cash">Cash</SelectItem>
+                    <SelectItem value="transfer">{t("rent.transfer")}</SelectItem>
+                    <SelectItem value="cash">{t("rent.cash")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
-              {/* Notes */}
               <div className="space-y-2">
-                <Label htmlFor="paymentNotes">Notes (optional)</Label>
+                <Label htmlFor="paymentNotes">{t("rent.notesOptional")}</Label>
                 <Textarea
                   id="paymentNotes"
-                  placeholder="Add any notes about this payment..."
+                  placeholder={t("rent.addNotes")}
                   value={paymentNotes}
                   onChange={(e) => setPaymentNotes(e.target.value)}
                   rows={3}
                 />
               </div>
 
-              {/* Receipt Upload */}
               <div className="space-y-2">
-                <Label>Receipt (optional)</Label>
+                <Label>{t("rent.receiptOptional")}</Label>
                 <p className="text-sm text-muted-foreground mb-2">
-                  Upload a PDF or image.
+                  {t("rent.uploadPdf")}
                 </p>
                 {receiptFile ? (
                   <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
@@ -632,10 +620,10 @@ export default function Rent() {
                   >
                     <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
                     <p className="text-sm text-muted-foreground">
-                      Click to upload receipt
+                      {t("rent.clickUpload")}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      PDF, JPG, PNG, WebP (max 10MB)
+                      {t("rent.maxSize")}
                     </p>
                   </div>
                 )}
@@ -656,10 +644,10 @@ export default function Rent() {
               onClick={() => setPaymentDialogOpen(false)}
               disabled={isSubmitting}
             >
-              Cancel
+              {t("common.cancel")}
             </Button>
             <Button onClick={handlePayment} disabled={isSubmitting}>
-              {isSubmitting ? "Saving..." : "Save payment"}
+              {isSubmitting ? t("common.saving") : t("rent.savePayment")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -669,7 +657,7 @@ export default function Rent() {
       <Dialog open={paymentsViewDialogOpen} onOpenChange={setPaymentsViewDialogOpen}>
         <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col p-0">
           <DialogHeader className="px-6 pt-6 pb-4 border-b flex-shrink-0">
-            <DialogTitle>Payment history</DialogTitle>
+            <DialogTitle>{t("rent.paymentsHistory")}</DialogTitle>
             <DialogDescription>
               {selectedRentDue && (
                 <>
@@ -682,11 +670,10 @@ export default function Rent() {
           <div className="flex-1 overflow-y-auto px-6 py-4">
             {selectedRentDue && (
               <div className="space-y-4">
-                {/* Payments List */}
                 <div className="space-y-3">
                   {(selectedRentDue.rent_payments || []).length === 0 ? (
                     <p className="text-sm text-muted-foreground text-center py-4">
-                      No payments recorded yet.
+                      {t("rent.noPayments")}
                     </p>
                   ) : (
                     (selectedRentDue.rent_payments || [])
@@ -703,7 +690,11 @@ export default function Rent() {
                             </span>
                           </div>
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <span className="capitalize">{payment.method}</span>
+                            <span className="capitalize">
+                              {payment.method === "transfer" ? t("rent.transfer") : 
+                               payment.method === "cash" ? t("rent.cash") : 
+                               payment.method === "check" ? t("rent.check") : payment.method}
+                            </span>
                             {payment.receipt_file_url && (
                               <>
                                 <span>•</span>
@@ -714,7 +705,7 @@ export default function Rent() {
                                   className="text-primary hover:underline flex items-center gap-1"
                                 >
                                   <FileText className="w-3 h-3" />
-                                  Receipt
+                                  {t("rent.receipt")}
                                 </a>
                               </>
                             )}
@@ -729,20 +720,19 @@ export default function Rent() {
                   )}
                 </div>
 
-                {/* Running totals at bottom */}
                 <div className="grid grid-cols-3 gap-4 p-4 bg-muted rounded-lg border-t">
                   <div>
-                    <p className="text-sm text-muted-foreground">Expected</p>
+                    <p className="text-sm text-muted-foreground">{t("rent.expected")}</p>
                     <p className="font-semibold">{formatCurrency(selectedRentDue.expected_amount)}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Total paid</p>
+                    <p className="text-sm text-muted-foreground">{t("rent.totalPaid")}</p>
                     <p className="font-semibold text-success">
                       {formatCurrency(computeRentDueStatus(selectedRentDue).totalPaid)}
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Balance due</p>
+                    <p className="text-sm text-muted-foreground">{t("rent.balanceDue")}</p>
                     <p className={`font-semibold ${computeRentDueStatus(selectedRentDue).balanceDue > 0 ? 'text-warning' : 'text-muted-foreground'}`}>
                       {formatCurrency(computeRentDueStatus(selectedRentDue).balanceDue)}
                     </p>
@@ -757,7 +747,7 @@ export default function Rent() {
               variant="outline"
               onClick={() => setPaymentsViewDialogOpen(false)}
             >
-              Close
+              {t("common.close")}
             </Button>
           </DialogFooter>
         </DialogContent>

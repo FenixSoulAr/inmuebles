@@ -68,7 +68,7 @@ export default function ContractDetail() {
       if (error) throw error;
       
       if (!data) {
-        toast({ title: "Not found", description: "Contract not found.", variant: "destructive" });
+        toast({ title: t("contracts.notFound"), description: t("contracts.contractNotFound"), variant: "destructive" });
         navigate("/contracts");
         return;
       }
@@ -76,7 +76,7 @@ export default function ContractDetail() {
       setContract(data as unknown as Contract);
     } catch (error) {
       console.error("Error fetching contract:", error);
-      toast({ title: "Error", description: "Something went wrong.", variant: "destructive" });
+      toast({ title: t("common.error"), description: t("common.errorGeneric"), variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -92,30 +92,30 @@ export default function ContractDetail() {
       if (response.error) throw response.error;
       const result = response.data;
       toast({
-        title: "Rent schedule updated",
+        title: t("contracts.rentScheduleUpdated"),
         description: result.generated > 0 
-          ? `Generated ${result.generated} rent due records.`
-          : "Rent schedule is up to date.",
+          ? t("contracts.generatedRecords", { count: result.generated })
+          : t("contracts.rentUpToDate"),
       });
     } catch (error) {
       console.error("Error regenerating rent schedule:", error);
-      toast({ title: "Error", description: "Failed to regenerate rent schedule.", variant: "destructive" });
+      toast({ title: t("common.error"), description: t("common.errorGeneric"), variant: "destructive" });
     } finally {
       setRegenerating(false);
     }
   };
 
   const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount);
+    new Intl.NumberFormat(isEs ? "es-AR" : "en-US", { style: "currency", currency: "USD" }).format(amount);
 
   const formatDate = (dateString: string) =>
-    new Date(dateString).toLocaleDateString("en-US", { weekday: "short", month: "long", day: "numeric", year: "numeric" });
+    new Date(dateString).toLocaleDateString(isEs ? "es-AR" : "en-US", { weekday: "short", month: "long", day: "numeric", year: "numeric" });
 
   const adjustmentLabels: Record<string, string> = {
-    ipc: "IPC (Consumer Price Index)",
-    icl: "ICL (Construction Index)",
-    fixed: "Fixed Percentage",
-    manual: "Manual Adjustment",
+    ipc: t("contracts.ipc"),
+    icl: t("contracts.icl"),
+    fixed: t("contracts.fixed"),
+    manual: t("contracts.manual"),
   };
 
   if (loading) {
@@ -132,19 +132,19 @@ export default function ContractDetail() {
     <div>
       <Button variant="ghost" size="sm" className="mb-4" onClick={() => navigate("/contracts")}>
         <ArrowLeft className="w-4 h-4 mr-2" />
-        Back to Contracts
+        {t("contracts.backToContracts")}
       </Button>
 
       <PageHeader
-        title="Contract Details"
+        title={t("contracts.contractDetails")}
         description={`${contract.properties.internal_identifier} - ${contract.tenants.full_name}`}
       >
         {contract.is_active && (
           <Button onClick={handleRegenerateRentSchedule} disabled={regenerating}>
             {regenerating ? (
-              <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Regenerating...</>
+              <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{t("contracts.regenerating")}</>
             ) : (
-              <><RefreshCw className="w-4 h-4 mr-2" />Regenerate rent schedule</>
+              <><RefreshCw className="w-4 h-4 mr-2" />{t("contracts.regenerateRent")}</>
             )}
           </Button>
         )}
@@ -158,7 +158,7 @@ export default function ContractDetail() {
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
                   <FileText className="w-5 h-5" />
-                  Contract Overview
+                  {t("contracts.contractOverview")}
                 </CardTitle>
                 <StatusBadge variant={contract.is_active ? "active" : "ended"} />
               </div>
@@ -166,39 +166,39 @@ export default function ContractDetail() {
             <CardContent>
               <div className="grid gap-6 sm:grid-cols-2">
                 <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">Start Date</p>
+                  <p className="text-sm text-muted-foreground">{t("contracts.startDate")}</p>
                   <p className="font-medium">{formatDate(contract.start_date)}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">End Date</p>
+                  <p className="text-sm text-muted-foreground">{t("contracts.endDate")}</p>
                   <p className="font-medium">{formatDate(contract.end_date)}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">Initial Rent</p>
+                  <p className="text-sm text-muted-foreground">{t("contracts.initialRent")}</p>
                   <p className="font-medium">{formatCurrency(contract.initial_rent)}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">Current Rent</p>
+                  <p className="text-sm text-muted-foreground">{t("contracts.currentRent")}</p>
                   <p className="font-semibold text-lg text-primary">
                     {formatCurrency(contract.current_rent)}
-                    <span className="text-sm font-normal text-muted-foreground">/month</span>
+                    <span className="text-sm font-normal text-muted-foreground">{t("contracts.perMonth")}</span>
                   </p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">Deposit</p>
+                  <p className="text-sm text-muted-foreground">{t("contracts.deposit")}</p>
                   <p className="font-medium">{contract.deposit ? formatCurrency(contract.deposit) : "—"}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">{isEs ? "Día de vencimiento" : "Rent due day"}</p>
+                  <p className="text-sm text-muted-foreground">{t("contracts.rentDueDay")}</p>
                   <p className="font-medium">{contract.rent_due_day || 5}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">Adjustment Settings</p>
+                  <p className="text-sm text-muted-foreground">{t("contracts.adjustmentSettings")}</p>
                   <p className="font-medium">
                     {adjustmentLabels[contract.adjustment_type] || contract.adjustment_type}
                   </p>
                   {contract.adjustment_frequency && (
-                    <p className="text-sm text-muted-foreground">Every {contract.adjustment_frequency} months</p>
+                    <p className="text-sm text-muted-foreground">{t("contracts.everyMonths", { count: contract.adjustment_frequency })}</p>
                   )}
                 </div>
               </div>
@@ -207,7 +207,7 @@ export default function ContractDetail() {
 
           {contract.clauses_text && (
             <Card>
-              <CardHeader><CardTitle>Additional Clauses</CardTitle></CardHeader>
+              <CardHeader><CardTitle>{t("contracts.additionalClauses")}</CardTitle></CardHeader>
               <CardContent>
                 <p className="text-sm whitespace-pre-wrap">{contract.clauses_text}</p>
               </CardContent>
@@ -226,14 +226,14 @@ export default function ContractDetail() {
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
                 <Building2 className="w-4 h-4" />
-                Property
+                {t("contracts.property")}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="font-semibold">{contract.properties.internal_identifier}</p>
               <p className="text-sm text-muted-foreground mt-1">{contract.properties.full_address}</p>
               <Button variant="outline" size="sm" className="mt-3 w-full" onClick={() => navigate(`/properties/${id}`)}>
-                View Property
+                {t("contracts.viewProperty")}
               </Button>
             </CardContent>
           </Card>
@@ -242,7 +242,7 @@ export default function ContractDetail() {
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
                 <User className="w-4 h-4" />
-                Tenant
+                {t("contracts.tenant")}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -274,7 +274,7 @@ export default function ContractDetail() {
               </Button>
               <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => navigate("/payment-proofs")}>
                 <FileText className="w-4 h-4 mr-2" />
-                {isEs ? "Ver comprobantes" : "View proofs"}
+                {t("contracts.viewProofs")}
               </Button>
               <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => navigate("/documents")}>
                 <FileText className="w-4 h-4 mr-2" />

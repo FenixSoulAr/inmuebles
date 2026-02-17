@@ -41,7 +41,7 @@ interface ContractServicesProps {
 }
 
 export function ContractServices({ contractId, rentDueDay }: ContractServicesProps) {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const isEs = i18n.language?.startsWith("es");
   const { toast } = useToast();
 
@@ -86,13 +86,13 @@ export function ContractServices({ contractId, rentDueDay }: ContractServicesPro
         active: true,
       });
       if (error) throw error;
-      toast({ title: isEs ? "Servicio agregado" : "Service added" });
+      toast({ title: t("contracts.serviceAdded") });
       setNewType("");
       setNewAmount("");
       setNewDueDay(rentDueDay.toString());
       fetchServices();
     } catch {
-      toast({ title: isEs ? "Error" : "Error", variant: "destructive" });
+      toast({ title: t("common.error"), variant: "destructive" });
     } finally {
       setAdding(false);
     }
@@ -126,9 +126,7 @@ export function ContractServices({ contractId, rentDueDay }: ContractServicesPro
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-base">
-          {isEs ? "Servicios del contrato" : "Contract Services"}
-        </CardTitle>
+        <CardTitle className="text-base">{t("contracts.services")}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Existing services */}
@@ -137,7 +135,7 @@ export function ContractServices({ contractId, rentDueDay }: ContractServicesPro
             <div className="flex-1">
               <p className="font-medium text-sm">{getLabel(svc.service_type)}</p>
               <p className="text-xs text-muted-foreground">
-                {isEs ? `Día ${svc.due_day}` : `Day ${svc.due_day}`}
+                {t("contracts.serviceDay", { day: svc.due_day })}
                 {svc.expected_amount ? ` · $${svc.expected_amount}` : ""}
               </p>
             </div>
@@ -154,12 +152,12 @@ export function ContractServices({ contractId, rentDueDay }: ContractServicesPro
         {/* Add new */}
         <div className="pt-2 space-y-3 border-t">
           <Label className="text-xs font-medium text-muted-foreground">
-            {isEs ? "Agregar servicio" : "Add service"}
+            {t("contracts.addService")}
           </Label>
           <div className="grid grid-cols-3 gap-2">
             <Select value={newType} onValueChange={setNewType}>
               <SelectTrigger className="text-sm">
-                <SelectValue placeholder={isEs ? "Tipo..." : "Type..."} />
+                <SelectValue placeholder={t("contracts.serviceType")} />
               </SelectTrigger>
               <SelectContent>
                 {SERVICE_TYPES.map((st) => (
@@ -175,7 +173,7 @@ export function ContractServices({ contractId, rentDueDay }: ContractServicesPro
               max="28"
               value={newDueDay}
               onChange={(e) => setNewDueDay(e.target.value)}
-              placeholder={isEs ? "Día" : "Day"}
+              placeholder={t("contracts.dueDay")}
               className="text-sm"
             />
             <Input
@@ -183,13 +181,13 @@ export function ContractServices({ contractId, rentDueDay }: ContractServicesPro
               step="0.01"
               value={newAmount}
               onChange={(e) => setNewAmount(e.target.value)}
-              placeholder={isEs ? "Monto" : "Amount"}
+              placeholder={t("common.amount")}
               className="text-sm"
             />
           </div>
           <Button size="sm" onClick={handleAdd} disabled={!newType || adding}>
             <Plus className="w-3.5 h-3.5 mr-1" />
-            {isEs ? "Agregar" : "Add"}
+            {t("common.add")}
           </Button>
         </div>
       </CardContent>
