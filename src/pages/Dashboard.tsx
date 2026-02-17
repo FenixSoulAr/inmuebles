@@ -1,7 +1,7 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { DollarSign, Upload, X, FileText } from "lucide-react";
+import { DollarSign } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { PageHeader } from "@/components/ui/page-header";
@@ -17,52 +17,21 @@ import {
   MaintenanceItem,
 } from "@/components/dashboard/ActionCenter";
 
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-
-interface RentDueData {
-  id: string;
-  period_month: string;
-  due_date: string;
-  expected_amount: number;
-  balance_due: number;
-  status: string;
-  properties: { internal_identifier: string };
-  tenants: { full_name: string };
-  rent_payments: { amount: number }[];
-}
-
 interface DashboardStats {
-  rentCollectedThisMonth: number;
-  rentOutstandingThisMonth: number;
-  missingUtilityProofs: number;
-  taxesDueSoon: number;
-  openMaintenance: number;
+  rentCollectedThisMonth: number;    // obligations kind=rent, status=confirmed, payment paid_at in current month
+  rentPendingThisMonth: number;       // obligations kind=rent, not confirmed, due_date in current month → SUM expected_amount - total_paid
+  rentOverdueAccumulated: number;     // obligations kind=rent, not confirmed, due_date < first day of current month → SUM balance
+  missingProofsCount: number;         // obligations kind=rent, status=confirmed, balance<=0, no payment attachment
+  taxesDueSoon: number;               // tax_obligations status=pending, due_date within 30 days
 }
 
 export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats>({
     rentCollectedThisMonth: 0,
-    rentOutstandingThisMonth: 0,
-    missingUtilityProofs: 0,
+    rentPendingThisMonth: 0,
+    rentOverdueAccumulated: 0,
+    missingProofsCount: 0,
     taxesDueSoon: 0,
-    openMaintenance: 0,
   });
   const [overdueRent, setOverdueRent] = useState<OverdueRentItem[]>([]);
   const [dueSoon, setDueSoon] = useState<DueSoonItem[]>([]);
@@ -70,17 +39,6 @@ export default function Dashboard() {
   const [taxesDue, setTaxesDue] = useState<TaxDueItem[]>([]);
   const [openMaintenance, setOpenMaintenance] = useState<MaintenanceItem[]>([]);
   const [loading, setLoading] = useState(true);
-
-  // Payment modal state
-  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
-  const [selectedRentDue, setSelectedRentDue] = useState<RentDueData | null>(null);
-  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split("T")[0]);
-  const [paymentAmount, setPaymentAmount] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("transfer");
-  const [paymentNotes, setPaymentNotes] = useState("");
-  const [receiptFile, setReceiptFile] = useState<File | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -96,155 +54,172 @@ export default function Dashboard() {
   const fetchDashboardData = async () => {
     try {
       const now = new Date();
+      // Current month boundaries
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      const monthStartStr = monthStart.toISOString().split("T")[0];
+      const monthEndStr = monthEnd.toISOString().split("T")[0];
       const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-      const in7Days = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
-      const in30Days = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
-      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-      const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString();
+      const in30DaysStr = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+      const in7DaysStr = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+      const todayStr = now.toISOString().split("T")[0];
 
-      // Parallel fetch all data
-      const [
-        rentDuesRes,
-        paymentsThisMonthRes,
-        utilityProofsRes,
-        taxesRes,
-        maintenanceRes,
-      ] = await Promise.all([
+      // Fetch all rent obligations + their payments
+      const [oblRes, allPaymentsRes, taxesRes, maintenanceRes] = await Promise.all([
         supabase
-          .from("rent_dues")
-          .select("*, properties(internal_identifier), tenants(full_name), rent_payments(amount)")
-          .order("due_date", { ascending: true }),
+          .from("obligations")
+          .select(`
+            id, period, due_date, expected_amount, status, kind, payment_proof_id, currency,
+            properties(internal_identifier),
+            tenants(full_name),
+            payment_proofs!obligations_payment_proof_id_fkey(id, files, amount, status)
+          `)
+          .eq("kind", "rent")
+          .order("period", { ascending: true }),
         supabase
-          .from("rent_payments")
-          .select("amount")
-          .gte("payment_date", monthStart)
-          .lte("payment_date", monthEnd),
-        supabase
-          .from("utility_proofs")
-          .select("*, utility_obligations(type, properties(internal_identifier))")
-          .in("status", ["not_submitted", "overdue"]),
+          .from("payments")
+          .select("obligation_id, amount, paid_at, attachment_url"),
         supabase
           .from("tax_obligations")
           .select("*, properties(internal_identifier)")
           .eq("status", "pending")
-          .lte("due_date", in30Days),
+          .lte("due_date", in30DaysStr)
+          .gte("due_date", todayStr),
         supabase
           .from("maintenance_issues")
           .select("*, properties(internal_identifier)")
           .neq("status", "resolved"),
       ]);
 
-      // Process rent dues
-      const rentDues = (rentDuesRes.data || []) as RentDueData[];
-      const todayStr = now.toISOString().split("T")[0];
+      const rawObls = (oblRes.data || []) as any[];
+      const allPayments = (allPaymentsRes.data || []) as any[];
 
-      // Compute derived status for each rent due
-      const processedRentDues = rentDues.map((rd) => {
-        const totalPaid = (rd.rent_payments || []).reduce((sum, p) => sum + Number(p.amount), 0);
-        const balanceDue = Math.max(rd.expected_amount - totalPaid, 0);
-        let derivedStatus: string;
-        if (totalPaid >= rd.expected_amount) {
-          derivedStatus = "paid";
-        } else if (totalPaid > 0) {
-          derivedStatus = "partial";
-        } else if (new Date(rd.due_date) < now) {
-          derivedStatus = "overdue";
-        } else {
-          derivedStatus = "due";
-        }
-        return { ...rd, balanceDue, derivedStatus };
+      // Build payments map
+      const paymentsByObl = new Map<string, { amount: number; paid_at: string; attachment_url: string | null }[]>();
+      for (const p of allPayments) {
+        const list = paymentsByObl.get(p.obligation_id) || [];
+        list.push(p);
+        paymentsByObl.set(p.obligation_id, list);
+      }
+
+      // Enrich obligations
+      const enriched = rawObls.map((o) => {
+        const payments = paymentsByObl.get(o.id) || [];
+        const totalPaid = payments.reduce((s: number, p: any) => s + Number(p.amount), 0);
+        const expected = Number(o.expected_amount ?? 0);
+        const balanceDue = Math.max(expected - totalPaid, 0);
+        return { ...o, payments, totalPaid, balanceDue };
       });
 
-      // Overdue rent: status is overdue or partial with balance > 0 and past due
-      const overdueItems: OverdueRentItem[] = processedRentDues
-        .filter(
-          (rd) =>
-            rd.balanceDue > 0 &&
-            (rd.derivedStatus === "overdue" || (rd.derivedStatus === "partial" && new Date(rd.due_date) < now))
-        )
-        .map((rd) => ({
-          id: rd.id,
-          property: rd.properties.internal_identifier,
-          tenant: rd.tenants.full_name,
-          dueDate: rd.due_date,
-          balanceDue: rd.balanceDue,
-          status: rd.derivedStatus,
-        }));
-
-      // Due soon: due in next 7 days, not paid
-      const dueSoonItems: DueSoonItem[] = processedRentDues
-        .filter(
-          (rd) =>
-            rd.balanceDue > 0 &&
-            rd.derivedStatus === "due" &&
-            rd.due_date >= todayStr &&
-            rd.due_date <= in7Days.split("T")[0]
-        )
-        .map((rd) => ({
-          id: rd.id,
-          property: rd.properties.internal_identifier,
-          tenant: rd.tenants.full_name,
-          dueDate: rd.due_date,
-          expectedAmount: rd.expected_amount,
-        }));
-
-      // Rent collected this month
-      const rentCollected = (paymentsThisMonthRes.data || []).reduce(
-        (sum, p) => sum + Number(p.amount),
-        0
+      // --- KPI 1: Cobrado (mes) ---
+      // Obligations (kind=rent) that have payments with paid_at in current month
+      const paymentsThisMonth = allPayments.filter(
+        (p: any) => p.paid_at >= monthStartStr && p.paid_at <= monthEndStr
       );
+      // Group payments by obligation, find obligations that are confirmed
+      const confirmedOblIds = new Set(
+        enriched.filter((o) => o.balanceDue <= 0).map((o) => o.id)
+      );
+      const rentCollected = paymentsThisMonth
+        .filter((p: any) => confirmedOblIds.has(p.obligation_id))
+        .reduce((s: number, p: any) => s + Number(p.amount), 0);
 
-      // Rent outstanding this month
-      const rentOutstanding = processedRentDues
-        .filter((rd) => rd.period_month === currentMonth && rd.balanceDue > 0)
-        .reduce((sum, rd) => sum + rd.balanceDue, 0);
+      // --- KPI 2: Pendiente (mes) ---
+      // Obligations kind=rent, not confirmed, due_date in current month
+      const pendingThisMonth = enriched.filter(
+        (o) =>
+          o.balanceDue > 0 &&
+          o.due_date >= monthStartStr &&
+          o.due_date <= monthEndStr
+      );
+      const rentPending = pendingThisMonth.reduce((s: number, o: any) => s + o.balanceDue, 0);
 
-      // Missing utility proofs with derived status
-      const utilityProofs = utilityProofsRes.data || [];
-      const missingProofItems: MissingProofItem[] = utilityProofs.map((p: any) => {
-        // Derive due date from period and due_day_of_month
-        const [year, month] = (p.period_month || "").split("-").map(Number);
-        const dueDay = p.utility_obligations?.due_day_of_month || 10;
-        const dueDate = new Date(year, month - 1, dueDay);
-        
-        // Derive status: overdue if past due date and no file
-        const derivedStatus = dueDate < now && !p.file_url ? "overdue" : "not_submitted";
-        
-        return {
-          id: p.id,
-          property: p.utility_obligations?.properties?.internal_identifier || "Unknown",
-          utilityType: p.utility_obligations?.type || "Unknown",
-          period: formatMonth(p.period_month),
-          status: derivedStatus,
-          dueDate: dueDate.toISOString().split("T")[0],
-        };
-      });
+      // --- KPI 3: Mora acumulada ---
+      // Obligations kind=rent, not confirmed, due_date < first day of current month
+      const overdueObls = enriched.filter(
+        (o) => o.balanceDue > 0 && o.due_date < monthStartStr
+      );
+      const rentOverdue = overdueObls.reduce((s: number, o: any) => s + o.balanceDue, 0);
 
-      // Taxes due soon
+      // --- KPI 4: Comprobantes faltantes ---
+      // Confirmed rent obligations (balance <= 0) with NO payment that has an attachment
+      const confirmedRentObls = enriched.filter((o) => o.balanceDue <= 0);
+      const missingProofsCount = confirmedRentObls.filter((o) => {
+        const oblPayments = o.payments || [];
+        const hasAttachment = oblPayments.some((p: any) => p.attachment_url);
+        const hasProofFile = o.payment_proofs?.files?.length > 0;
+        return !hasAttachment && !hasProofFile;
+      }).length;
+
+      // --- Action Center: Overdue items ---
+      const overdueItems: OverdueRentItem[] = overdueObls.map((o: any) => ({
+        id: o.id,
+        property: o.properties?.internal_identifier || "—",
+        tenant: o.tenants?.full_name || "—",
+        dueDate: o.due_date,
+        balanceDue: o.balanceDue,
+        status: "overdue",
+      }));
+
+      // --- Action Center: Due soon (next 7 days) ---
+      const dueSoonItems: DueSoonItem[] = enriched
+        .filter(
+          (o) =>
+            o.balanceDue > 0 &&
+            o.due_date >= todayStr &&
+            o.due_date <= in7DaysStr
+        )
+        .map((o: any) => ({
+          id: o.id,
+          property: o.properties?.internal_identifier || "—",
+          tenant: o.tenants?.full_name || "—",
+          dueDate: o.due_date,
+          expectedAmount: Number(o.expected_amount ?? 0),
+        }));
+
+      // --- Action Center: Missing proofs (for display) ---
+      const missingProofItems: MissingProofItem[] = confirmedRentObls
+        .filter((o) => {
+          const oblPayments = o.payments || [];
+          const hasAttachment = oblPayments.some((p: any) => p.attachment_url);
+          const hasProofFile = o.payment_proofs?.files?.length > 0;
+          return !hasAttachment && !hasProofFile;
+        })
+        .slice(0, 8)
+        .map((o: any) => ({
+          id: o.id,
+          property: o.properties?.internal_identifier || "—",
+          utilityType: "Alquiler",
+          period: formatPeriod(o.period),
+          status: "not_submitted",
+          dueDate: o.due_date,
+        }));
+
+      // --- Taxes due soon ---
       const taxes = taxesRes.data || [];
       const taxItems: TaxDueItem[] = taxes.map((t: any) => ({
         id: t.id,
-        property: t.properties?.internal_identifier || "Unknown",
+        property: t.properties?.internal_identifier || "—",
         taxType: formatTaxType(t.type),
         dueDate: t.due_date,
         status: t.status,
       }));
 
-      // Open maintenance
+      // --- Open maintenance ---
       const maintenance = maintenanceRes.data || [];
       const maintenanceItems: MaintenanceItem[] = maintenance.map((m: any) => ({
         id: m.id,
-        property: m.properties?.internal_identifier || "Unknown",
+        property: m.properties?.internal_identifier || "—",
         issue: m.description,
         status: m.status,
       }));
 
       setStats({
         rentCollectedThisMonth: rentCollected,
-        rentOutstandingThisMonth: rentOutstanding,
-        missingUtilityProofs: missingProofItems.length,
+        rentPendingThisMonth: rentPending,
+        rentOverdueAccumulated: rentOverdue,
+        missingProofsCount,
         taxesDueSoon: taxItems.length,
-        openMaintenance: maintenanceItems.length,
       });
       setOverdueRent(overdueItems);
       setDueSoon(dueSoonItems);
@@ -255,7 +230,7 @@ export default function Dashboard() {
       console.error("Error fetching dashboard data:", error);
       toast({
         title: "Error",
-        description: "Something went wrong. Please refresh.",
+        description: "Algo salió mal. Por favor recargá la página.",
         variant: "destructive",
       });
     } finally {
@@ -263,9 +238,9 @@ export default function Dashboard() {
     }
   };
 
-  const formatMonth = (periodMonth: string) => {
-    const [year, month] = periodMonth.split("-");
-    return new Date(parseInt(year), parseInt(month) - 1).toLocaleDateString("en-US", {
+  const formatPeriod = (period: string) => {
+    const [year, month] = period.split("-");
+    return new Date(parseInt(year), parseInt(month) - 1).toLocaleDateString("es-AR", {
       month: "short",
       year: "numeric",
     });
@@ -273,208 +248,11 @@ export default function Dashboard() {
 
   const formatTaxType = (type: string) => {
     const labels: Record<string, string> = {
-      municipal: "Municipal Tax",
-      property: "Property Tax",
-      income: "Income Tax",
+      municipal: "Municipal",
+      property: "Inmobiliario",
+      income: "Ganancias",
     };
     return labels[type] || type;
-  };
-
-
-  // Payment modal handlers
-  const handleRecordPayment = async (rentDueId: string) => {
-    // Fetch the full rent due data
-    const { data, error } = await supabase
-      .from("rent_dues")
-      .select("*, properties(internal_identifier), tenants(full_name), rent_payments(amount)")
-      .eq("id", rentDueId)
-      .single();
-
-    if (error || !data) {
-      toast({
-        title: "Error",
-        description: "Could not load rent due data.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const totalPaid = (data.rent_payments || []).reduce((sum: number, p: any) => sum + Number(p.amount), 0);
-    const balanceDue = Math.max(data.expected_amount - totalPaid, 0);
-
-    // Block if already fully paid
-    if (balanceDue === 0) {
-      toast({
-        title: "Already paid",
-        description: "This rent is already fully paid.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setSelectedRentDue(data as RentDueData);
-    setPaymentAmount(balanceDue.toString());
-    setPaymentDate(new Date().toISOString().split("T")[0]);
-    setPaymentMethod("transfer");
-    setPaymentNotes("");
-    setReceiptFile(null);
-    setPaymentDialogOpen(true);
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (file.size > 10 * 1024 * 1024) {
-      toast({
-        title: "Error",
-        description: "File is too large. Maximum size is 10MB.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const allowedTypes = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
-    if (!allowedTypes.includes(file.type)) {
-      toast({
-        title: "Error",
-        description: "File type not supported. Please upload PDF, JPG, PNG, or WebP.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setReceiptFile(file);
-  };
-
-  const removeFile = () => {
-    setReceiptFile(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-  };
-
-  const uploadReceipt = async (rentDueId: string): Promise<string | null> => {
-    if (!receiptFile || !user) return null;
-
-    const fileExt = receiptFile.name.split(".").pop();
-    const fileName = `${user.id}/${rentDueId}/${Date.now()}.${fileExt}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from("documents")
-      .upload(fileName, receiptFile);
-
-    if (uploadError) throw uploadError;
-
-    const {
-      data: { publicUrl },
-    } = supabase.storage.from("documents").getPublicUrl(fileName);
-
-    return publicUrl;
-  };
-
-  const handlePaymentSubmit = async () => {
-    if (!selectedRentDue) return;
-
-    const amount = parseFloat(paymentAmount);
-    if (isNaN(amount) || amount <= 0) {
-      toast({
-        title: "Error",
-        description: "Enter a valid amount greater than 0.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!paymentDate) {
-      toast({
-        title: "Error",
-        description: "Payment date is required.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const totalPaid = (selectedRentDue.rent_payments || []).reduce(
-      (sum, p) => sum + Number(p.amount),
-      0
-    );
-    const balanceDue = Math.max(selectedRentDue.expected_amount - totalPaid, 0);
-    const exceedsBalance = amount > balanceDue;
-
-    setIsSubmitting(true);
-
-    try {
-      let receiptUrl: string | null = null;
-      if (receiptFile) {
-        receiptUrl = await uploadReceipt(selectedRentDue.id);
-      }
-
-      const { error: paymentError } = await supabase.from("rent_payments").insert({
-        rent_due_id: selectedRentDue.id,
-        payment_date: paymentDate,
-        amount: amount,
-        method: paymentMethod,
-        receipt_file_url: receiptUrl,
-        notes: paymentNotes || null,
-      });
-
-      if (paymentError) throw paymentError;
-
-      const newTotalPaid = totalPaid + amount;
-      const newBalance = Math.max(0, selectedRentDue.expected_amount - newTotalPaid);
-
-      let newStatus: string;
-      if (newTotalPaid >= selectedRentDue.expected_amount) {
-        newStatus = "paid";
-      } else if (newTotalPaid > 0) {
-        newStatus = "partial";
-      } else if (new Date() > new Date(selectedRentDue.due_date)) {
-        newStatus = "overdue";
-      } else {
-        newStatus = "due";
-      }
-
-      const { error: updateError } = await supabase
-        .from("rent_dues")
-        .update({
-          balance_due: newBalance,
-          status: newStatus,
-        })
-        .eq("id", selectedRentDue.id);
-
-      if (updateError) throw updateError;
-
-      if (exceedsBalance) {
-        toast({
-          title: "Payment saved",
-          description: "Payment saved. Amount exceeds the remaining balance.",
-        });
-      } else if (newBalance > 0) {
-        toast({
-          title: "Payment saved",
-          description: `Payment saved. Balance still due: $${newBalance.toFixed(2)}`,
-        });
-      } else {
-        toast({
-          title: "Payment complete",
-          description: "Rent has been fully paid.",
-        });
-      }
-
-      setPaymentDialogOpen(false);
-      setSelectedRentDue(null);
-      fetchDashboardData();
-    } catch (error) {
-      console.error("Error recording payment:", error);
-      toast({
-        title: "Error",
-        description: "Could not save payment. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
   };
 
   if (loading) {
@@ -487,8 +265,8 @@ export default function Dashboard() {
 
   return (
     <div>
-      <PageHeader title={t("dashboard.title")} description={t("properties.description")}>
-        <Button variant="outline" onClick={() => navigate("/rent")}>
+      <PageHeader title={t("dashboard.title")} description={t("dashboard.subtitle")}>
+        <Button variant="outline" onClick={() => navigate("/payment-proofs?kindTab=rent&statusTab=action")}>
           <DollarSign className="w-4 h-4 mr-2" />
           {t("dashboard.recordPayment")}
         </Button>
@@ -497,10 +275,10 @@ export default function Dashboard() {
       {/* KPI Cards */}
       <DashboardKPIs
         rentCollectedThisMonth={stats.rentCollectedThisMonth}
-        rentOutstandingThisMonth={stats.rentOutstandingThisMonth}
-        missingUtilityProofs={stats.missingUtilityProofs}
+        rentPendingThisMonth={stats.rentPendingThisMonth}
+        rentOverdueAccumulated={stats.rentOverdueAccumulated}
+        missingProofsCount={stats.missingProofsCount}
         taxesDueSoon={stats.taxesDueSoon}
-        openMaintenance={stats.openMaintenance}
       />
 
       {/* Action Center */}
@@ -510,115 +288,10 @@ export default function Dashboard() {
         missingProofs={missingProofs}
         taxesDueSoon={taxesDue}
         openMaintenance={openMaintenance}
-        onRecordPayment={handleRecordPayment}
-        onUploadProof={() => navigate("/utilities")}
-        onUploadTaxReceipt={() => navigate("/taxes")}
+        onRecordPayment={(id) => navigate(`/payment-proofs?kindTab=rent&statusTab=action`)}
+        onUploadProof={() => navigate("/payment-proofs?kindTab=rent&statusTab=confirmed&missingProof=true")}
+        onUploadTaxReceipt={() => navigate("/taxes?filter=upcoming")}
       />
-
-      {/* Record Payment Modal */}
-      <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
-        <DialogContent className="flex flex-col max-h-[90vh] sm:max-w-[600px]">
-          <DialogHeader className="flex-shrink-0">
-            <DialogTitle>{t("rent.recordPaymentTitle")}</DialogTitle>
-            <DialogDescription>
-              {selectedRentDue && (
-                <>
-                  {selectedRentDue.properties.internal_identifier} • {selectedRentDue.tenants.full_name}
-                </>
-              )}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="flex-1 overflow-y-auto py-4 space-y-4">
-            <p className="text-sm text-muted-foreground">
-              You can record multiple payments for the same rent due.
-            </p>
-
-            <div className="space-y-2">
-              <Label htmlFor="payment-date">Payment date *</Label>
-              <Input
-                id="payment-date"
-                type="date"
-                value={paymentDate}
-                onChange={(e) => setPaymentDate(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="payment-amount">Amount *</Label>
-              <Input
-                id="payment-amount"
-                type="number"
-                step="0.01"
-                placeholder="0.00"
-                value={paymentAmount}
-                onChange={(e) => setPaymentAmount(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Method</Label>
-              <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="transfer">Transfer</SelectItem>
-                  <SelectItem value="cash">Cash</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="payment-notes">Notes</Label>
-              <Textarea
-                id="payment-notes"
-                placeholder="Optional notes..."
-                value={paymentNotes}
-                onChange={(e) => setPaymentNotes(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Receipt (optional)</Label>
-              <p className="text-xs text-muted-foreground mb-2">Upload a PDF or image.</p>
-              {receiptFile ? (
-                <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50">
-                  <FileText className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm flex-1 truncate">{receiptFile.name}</span>
-                  <Button variant="ghost" size="sm" onClick={removeFile}>
-                    <X className="w-4 h-4" />
-                  </Button>
-                </div>
-              ) : (
-                <div
-                  className="flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-lg cursor-pointer hover:border-primary/50 transition-colors"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <Upload className="w-8 h-8 text-muted-foreground mb-2" />
-                  <p className="text-sm text-muted-foreground">Click to upload</p>
-                </div>
-              )}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".pdf,.jpg,.jpeg,.png,.webp"
-                className="hidden"
-                onChange={handleFileChange}
-              />
-            </div>
-          </div>
-
-          <DialogFooter className="flex-shrink-0 pt-4 border-t">
-            <Button variant="outline" onClick={() => setPaymentDialogOpen(false)}>
-              {t("common.cancel")}
-            </Button>
-            <Button onClick={handlePaymentSubmit} disabled={isSubmitting}>
-              {isSubmitting ? t("common.saving") : t("common.save")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

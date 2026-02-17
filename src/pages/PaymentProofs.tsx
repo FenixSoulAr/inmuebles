@@ -1,9 +1,11 @@
 import { useEffect, useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import { useSearchParams } from "react-router-dom";
 import {
   FileCheck, Eye, CheckCircle, XCircle, Building2, Loader2, RefreshCw,
   DollarSign, Upload, X, FileText, Plus, List, Trash2,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { PageHeader } from "@/components/ui/page-header";
@@ -129,13 +131,24 @@ export default function PaymentProofs() {
   const isEs = i18n.language?.startsWith("es");
   const { user } = useAuth();
   const { toast } = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Read initial state from URL query params (from dashboard navigation)
+  const initialKindTab = (searchParams.get("kindTab") as KindTab) || "rent";
+  const initialStatusTab = (searchParams.get("statusTab") as StatusTab) || "action";
+  const initialDueScope = searchParams.get("dueScope") || ""; // "current_month" | "overdue"
+  const initialPeriod = searchParams.get("period") || ""; // e.g. "2025-02"
+  const initialMissingProof = searchParams.get("missingProof") === "true";
 
   const [obligations, setObligations] = useState<Obligation[]>([]);
   const [loading, setLoading] = useState(true);
   const [ensuring, setEnsuring] = useState(false);
   const [search, setSearch] = useState("");
-  const [kindTab, setKindTab] = useState<KindTab>("rent");
-  const [statusTab, setStatusTab] = useState<StatusTab>("action");
+  const [kindTab, setKindTab] = useState<KindTab>(initialKindTab);
+  const [statusTab, setStatusTab] = useState<StatusTab>(initialStatusTab);
+  const [dueScope, setDueScope] = useState(initialDueScope);
+  const [filterPeriod, setFilterPeriod] = useState(initialPeriod);
+  const [missingProofFilter, setMissingProofFilter] = useState(initialMissingProof);
 
   // Confirm modal (for approving proofs)
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -263,6 +276,8 @@ export default function PaymentProofs() {
   // --- Filters ---
   const now = new Date();
   const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const monthStartStr = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
+  const monthEndStr = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split("T")[0];
 
   const getFiltered = () => {
     let filtered = obligations.filter((o) => o.kind === (kindTab === "rent" ? "rent" : "service"));
@@ -277,15 +292,37 @@ export default function PaymentProofs() {
     }
 
     if (statusTab === "action") {
-      return filtered.filter(
+      filtered = filtered.filter(
         (o) =>
           ["pending_send", "awaiting_review", "rejected", "partial"].includes(o.display_status) &&
           o.period <= currentMonth
       );
+      // Apply dueScope from dashboard navigation
+      if (dueScope === "current_month") {
+        filtered = filtered.filter((o) => o.due_date >= monthStartStr && o.due_date <= monthEndStr);
+      } else if (dueScope === "overdue") {
+        filtered = filtered.filter((o) => o.due_date < monthStartStr);
+      }
+      return filtered;
     }
+
     if (statusTab === "confirmed") {
-      return filtered.filter((o) => o.display_status === "confirmed");
+      filtered = filtered.filter((o) => o.display_status === "confirmed");
+      // Apply period filter from dashboard (e.g. collected this month)
+      if (filterPeriod) {
+        filtered = filtered.filter((o) => o.period === filterPeriod);
+      }
+      // Apply missing proof filter
+      if (missingProofFilter) {
+        filtered = filtered.filter((o) => {
+          const hasAttachment = (o.payments || []).some((p: any) => p.attachment_url);
+          const hasProofFile = o.payment_proofs?.files?.length > 0;
+          return !hasAttachment && !hasProofFile;
+        });
+      }
+      return filtered;
     }
+
     // "all" — exclude upcoming by default, last 6 months
     const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 6, 1);
     const sixMonthsStr = `${sixMonthsAgo.getFullYear()}-${String(sixMonthsAgo.getMonth() + 1).padStart(2, "0")}`;
@@ -293,6 +330,52 @@ export default function PaymentProofs() {
   };
 
   const filtered = getFiltered();
+
+  // --- Summary total (to match dashboard KPI) ---
+  const summaryTotal = (() => {
+    if (statusTab === "confirmed") {
+      return filtered.reduce((s, o) => s + o.total_paid, 0);
+    }
+    if (statusTab === "action") {
+      return filtered.reduce((s, o) => s + o.balance_due, 0);
+    }
+    return null;
+  })();
+
+  // --- Active filter chips ---
+  interface FilterChip { label: string; onRemove: () => void; }
+  const activeChips: FilterChip[] = [];
+  if (dueScope === "current_month") {
+    activeChips.push({
+      label: isEs ? "Mes actual" : "Current month",
+      onRemove: () => setDueScope(""),
+    });
+  }
+  if (dueScope === "overdue") {
+    activeChips.push({
+      label: isEs ? "Vencidos (meses anteriores)" : "Overdue (past months)",
+      onRemove: () => setDueScope(""),
+    });
+  }
+  if (filterPeriod) {
+    const [y, m] = filterPeriod.split("-");
+    const label = new Date(parseInt(y), parseInt(m) - 1).toLocaleDateString(
+      isEs ? "es-AR" : "en-US",
+      { month: "long", year: "numeric" }
+    );
+    activeChips.push({
+      label: `${isEs ? "Período" : "Period"}: ${label}`,
+      onRemove: () => setFilterPeriod(""),
+    });
+  }
+  if (missingProofFilter) {
+    activeChips.push({
+      label: isEs ? "Sin comprobante adjunto" : "Missing attachment",
+      onRemove: () => setMissingProofFilter(false),
+    });
+  }
+
+
 
   // --- Helpers ---
   const formatMonth = (period: string) => {
@@ -758,7 +841,13 @@ export default function PaymentProofs() {
           placeholder={t("obligations.searchPlaceholder")}
           className="flex-1 max-w-md"
         />
-        <Tabs value={statusTab} onValueChange={(v) => setStatusTab(v as StatusTab)}>
+        <Tabs value={statusTab} onValueChange={(v) => {
+          setStatusTab(v as StatusTab);
+          // Clear scoped filters when tab changes manually
+          setDueScope("");
+          setFilterPeriod("");
+          setMissingProofFilter(false);
+        }}>
           <TabsList>
             <TabsTrigger value="action">{t("obligations.actionNeeded")}</TabsTrigger>
             <TabsTrigger value="confirmed">{t("obligations.confirmed")}</TabsTrigger>
@@ -766,6 +855,57 @@ export default function PaymentProofs() {
           </TabsList>
         </Tabs>
       </div>
+
+      {/* Active filter chips */}
+      {activeChips.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-4">
+          {activeChips.map((chip, i) => (
+            <Badge
+              key={i}
+              variant="secondary"
+              className="flex items-center gap-1.5 pl-3 pr-2 py-1 text-xs font-medium cursor-default"
+            >
+              {chip.label}
+              <button
+                onClick={chip.onRemove}
+                className="ml-1 rounded-full hover:bg-muted-foreground/20 p-0.5 transition-colors"
+                aria-label="Remove filter"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </Badge>
+          ))}
+          <button
+            onClick={() => {
+              setDueScope("");
+              setFilterPeriod("");
+              setMissingProofFilter(false);
+            }}
+            className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors"
+          >
+            {isEs ? "Limpiar filtros" : "Clear filters"}
+          </button>
+        </div>
+      )}
+
+      {/* Summary bar — total aligned with the KPI that triggered navigation */}
+      {summaryTotal !== null && filtered.length > 0 && (
+        <div className="flex items-center justify-between rounded-lg border bg-muted/30 px-4 py-3 mb-4">
+          <p className="text-sm text-muted-foreground">
+            {statusTab === "confirmed"
+              ? isEs ? "Total cobrado según filtros:" : "Total collected per filters:"
+              : isEs ? "Total pendiente según filtros:" : "Total pending per filters:"}
+          </p>
+          <p className="text-base font-bold">
+            {new Intl.NumberFormat(isEs ? "es-AR" : "en-US", {
+              style: "currency",
+              currency: "USD",
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 0,
+            }).format(summaryTotal)}
+          </p>
+        </div>
+      )}
 
       {filtered.length === 0 ? (
         <EmptyState

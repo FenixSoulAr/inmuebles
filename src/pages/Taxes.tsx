@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Receipt, Building2, MoreHorizontal, Pencil, Upload, ExternalLink, PowerOff, Power, Trash2 } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
+import { Receipt, Building2, MoreHorizontal, Pencil, Upload, ExternalLink, PowerOff, Power, Trash2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -27,7 +28,10 @@ interface PropertyFiscalStatus {
 }
 
 export default function Taxes() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isEs = i18n.language?.startsWith("es");
+  const [searchParams] = useSearchParams();
+  const initialFilter = searchParams.get("filter") || "all"; // "upcoming" | "all"
 
   const taxTypeLabels: Record<string, string> = {
     municipal: t("taxes.municipal"), property: t("taxes.property"), income: t("taxes.income"), other: t("taxes.otherTax"),
@@ -41,6 +45,9 @@ export default function Taxes() {
   const [inactiveTaxes, setInactiveTaxes] = useState<TaxObligation[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<"all" | "upcoming" | "pending">(
+    initialFilter === "upcoming" ? "upcoming" : "all"
+  );
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -172,38 +179,91 @@ export default function Taxes() {
     </div>
   );
 
+  // --- Filter fiscal statuses by activeFilter ---
+  const now = new Date();
+  const in30DaysStr = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+  const todayStr = now.toISOString().split("T")[0];
+
+  const filteredFiscalStatuses = fiscalStatuses.map((prop) => {
+    let obls = prop.obligations;
+    if (activeFilter === "upcoming") {
+      obls = obls.filter((ob) => ob.status === "pending" && ob.due_date >= todayStr && ob.due_date <= in30DaysStr);
+    } else if (activeFilter === "pending") {
+      obls = obls.filter((ob) => ob.status === "pending");
+    }
+    return { ...prop, obligations: obls };
+  }).filter((prop) => prop.obligations.length > 0);
+
   return (
     <div className="space-y-6">
       <PageHeader title={t("taxes.title")} description={t("taxes.description")}><AddTaxModal onSuccess={fetchTaxData} /></PageHeader>
 
-      {fiscalStatuses.length === 0 && inactiveTaxes.length === 0 ? (
+      {/* Filter chips / tabs */}
+      <div className="flex flex-wrap items-center gap-2">
+        {(["all", "upcoming", "pending"] as const).map((f) => (
+          <button
+            key={f}
+            onClick={() => setActiveFilter(f)}
+            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+              activeFilter === f
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-border bg-card text-muted-foreground hover:border-primary/50 hover:text-foreground"
+            }`}
+          >
+            {f === "all" && (isEs ? "Todos" : "All")}
+            {f === "upcoming" && (isEs ? "Próximos 30 días" : "Next 30 days")}
+            {f === "pending" && (isEs ? "Pendientes" : "Pending")}
+          </button>
+        ))}
+        {activeFilter !== "all" && (
+          <button
+            onClick={() => setActiveFilter("all")}
+            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors"
+          >
+            <X className="w-3 h-3" />
+            {isEs ? "Limpiar" : "Clear"}
+          </button>
+        )}
+      </div>
+
+      {filteredFiscalStatuses.length === 0 && inactiveTaxes.length === 0 ? (
         <EmptyState icon={Receipt} title={t("taxes.noTaxes")} description={t("taxes.noTaxesDesc")}
           action={{ label: t("taxes.addTax"), onClick: () => setAddModalOpen(true) }} />
       ) : (
         <>
-          {fiscalStatuses.length > 0 && (
-            <div className="grid gap-6 lg:grid-cols-2">
-              {fiscalStatuses.map((property) => (
-                <Card key={property.propertyId}>
-                  <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 text-primary"><Building2 className="w-5 h-5" /></div>
-                      <div><CardTitle className="text-base">{property.propertyName}</CardTitle><p className="text-xs text-muted-foreground">{property.address}</p></div>
-                    </div>
-                    <StatusBadge variant={property.status} />
+          {filteredFiscalStatuses.length === 0 && activeFilter !== "all" ? (
+            <EmptyState icon={Receipt}
+              title={isEs ? "Sin impuestos en este filtro" : "No taxes for this filter"}
+              description={isEs ? "Probá con otro filtro." : "Try a different filter."}
+              className="py-8"
+            />
+          ) : (
+            <>
+              {filteredFiscalStatuses.length > 0 && (
+                <div className="grid gap-6 lg:grid-cols-2">
+                  {filteredFiscalStatuses.map((property) => (
+                    <Card key={property.propertyId}>
+                      <CardHeader className="flex flex-row items-center justify-between pb-2">
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 text-primary"><Building2 className="w-5 h-5" /></div>
+                          <div><CardTitle className="text-base">{property.propertyName}</CardTitle><p className="text-xs text-muted-foreground">{property.address}</p></div>
+                        </div>
+                        <StatusBadge variant={property.status} />
+                      </CardHeader>
+                      <CardContent><div className="space-y-3">{property.obligations.map((ob) => renderTaxRow(ob))}</div></CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+              {activeFilter === "all" && inactiveTaxes.length > 0 && (
+                <Card>
+                  <CardHeader className="pb-4">
+                    <CardTitle className="flex items-center gap-2 text-muted-foreground"><PowerOff className="w-5 h-5" />{t("taxes.inactiveTaxes")}</CardTitle>
                   </CardHeader>
-                  <CardContent><div className="space-y-3">{property.obligations.map((ob) => renderTaxRow(ob))}</div></CardContent>
+                  <CardContent><div className="space-y-3">{inactiveTaxes.map((ob) => renderTaxRow(ob, true))}</div></CardContent>
                 </Card>
-              ))}
-            </div>
-          )}
-          {inactiveTaxes.length > 0 && (
-            <Card>
-              <CardHeader className="pb-4">
-                <CardTitle className="flex items-center gap-2 text-muted-foreground"><PowerOff className="w-5 h-5" />{t("taxes.inactiveTaxes")}</CardTitle>
-              </CardHeader>
-              <CardContent><div className="space-y-3">{inactiveTaxes.map((ob) => renderTaxRow(ob, true))}</div></CardContent>
-            </Card>
+              )}
+            </>
           )}
         </>
       )}
@@ -214,3 +274,4 @@ export default function Taxes() {
     </div>
   );
 }
+
