@@ -80,7 +80,7 @@ function computeRentDueStatus(rentDue: RentDue): {
   // Use obligation status as source of truth
   if (rentDue.obligation_status) {
     const oblStatus = rentDue.obligation_status;
-    if (oblStatus === "paid_confirmed") return { totalPaid, balanceDue: 0, derivedStatus: "paid" };
+    if (oblStatus === "confirmed") return { totalPaid, balanceDue: 0, derivedStatus: "paid" };
     if (oblStatus === "awaiting_review") return { totalPaid, balanceDue, derivedStatus: "awaiting_review" };
     if (oblStatus === "rejected") return { totalPaid, balanceDue, derivedStatus: "overdue" };
   }
