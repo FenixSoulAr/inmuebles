@@ -284,12 +284,6 @@ export default function PaymentProofs() {
         attachmentUrl = await uploadAttachment(confirmObl.id);
       }
 
-      // Update obligation status to confirmed
-      await supabase
-        .from("obligations")
-        .update({ status: "confirmed" })
-        .eq("id", confirmObl.id);
-
       // Approve linked payment proof if exists
       if (confirmObl.payment_proof_id) {
         await supabase
@@ -298,7 +292,9 @@ export default function PaymentProofs() {
           .eq("id", confirmObl.payment_proof_id);
       }
 
-      // For rent: create rent_payment and update rent_dues
+      // Derive obligation status from actual balance
+      let newOblStatus = "confirmed";
+
       if (confirmObl.kind === "rent") {
         const { data: rentDue } = await supabase
           .from("rent_dues")
@@ -317,7 +313,7 @@ export default function PaymentProofs() {
             notes: confirmNotes || null,
           });
 
-          // Get updated total
+          // Recalculate balance
           const { data: payments } = await supabase
             .from("rent_payments")
             .select("amount")
@@ -328,10 +324,24 @@ export default function PaymentProofs() {
 
           await supabase
             .from("rent_dues")
-            .update({ status: "paid", balance_due: newBalance })
+            .update({ status: newBalance <= 0 ? "paid" : "partial", balance_due: newBalance })
             .eq("id", rentDue.id);
+
+          // Derive obligation status from balance
+          if (newBalance <= 0) {
+            newOblStatus = "confirmed";
+          } else if (newTotal > 0) {
+            newOblStatus = "awaiting_review";
+          } else {
+            newOblStatus = "pending_send";
+          }
         }
       }
+
+      await supabase
+        .from("obligations")
+        .update({ status: newOblStatus })
+        .eq("id", confirmObl.id);
 
       toast({ title: t("obligations.proofApproved") });
       setConfirmOpen(false);
