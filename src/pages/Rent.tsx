@@ -130,6 +130,29 @@ export default function Rent() {
 
       const propertyIds = userProperties.map((p) => p.id);
 
+      // Get active, non-expired contracts to filter rent_dues
+      const today = new Date().toISOString().split("T")[0];
+      const { data: activeContracts, error: contractError } = await supabase
+        .from("contracts")
+        .select("id, end_date")
+        .in("property_id", propertyIds)
+        .eq("is_active", true)
+        .gte("end_date", today);
+
+      if (contractError) throw contractError;
+
+      if (!activeContracts || activeContracts.length === 0) {
+        setRentDues([]);
+        setLoading(false);
+        return;
+      }
+
+      const activeContractIds = activeContracts.map((c) => c.id);
+
+      // Current period for limiting future noise
+      const now = new Date();
+      const currentPeriod = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
       const { data, error } = await supabase
         .from("rent_dues")
         .select(`
@@ -139,10 +162,22 @@ export default function Rent() {
           rent_payments(*)
         `)
         .in("property_id", propertyIds)
+        .in("contract_id", activeContractIds)
+        .lte("period_month", currentPeriod)
         .order("due_date", { ascending: true });
 
       if (error) throw error;
-      setRentDues(data || []);
+
+      // Additional client-side filter: exclude periods beyond contract endDate
+      const contractEndMap = new Map(activeContracts.map((c) => [c.id, c.end_date]));
+      const filtered = (data || []).filter((rd) => {
+        const endDate = contractEndMap.get(rd.contract_id);
+        if (!endDate) return false;
+        const endPeriod = endDate.substring(0, 7); // YYYY-MM
+        return rd.period_month <= endPeriod;
+      });
+
+      setRentDues(filtered);
     } catch (error) {
       console.error("Error fetching rent dues:", error);
       toast({
