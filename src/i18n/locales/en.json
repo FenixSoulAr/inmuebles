@@ -81,6 +81,7 @@
   },
   "dashboard": {
     "title": "Dashboard",
+    "subtitle": "Manage your property portfolio",
     "occupiedVacant": "Occupied / Vacant",
     "collectedMonth": "Collected (month)",
     "outstandingMonth": "Outstanding (month)",

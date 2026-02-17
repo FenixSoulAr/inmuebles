@@ -81,6 +81,7 @@
   },
   "dashboard": {
     "title": "Panel",
+    "subtitle": "Gestioná tu cartera de propiedades",
     "occupiedVacant": "Ocupadas / Vacías",
     "collectedMonth": "Cobrado (mes)",
     "outstandingMonth": "Pendiente (mes)",
