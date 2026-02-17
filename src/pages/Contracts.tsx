@@ -20,6 +20,7 @@ interface Contract {
   deposit: number | null; is_active: boolean; adjustment_type: string; adjustment_frequency: number | null;
   clauses_text: string | null; next_adjustment_date: string | null; property_id: string; tenant_id: string;
   signed_contract_file_url: string | null;
+  public_submission_token: string | null; token_status: string;
   properties: { internal_identifier: string; full_address: string };
   tenants: { full_name: string };
 }
