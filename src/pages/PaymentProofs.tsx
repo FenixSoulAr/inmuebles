@@ -126,6 +126,134 @@ function deriveServiceStatus(
   return "upcoming";
 }
 
+// ─── Contextual Empty State for PaymentProofs ────────────────────────────────
+function EmptyStateContextual({
+  kindTab,
+  statusTab,
+  dueScope,
+  filterPeriod,
+  missingProofFilter,
+  onRegisterPayment,
+  onClearFilters,
+  onSwitchToOverdue,
+}: {
+  kindTab: "rent" | "services";
+  statusTab: "action" | "confirmed" | "all";
+  dueScope: string;
+  filterPeriod: string;
+  missingProofFilter: boolean;
+  onRegisterPayment: () => void;
+  onClearFilters: () => void;
+  onSwitchToOverdue: () => void;
+}) {
+  // Rent – Confirmed – current month filter
+  if (kindTab === "rent" && statusTab === "confirmed" && filterPeriod) {
+    return (
+      <EmptyState
+        icon={DollarSign}
+        title="Sin ingresos registrados este mes"
+        description="Los pagos confirmados con fecha de pago en el mes actual aparecerán aquí."
+        action={{ label: "Registrar pago", onClick: onRegisterPayment, variant: "outline" }}
+        compact
+        className="py-14"
+      />
+    );
+  }
+
+  // Rent – Confirmed – missing proofs filter
+  if (kindTab === "rent" && statusTab === "confirmed" && missingProofFilter) {
+    return (
+      <EmptyState
+        icon={FileCheck}
+        title="Documentación completa"
+        description="Todos los pagos confirmados tienen comprobante adjunto."
+        compact
+        className="py-14"
+      />
+    );
+  }
+
+  // Rent – Action – current month
+  if (kindTab === "rent" && statusTab === "action" && dueScope === "current_month") {
+    return (
+      <EmptyState
+        icon={DollarSign}
+        title="Todo al día este mes"
+        description="No hay alquileres con vencimiento pendiente en el mes actual."
+        secondaryAction={{ label: "Ver mora acumulada", onClick: onSwitchToOverdue }}
+        compact
+        className="py-14"
+      />
+    );
+  }
+
+  // Rent – Action – overdue (mora)
+  if (kindTab === "rent" && statusTab === "action" && dueScope === "overdue") {
+    return (
+      <EmptyState
+        icon={DollarSign}
+        title="Sin deuda histórica"
+        description="No hay alquileres vencidos de meses anteriores."
+        compact
+        className="py-14"
+      />
+    );
+  }
+
+  // Rent – Action – generic (no specific scope)
+  if (kindTab === "rent" && statusTab === "action") {
+    return (
+      <EmptyState
+        icon={DollarSign}
+        title="Sin obligaciones pendientes"
+        description="No hay alquileres que requieran acción en este momento."
+        compact
+        className="py-14"
+      />
+    );
+  }
+
+  // Services – Action
+  if (kindTab === "services" && statusTab === "action") {
+    return (
+      <EmptyState
+        icon={FileCheck}
+        title="Sin comprobantes por gestionar"
+        description="Todos los servicios del período están al día o confirmados."
+        compact
+        className="py-14"
+      />
+    );
+  }
+
+  // Services – Confirmed
+  if (kindTab === "services" && statusTab === "confirmed") {
+    return (
+      <EmptyState
+        icon={FileCheck}
+        title="Sin servicios confirmados"
+        description="Los comprobantes de servicios aprobados aparecerán aquí."
+        compact
+        className="py-14"
+      />
+    );
+  }
+
+  // All tab generic
+  return (
+    <EmptyState
+      icon={kindTab === "rent" ? DollarSign : FileCheck}
+      title="Sin registros"
+      description="No hay obligaciones que coincidan con los filtros aplicados."
+      action={dueScope || filterPeriod || missingProofFilter
+        ? { label: "Limpiar filtros", onClick: onClearFilters, variant: "ghost" }
+        : undefined}
+      compact
+      className="py-14"
+    />
+  );
+}
+
 export default function PaymentProofs() {
   const { t, i18n } = useTranslation();
   const isEs = i18n.language?.startsWith("es");
@@ -908,15 +1036,15 @@ export default function PaymentProofs() {
       )}
 
       {filtered.length === 0 ? (
-        <EmptyState
-          icon={kindTab === "rent" ? DollarSign : FileCheck}
-          title={t("obligations.noObligations")}
-          description={
-            statusTab === "action"
-              ? t("obligations.noActionNeeded")
-              : t("obligations.noInStatus")
-          }
-          className="py-12"
+        <EmptyStateContextual
+          kindTab={kindTab}
+          statusTab={statusTab}
+          dueScope={dueScope}
+          filterPeriod={filterPeriod}
+          missingProofFilter={missingProofFilter}
+          onRegisterPayment={() => setPayOpen(true)}
+          onClearFilters={() => { setDueScope(""); setFilterPeriod(""); setMissingProofFilter(false); }}
+          onSwitchToOverdue={() => { setDueScope("overdue"); setStatusTab("action"); }}
         />
       ) : (
         <Card className="overflow-hidden">
