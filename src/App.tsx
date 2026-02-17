@@ -15,7 +15,6 @@ import TenantDetail from "./pages/TenantDetail";
 import Contracts from "./pages/Contracts";
 import ContractNew from "./pages/ContractNew";
 import ContractDetail from "./pages/ContractDetail";
-import Rent from "./pages/Rent";
 import PaymentProofs from "./pages/PaymentProofs";
 import PublicSubmit from "./pages/PublicSubmit";
 import Utilities from "./pages/Utilities";
@@ -57,7 +56,7 @@ const App: React.FC = () => {
                 <Route path="/contracts" element={<Contracts />} />
                 <Route path="/contracts/new" element={<ContractNew />} />
                 <Route path="/contracts/:id" element={<ContractDetail />} />
-                <Route path="/rent" element={<Rent />} />
+                <Route path="/rent" element={<Navigate to="/payment-proofs" replace />} />
                 <Route path="/payment-proofs" element={<PaymentProofs />} />
                 <Route path="/utilities" element={<Utilities />} />
                 <Route path="/utility-services" element={<UtilityObligations />} />
