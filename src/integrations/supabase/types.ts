@@ -436,6 +436,8 @@ export type Database = {
       payment_proofs: {
         Row: {
           amount: number
+          approved_at: string | null
+          approved_by: string | null
           comment: string | null
           contract_id: string
           created_at: string
@@ -444,6 +446,7 @@ export type Database = {
           obligation_id: string | null
           paid_at: string
           period: string
+          proof_status: string
           rejection_reason: string | null
           replaces_proof_id: string | null
           service_type: string | null
@@ -452,6 +455,8 @@ export type Database = {
         }
         Insert: {
           amount: number
+          approved_at?: string | null
+          approved_by?: string | null
           comment?: string | null
           contract_id: string
           created_at?: string
@@ -460,6 +465,7 @@ export type Database = {
           obligation_id?: string | null
           paid_at?: string
           period: string
+          proof_status?: string
           rejection_reason?: string | null
           replaces_proof_id?: string | null
           service_type?: string | null
@@ -468,6 +474,8 @@ export type Database = {
         }
         Update: {
           amount?: number
+          approved_at?: string | null
+          approved_by?: string | null
           comment?: string | null
           contract_id?: string
           created_at?: string
@@ -476,6 +484,7 @@ export type Database = {
           obligation_id?: string | null
           paid_at?: string
           period?: string
+          proof_status?: string
           rejection_reason?: string | null
           replaces_proof_id?: string | null
           service_type?: string | null
