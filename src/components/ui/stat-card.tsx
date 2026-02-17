@@ -13,6 +13,7 @@ interface StatCardProps {
   };
   variant?: "default" | "primary" | "success" | "warning" | "destructive";
   className?: string;
+  onClick?: () => void;
 }
 
 const variantStyles = {
@@ -39,9 +40,10 @@ export function StatCard({
   trend,
   variant = "default",
   className,
+  onClick,
 }: StatCardProps) {
   return (
-    <Card className={cn("relative overflow-hidden", variantStyles[variant], className)}>
+    <Card className={cn("relative overflow-hidden", variantStyles[variant], className)} onClick={onClick}>
       <CardContent className="p-6">
         <div className="flex items-start justify-between">
           <div className="space-y-2">

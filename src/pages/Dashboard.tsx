@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Plus, DollarSign, Upload, X, FileText } from "lucide-react";
+import { DollarSign, Upload, X, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { PageHeader } from "@/components/ui/page-header";
@@ -16,7 +16,7 @@ import {
   TaxDueItem,
   MaintenanceItem,
 } from "@/components/dashboard/ActionCenter";
-import { MonthlyAgenda, AgendaItem } from "@/components/dashboard/MonthlyAgenda";
+
 import {
   Dialog,
   DialogContent,
@@ -49,8 +49,6 @@ interface RentDueData {
 }
 
 interface DashboardStats {
-  occupiedCount: number;
-  vacantCount: number;
   rentCollectedThisMonth: number;
   rentOutstandingThisMonth: number;
   missingUtilityProofs: number;
@@ -60,8 +58,6 @@ interface DashboardStats {
 
 export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats>({
-    occupiedCount: 0,
-    vacantCount: 0,
     rentCollectedThisMonth: 0,
     rentOutstandingThisMonth: 0,
     missingUtilityProofs: 0,
@@ -73,7 +69,6 @@ export default function Dashboard() {
   const [missingProofs, setMissingProofs] = useState<MissingProofItem[]>([]);
   const [taxesDue, setTaxesDue] = useState<TaxDueItem[]>([]);
   const [openMaintenance, setOpenMaintenance] = useState<MaintenanceItem[]>([]);
-  const [agendaItems, setAgendaItems] = useState<AgendaItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Payment modal state
@@ -109,15 +104,12 @@ export default function Dashboard() {
 
       // Parallel fetch all data
       const [
-        propertiesRes,
         rentDuesRes,
         paymentsThisMonthRes,
         utilityProofsRes,
         taxesRes,
         maintenanceRes,
-        alertsRes,
       ] = await Promise.all([
-        supabase.from("properties").select("id, status"),
         supabase
           .from("rent_dues")
           .select("*, properties(internal_identifier), tenants(full_name), rent_payments(amount)")
@@ -140,20 +132,7 @@ export default function Dashboard() {
           .from("maintenance_issues")
           .select("*, properties(internal_identifier)")
           .neq("status", "resolved"),
-        supabase
-          .from("alerts")
-          .select("*")
-          .eq("status", "open")
-          .gte("due_date", now.toISOString())
-          .lte("due_date", monthEnd)
-          .order("due_date", { ascending: true })
-          .limit(10),
       ]);
-
-      // Process properties stats
-      const properties = propertiesRes.data || [];
-      const occupiedCount = properties.filter((p) => p.status === "occupied").length;
-      const vacantCount = properties.filter((p) => p.status === "vacant").length;
 
       // Process rent dues
       const rentDues = (rentDuesRes.data || []) as RentDueData[];
@@ -260,36 +239,7 @@ export default function Dashboard() {
         status: m.status,
       }));
 
-      // Agenda items for this month
-      const alerts = alertsRes.data || [];
-      const agenda: AgendaItem[] = alerts.map((a) => ({
-        id: a.id,
-        type: mapAlertType(a.type),
-        title: a.title,
-        dueDate: a.due_date || "",
-        property: a.description || "",
-      }));
-
-      // Add upcoming rent dues to agenda
-      processedRentDues
-        .filter((rd) => rd.due_date >= todayStr && rd.due_date <= monthEnd.split("T")[0])
-        .slice(0, 5)
-        .forEach((rd) => {
-          agenda.push({
-            id: `rent-${rd.id}`,
-            type: "rent",
-            title: `Rent due: ${formatMonth(rd.period_month)}`,
-            dueDate: rd.due_date,
-            property: rd.properties.internal_identifier,
-          });
-        });
-
-      // Sort agenda by date
-      agenda.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
-
       setStats({
-        occupiedCount,
-        vacantCount,
         rentCollectedThisMonth: rentCollected,
         rentOutstandingThisMonth: rentOutstanding,
         missingUtilityProofs: missingProofItems.length,
@@ -301,7 +251,6 @@ export default function Dashboard() {
       setMissingProofs(missingProofItems);
       setTaxesDue(taxItems);
       setOpenMaintenance(maintenanceItems);
-      setAgendaItems(agenda);
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
       toast({
@@ -331,13 +280,6 @@ export default function Dashboard() {
     return labels[type] || type;
   };
 
-  const mapAlertType = (type: string): "rent" | "contract" | "utility" | "tax" => {
-    if (type.includes("rent")) return "rent";
-    if (type.includes("contract")) return "contract";
-    if (type.includes("utility")) return "utility";
-    if (type.includes("tax")) return "tax";
-    return "rent";
-  };
 
   // Payment modal handlers
   const handleRecordPayment = async (rentDueId: string) => {
@@ -546,22 +488,14 @@ export default function Dashboard() {
   return (
     <div>
       <PageHeader title={t("dashboard.title")} description={t("properties.description")}>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => navigate("/rent")}>
-            <DollarSign className="w-4 h-4 mr-2" />
-            {t("dashboard.recordPayment")}
-          </Button>
-          <Button onClick={() => navigate("/properties")}>
-            <Plus className="w-4 h-4 mr-2" />
-            {t("properties.addProperty")}
-          </Button>
-        </div>
+        <Button variant="outline" onClick={() => navigate("/rent")}>
+          <DollarSign className="w-4 h-4 mr-2" />
+          {t("dashboard.recordPayment")}
+        </Button>
       </PageHeader>
 
       {/* KPI Cards */}
       <DashboardKPIs
-        occupiedCount={stats.occupiedCount}
-        vacantCount={stats.vacantCount}
         rentCollectedThisMonth={stats.rentCollectedThisMonth}
         rentOutstandingThisMonth={stats.rentOutstandingThisMonth}
         missingUtilityProofs={stats.missingUtilityProofs}
@@ -569,27 +503,17 @@ export default function Dashboard() {
         openMaintenance={stats.openMaintenance}
       />
 
-      {/* Main content grid */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Action Center - Takes 2 columns */}
-        <div className="lg:col-span-2">
-          <ActionCenter
-            overdueRent={overdueRent}
-            dueSoon={dueSoon}
-            missingProofs={missingProofs}
-            taxesDueSoon={taxesDue}
-            openMaintenance={openMaintenance}
-            onRecordPayment={handleRecordPayment}
-            onUploadProof={() => navigate("/utilities")}
-            onUploadTaxReceipt={() => navigate("/taxes")}
-          />
-        </div>
-
-        {/* Monthly Agenda - Takes 1 column */}
-        <div className="lg:col-span-1">
-          <MonthlyAgenda items={agendaItems} />
-        </div>
-      </div>
+      {/* Action Center */}
+      <ActionCenter
+        overdueRent={overdueRent}
+        dueSoon={dueSoon}
+        missingProofs={missingProofs}
+        taxesDueSoon={taxesDue}
+        openMaintenance={openMaintenance}
+        onRecordPayment={handleRecordPayment}
+        onUploadProof={() => navigate("/utilities")}
+        onUploadTaxReceipt={() => navigate("/taxes")}
+      />
 
       {/* Record Payment Modal */}
       <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
