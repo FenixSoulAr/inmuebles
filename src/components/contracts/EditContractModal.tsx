@@ -48,6 +48,8 @@ interface Contract {
   next_adjustment_date: string | null;
   property_id: string;
   tenant_id: string;
+  public_submission_token: string | null;
+  token_status: string;
 }
 
 interface EditContractModalProps {
@@ -94,10 +96,26 @@ export function EditContractModal({
   const onSubmit = async (data: ContractFormData) => {
     if (!contract) return;
 
+    // Validate end_date >= start_date
+    if (data.end_date < contract.start_date) {
+      toast({
+        title: "Error",
+        description: "End date cannot be before the start date.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
+      const today = new Date().toISOString().split("T")[0];
+      const newEndDate = data.end_date;
+      const wasInactive = !contract.is_active;
+      const shouldBeActive = today <= newEndDate;
+
       const updateData: Record<string, unknown> = {
-        end_date: data.end_date,
+        end_date: newEndDate,
         clauses_text: data.clauses_text || null,
+        is_active: shouldBeActive,
       };
 
       // Only allow changing adjustment settings if no rent dues exist
@@ -110,6 +128,24 @@ export function EditContractModal({
         updateData.next_adjustment_date = data.next_adjustment_date;
       }
 
+      // Handle token logic based on activation status
+      if (shouldBeActive) {
+        if (!contract.public_submission_token) {
+          // Generate new token
+          const newToken = Array.from(crypto.getRandomValues(new Uint8Array(32)))
+            .map((b) => b.toString(16).padStart(2, "0"))
+            .join("");
+          updateData.public_submission_token = newToken;
+          updateData.token_status = "active";
+          updateData.token_created_at = new Date().toISOString();
+        } else if (contract.token_status === "disabled") {
+          updateData.token_status = "active";
+        }
+      } else {
+        // Contract expired
+        updateData.token_status = "disabled";
+      }
+
       const { error } = await supabase
         .from("contracts")
         .update(updateData)
@@ -117,10 +153,18 @@ export function EditContractModal({
 
       if (error) throw error;
 
-      toast({
-        title: "Contract updated",
-        description: "The contract has been updated successfully.",
-      });
+      if (wasInactive && shouldBeActive) {
+        toast({
+          title: "Contract reactivated",
+          description: "The contract has been reactivated. Submission link enabled.",
+        });
+      } else {
+        toast({
+          title: "Contract updated",
+          description: "The contract has been updated successfully.",
+        });
+      }
+
       onOpenChange(false);
       onSuccess();
     } catch (error) {
