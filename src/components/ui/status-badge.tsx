@@ -46,6 +46,7 @@ const statusBadgeVariants = cva(
         approved: "bg-success/10 text-success border border-success/20",
         rejected: "bg-destructive/10 text-destructive border border-destructive/20",
         replaced: "bg-muted text-muted-foreground border border-border",
+        upcoming: "bg-muted text-muted-foreground border border-border",
         
         // Default
         default: "bg-secondary text-secondary-foreground border border-border",
@@ -87,6 +88,7 @@ const statusLabels: Record<string, string> = {
   approved: "Approved",
   rejected: "Rejected",
   replaced: "Replaced",
+  upcoming: "Upcoming",
 };
 
 export function StatusBadge({ className, variant, label, ...props }: StatusBadgeProps) {
