@@ -369,7 +369,11 @@
     "attachments": "Adjuntos",
     "file": "Archivo {{num}}",
     "rent": "Alquiler",
-    "service": "Servicio"
+    "service": "Servicio",
+    "reconcile": "Reconciliar",
+    "reconciling": "Reconciliando...",
+    "reconcileSuccess": "Reconciliación completada: {{count}} comprobantes vinculados",
+    "reconcileNone": "No hay comprobantes huérfanos para reconciliar"
   },
   "publicSubmit": {
     "invalidLink": "Link inválido o vencido",
