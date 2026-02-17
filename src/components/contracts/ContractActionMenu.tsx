@@ -86,18 +86,51 @@ export function ContractActionMenu({
     }
   };
 
+  const cleanupFutureObligations = async (contractId: string, cutoffDate: string) => {
+    try {
+      // Get the period (YYYY-MM) for the cutoff date
+      const d = new Date(cutoffDate);
+      const cutoffPeriod = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+
+      // Delete future obligations that are NOT approved and have no approved proof
+      const { data: toDelete } = await supabase
+        .from("obligations")
+        .select("id, status, payment_proof_id")
+        .eq("contract_id", contractId)
+        .gt("period", cutoffPeriod);
+
+      if (toDelete && toDelete.length > 0) {
+        const deletableIds = toDelete
+          .filter((o) => o.status !== "approved")
+          .map((o) => o.id);
+
+        if (deletableIds.length > 0) {
+          await supabase.from("obligations").delete().in("id", deletableIds);
+          console.log(`Cleaned up ${deletableIds.length} future obligations`);
+        }
+      }
+    } catch (err) {
+      console.error("Error cleaning up obligations:", err);
+    }
+  };
+
   const handleEndContract = async () => {
     setIsProcessing(true);
     try {
+      const todayStr = new Date().toISOString().split("T")[0];
+
       const { error } = await supabase
         .from("contracts")
         .update({
           is_active: false,
-          end_date: new Date().toISOString().split("T")[0],
+          end_date: todayStr,
         })
         .eq("id", contract.id);
 
       if (error) throw error;
+
+      // Clean up future obligations
+      await cleanupFutureObligations(contract.id, todayStr);
 
       // Update property status to vacant
       await supabase
@@ -132,6 +165,10 @@ export function ContractActionMenu({
         .eq("id", contract.id);
 
       if (error) throw error;
+
+      // Clean up all future obligations (use today as cutoff)
+      const todayStr = new Date().toISOString().split("T")[0];
+      await cleanupFutureObligations(contract.id, todayStr);
 
       // Update property status to vacant
       await supabase

@@ -67,14 +67,22 @@ Deno.serve(async (req) => {
     const todayStr = today.toISOString().split("T")[0];
     let totalGenerated = 0;
 
-    for (const contract of contracts) {
+    // Filter only truly active contracts (is_active AND not expired)
+    const activeContracts = contracts.filter((c: any) => {
+      const endDate = new Date(c.end_date);
+      return todayStr <= c.end_date; // already filtered by is_active in query
+    });
+
+    console.log(`Active & not-expired contracts: ${activeContracts.length} of ${contracts.length}`);
+
+    for (const contract of activeContracts) {
       const startDate = new Date(contract.start_date);
       const endDate = new Date(contract.end_date);
       const rentDueDay = contract.rent_due_day || 5;
 
-      // Generate periods: -1 to +12 months bounded by contract dates
+      // Generate periods: -1 to +1 months only, bounded by contract dates
       const periods: string[] = [];
-      for (let offset = -1; offset <= 12; offset++) {
+      for (let offset = -1; offset <= 1; offset++) {
         const d = new Date(today.getFullYear(), today.getMonth() + offset, 1);
         const periodEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0);
         if (periodEnd >= startDate && d <= endDate) {
