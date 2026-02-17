@@ -1,0 +1,1 @@
+ALTER TABLE public.contracts ADD COLUMN submission_language text NOT NULL DEFAULT 'es';

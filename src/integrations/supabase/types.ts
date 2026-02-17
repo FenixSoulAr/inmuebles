@@ -160,6 +160,7 @@ export type Database = {
           rent_due_day: number | null
           signed_contract_file_url: string | null
           start_date: string
+          submission_language: string
           tenant_id: string
           token_created_at: string | null
           token_rotated_at: string | null
@@ -185,6 +186,7 @@ export type Database = {
           rent_due_day?: number | null
           signed_contract_file_url?: string | null
           start_date: string
+          submission_language?: string
           tenant_id: string
           token_created_at?: string | null
           token_rotated_at?: string | null
@@ -210,6 +212,7 @@ export type Database = {
           rent_due_day?: number | null
           signed_contract_file_url?: string | null
           start_date?: string
+          submission_language?: string
           tenant_id?: string
           token_created_at?: string | null
           token_rotated_at?: string | null
