@@ -369,7 +369,11 @@
     "attachments": "Attachments",
     "file": "File {{num}}",
     "rent": "Rent",
-    "service": "Service"
+    "service": "Service",
+    "reconcile": "Reconcile",
+    "reconciling": "Reconciling...",
+    "reconcileSuccess": "Reconciliation complete: {{count}} proofs linked",
+    "reconcileNone": "No orphan proofs to reconcile"
   },
   "publicSubmit": {
     "invalidLink": "Invalid or expired link",

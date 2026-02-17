@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { FileCheck, Eye, CheckCircle, XCircle, Building2, Loader2, RefreshCw } from "lucide-react";
+import { FileCheck, Eye, CheckCircle, XCircle, Building2, Loader2, RefreshCw, Link2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { PageHeader } from "@/components/ui/page-header";
@@ -73,6 +73,7 @@ export default function PaymentProofs() {
   const [obligations, setObligations] = useState<Obligation[]>([]);
   const [loading, setLoading] = useState(true);
   const [ensuring, setEnsuring] = useState(false);
+  const [reconciling, setReconciling] = useState(false);
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState("action");
 
@@ -102,8 +103,27 @@ export default function PaymentProofs() {
     }
   };
 
+  const reconcileProofs = async () => {
+    setReconciling(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("reconcile-proofs");
+      if (error) throw error;
+      if (data?.reconciled > 0) {
+        toast({ title: t("obligations.reconcileSuccess", { count: data.reconciled }) });
+      } else {
+        toast({ title: t("obligations.reconcileNone") });
+      }
+    } catch (err) {
+      console.error("Reconciliation error:", err);
+      toast({ title: t("common.error"), variant: "destructive" });
+    } finally {
+      setReconciling(false);
+    }
+  };
+
   const ensureAndFetch = async () => {
     await ensureObligations();
+    await reconcileProofs();
     await fetchObligations();
   };
 
