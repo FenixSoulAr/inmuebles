@@ -351,7 +351,7 @@
     "actionNeeded": "Action needed",
     "pending": "Pending",
     "received": "Received",
-    "approved": "Approved",
+    "approved": "Confirmed",
     "rejected": "Rejected",
     "all": "All",
     "noObligations": "No obligations",
@@ -359,7 +359,7 @@
     "noInStatus": "No obligations in this status.",
     "searchPlaceholder": "Search by property or tenant...",
     "concept": "Concept",
-    "proofApproved": "Proof approved",
+    "proofApproved": "Payment confirmed",
     "proofRejected": "Proof rejected",
     "rejectProof": "Reject proof",
     "rejectDesc": "Provide a reason for rejection (optional).",
@@ -373,7 +373,9 @@
     "reconcile": "Reconcile",
     "reconciling": "Reconciling...",
     "reconcileSuccess": "Reconciliation complete: {{count}} proofs linked",
-    "reconcileNone": "No orphan proofs to reconcile"
+    "reconcileNone": "No orphan proofs to reconcile",
+    "confirmPayment": "Confirm payment",
+    "pendingConfirmation": "Pending confirmation"
   },
   "publicSubmit": {
     "invalidLink": "Invalid or expired link",

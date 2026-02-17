@@ -351,7 +351,7 @@
     "actionNeeded": "Por gestionar",
     "pending": "Pendientes",
     "received": "Recibidos",
-    "approved": "Aprobados",
+    "approved": "Confirmados",
     "rejected": "Rechazados",
     "all": "Todos",
     "noObligations": "Sin obligaciones",
@@ -359,7 +359,7 @@
     "noInStatus": "No hay obligaciones en este estado.",
     "searchPlaceholder": "Buscar por propiedad o inquilino...",
     "concept": "Concepto",
-    "proofApproved": "Comprobante aprobado",
+    "proofApproved": "Pago confirmado",
     "proofRejected": "Comprobante rechazado",
     "rejectProof": "Rechazar comprobante",
     "rejectDesc": "Indicá el motivo del rechazo (opcional).",
@@ -373,7 +373,9 @@
     "reconcile": "Reconciliar",
     "reconciling": "Reconciliando...",
     "reconcileSuccess": "Reconciliación completada: {{count}} comprobantes vinculados",
-    "reconcileNone": "No hay comprobantes huérfanos para reconciliar"
+    "reconcileNone": "No hay comprobantes huérfanos para reconciliar",
+    "confirmPayment": "Confirmar pago",
+    "pendingConfirmation": "Pendiente de confirmación"
   },
   "publicSubmit": {
     "invalidLink": "Link inválido o vencido",

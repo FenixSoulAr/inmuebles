@@ -105,7 +105,7 @@ Deno.serve(async (req) => {
         // Map proof status to obligation status
         const statusMap: Record<string, string> = {
           pending: "awaiting_review",
-          approved: "approved",
+          approved: "paid_confirmed",
           rejected: "rejected",
           replaced: "replaced",
         };
@@ -155,7 +155,7 @@ Deno.serve(async (req) => {
           if (obl) {
             await supabase
               .from("obligations")
-              .update({ status: "approved" })
+              .update({ status: "paid_confirmed" })
               .eq("id", obl.id);
 
             if (obl.payment_proof_id) {
