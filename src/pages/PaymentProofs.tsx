@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import {
   FileCheck, Eye, CheckCircle, XCircle, Building2, Loader2, RefreshCw,
-  DollarSign, Upload, X, FileText,
+  DollarSign, Upload, X, FileText, Plus, List, Trash2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -25,7 +25,22 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
+
+interface Payment {
+  id: string;
+  obligation_id: string;
+  amount: number;
+  paid_at: string;
+  method: string;
+  notes: string | null;
+  attachment_url: string | null;
+  created_at: string;
+}
 
 interface Obligation {
   id: string;
@@ -49,9 +64,12 @@ interface Obligation {
     rejection_reason: string | null;
     comment: string | null;
   } | null;
-  // Computed from rent_payments
-  total_paid?: number;
-  balance_due?: number;
+  // Computed from payments table
+  total_paid: number;
+  balance_due: number;
+  payments: Payment[];
+  // Derived display status
+  display_status: string;
 }
 
 const SERVICE_TYPE_LABELS: Record<string, { es: string; en: string }> = {
@@ -68,6 +86,44 @@ const SERVICE_TYPE_LABELS: Record<string, { es: string; en: string }> = {
 type KindTab = "rent" | "services";
 type StatusTab = "action" | "confirmed" | "all";
 
+/**
+ * Derives the correct display status for a RENT obligation based on payments.
+ * This is the single source of truth for rent status:
+ * - balance_due <= 0 → confirmed
+ * - total_paid > 0 && balance_due > 0 → partial
+ * - total_paid = 0 && today > dueDate → pending_send
+ * - today <= dueDate → upcoming
+ */
+function deriveRentStatus(totalPaid: number, balanceDue: number, dueDate: string): string {
+  if (balanceDue <= 0) return "confirmed";
+  if (totalPaid > 0 && balanceDue > 0) return "partial";
+  const today = new Date().toISOString().split("T")[0];
+  if (today > dueDate) return "pending_send";
+  return "upcoming";
+}
+
+/**
+ * Derives the correct display status for a SERVICE obligation based on proof.
+ * - proof.status=pending → awaiting_review
+ * - proof.status=approved → confirmed
+ * - proof.status=rejected → rejected
+ * - no proof && today > dueDate → pending_send
+ * - today <= dueDate → upcoming
+ */
+function deriveServiceStatus(
+  proof: Obligation["payment_proofs"],
+  dueDate: string
+): string {
+  if (proof) {
+    if (proof.status === "pending") return "awaiting_review";
+    if (proof.status === "approved") return "confirmed";
+    if (proof.status === "rejected") return "rejected";
+  }
+  const today = new Date().toISOString().split("T")[0];
+  if (today > dueDate) return "pending_send";
+  return "upcoming";
+}
+
 export default function PaymentProofs() {
   const { t, i18n } = useTranslation();
   const isEs = i18n.language?.startsWith("es");
@@ -81,7 +137,7 @@ export default function PaymentProofs() {
   const [kindTab, setKindTab] = useState<KindTab>("rent");
   const [statusTab, setStatusTab] = useState<StatusTab>("action");
 
-  // Confirm modal
+  // Confirm modal (for approving proofs)
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmObl, setConfirmObl] = useState<Obligation | null>(null);
   const [confirmDate, setConfirmDate] = useState("");
@@ -92,6 +148,24 @@ export default function PaymentProofs() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const confirmFileRef = useRef<HTMLInputElement>(null);
 
+  // Register payment modal (manual payment for rent)
+  const [payOpen, setPayOpen] = useState(false);
+  const [payObl, setPayObl] = useState<Obligation | null>(null);
+  const [payDate, setPayDate] = useState("");
+  const [payAmount, setPayAmount] = useState("");
+  const [payMethod, setPayMethod] = useState("transfer");
+  const [payNotes, setPayNotes] = useState("");
+  const [payFile, setPayFile] = useState<File | null>(null);
+  const payFileRef = useRef<HTMLInputElement>(null);
+
+  // View payments modal
+  const [viewPayOpen, setViewPayOpen] = useState(false);
+  const [viewPayObl, setViewPayObl] = useState<Obligation | null>(null);
+
+  // Delete payment confirmation
+  const [deletePayId, setDeletePayId] = useState<string | null>(null);
+  const [deletePayOblId, setDeletePayOblId] = useState<string | null>(null);
+
   // Reject modal
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
@@ -100,6 +174,7 @@ export default function PaymentProofs() {
   // Files dialog
   const [filesOpen, setFilesOpen] = useState(false);
   const [viewFiles, setViewFiles] = useState<string[]>([]);
+  const [signedUrls, setSignedUrls] = useState<string[]>([]);
 
   useEffect(() => {
     if (user) ensureAndFetch();
@@ -132,44 +207,44 @@ export default function PaymentProofs() {
 
       if (error) throw error;
 
-      const obls = (data as unknown as Obligation[]) || [];
+      const rawObls = (data as unknown as any[]) || [];
 
-      // For rent obligations, fetch payment totals from rent_dues
-      const rentObls = obls.filter((o) => o.kind === "rent");
-      if (rentObls.length > 0) {
-        const contractPeriods = rentObls.map((o) => ({
-          contract_id: o.contract_id,
-          period: o.period,
-        }));
-        const uniqueContracts = [...new Set(contractPeriods.map((cp) => cp.contract_id))];
-        const uniquePeriods = [...new Set(contractPeriods.map((cp) => cp.period))];
+      // Fetch all payments for these obligations
+      const oblIds = rawObls.map((o) => o.id);
+      const { data: allPayments } = await supabase
+        .from("payments")
+        .select("*")
+        .in("obligation_id", oblIds.length > 0 ? oblIds : ["__none__"]);
 
-        const { data: rdData } = await supabase
-          .from("rent_dues")
-          .select("contract_id, period_month, expected_amount, balance_due, rent_payments(amount)")
-          .in("contract_id", uniqueContracts)
-          .in("period_month", uniquePeriods);
-
-        if (rdData) {
-          const rdMap = new Map<string, { totalPaid: number; balanceDue: number }>();
-          for (const rd of rdData as any[]) {
-            const payments = rd.rent_payments || [];
-            const totalPaid = payments.reduce((s: number, p: any) => s + Number(p.amount), 0);
-            rdMap.set(`${rd.contract_id}|${rd.period_month}`, {
-              totalPaid,
-              balanceDue: Math.max(rd.expected_amount - totalPaid, 0),
-            });
-          }
-          for (const o of rentObls) {
-            const key = `${o.contract_id}|${o.period}`;
-            const rd = rdMap.get(key);
-            if (rd) {
-              o.total_paid = rd.totalPaid;
-              o.balance_due = rd.balanceDue;
-            }
-          }
-        }
+      const paymentsByObl = new Map<string, Payment[]>();
+      for (const p of (allPayments || []) as Payment[]) {
+        const list = paymentsByObl.get(p.obligation_id) || [];
+        list.push(p);
+        paymentsByObl.set(p.obligation_id, list);
       }
+
+      // Build enriched obligations with computed fields
+      const obls: Obligation[] = rawObls.map((o) => {
+        const payments = paymentsByObl.get(o.id) || [];
+        const totalPaid = payments.reduce((s, p) => s + Number(p.amount), 0);
+        const expected = o.expected_amount ?? 0;
+        const balanceDue = Math.max(expected - totalPaid, 0);
+
+        let displayStatus: string;
+        if (o.kind === "rent") {
+          displayStatus = deriveRentStatus(totalPaid, balanceDue, o.due_date);
+        } else {
+          displayStatus = deriveServiceStatus(o.payment_proofs, o.due_date);
+        }
+
+        return {
+          ...o,
+          total_paid: totalPaid,
+          balance_due: balanceDue,
+          payments,
+          display_status: displayStatus,
+        };
+      });
 
       setObligations(obls);
     } catch (err) {
@@ -198,17 +273,17 @@ export default function PaymentProofs() {
     if (statusTab === "action") {
       return filtered.filter(
         (o) =>
-          ["pending_send", "awaiting_review", "rejected"].includes(o.status) &&
+          ["pending_send", "awaiting_review", "rejected", "partial"].includes(o.display_status) &&
           o.period <= currentMonth
       );
     }
     if (statusTab === "confirmed") {
-      return filtered.filter((o) => o.status === "confirmed");
+      return filtered.filter((o) => o.display_status === "confirmed");
     }
     // "all" — exclude upcoming by default, last 6 months
     const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 6, 1);
     const sixMonthsStr = `${sixMonthsAgo.getFullYear()}-${String(sixMonthsAgo.getMonth() + 1).padStart(2, "0")}`;
-    return filtered.filter((o) => o.status !== "upcoming" && o.period >= sixMonthsStr);
+    return filtered.filter((o) => o.display_status !== "upcoming" && o.period >= sixMonthsStr);
   };
 
   const filtered = getFiltered();
@@ -239,7 +314,80 @@ export default function PaymentProofs() {
     return label ? (isEs ? label.es : label.en) : svcType;
   };
 
-  // --- Confirm modal ---
+  // --- Upload helper ---
+  const uploadFile = async (file: File, oblId: string): Promise<string | null> => {
+    if (!user) return null;
+    const ext = file.name.split(".").pop();
+    const path = `${user.id}/${oblId}/${Date.now()}.${ext}`;
+    const { error } = await supabase.storage.from("documents").upload(path, file);
+    if (error) throw error;
+    return path; // Store the path, not the public URL
+  };
+
+  // --- Signed URL helper for viewing files ---
+  const getSignedUrl = async (filePathOrUrl: string): Promise<string> => {
+    // If it's already a full URL with /object/public/, extract bucket and path
+    const publicMatch = filePathOrUrl.match(/\/storage\/v1\/object\/public\/([^/]+)\/(.+)/);
+    if (publicMatch) {
+      const [, bucket, path] = publicMatch;
+      const { data } = await supabase.storage.from(bucket).createSignedUrl(path, 300);
+      return data?.signedUrl || filePathOrUrl;
+    }
+    // If it's already a signed URL or external URL, return as is
+    if (filePathOrUrl.startsWith("http")) {
+      // Try to extract bucket/path from any supabase storage URL
+      const storageMatch = filePathOrUrl.match(/\/storage\/v1\/(?:object|s3)\/[^/]+\/([^/]+)\/(.+)/);
+      if (storageMatch) {
+        const [, bucket, path] = storageMatch;
+        const { data } = await supabase.storage.from(bucket).createSignedUrl(path, 300);
+        return data?.signedUrl || filePathOrUrl;
+      }
+      return filePathOrUrl;
+    }
+    // It's a relative path, assume proof-files bucket first, then documents
+    const { data } = await supabase.storage.from("proof-files").createSignedUrl(filePathOrUrl, 300);
+    if (data?.signedUrl) return data.signedUrl;
+    const { data: data2 } = await supabase.storage.from("documents").createSignedUrl(filePathOrUrl, 300);
+    return data2?.signedUrl || filePathOrUrl;
+  };
+
+  const openFiles = async (files: string[]) => {
+    setViewFiles(files);
+    setFilesOpen(true);
+    // Generate signed URLs
+    const urls = await Promise.all(files.map((f) => getSignedUrl(f)));
+    setSignedUrls(urls);
+  };
+
+  // --- Sync obligation status in DB after payment changes ---
+  const syncOblStatus = async (oblId: string) => {
+    const obl = obligations.find((o) => o.id === oblId);
+    if (!obl) return;
+
+    // Re-fetch payments for this obligation
+    const { data: payments } = await supabase
+      .from("payments")
+      .select("amount")
+      .eq("obligation_id", oblId);
+
+    const totalPaid = (payments || []).reduce((s, p) => s + Number(p.amount), 0);
+    const expected = obl.expected_amount ?? 0;
+    const balanceDue = Math.max(expected - totalPaid, 0);
+
+    let newStatus: string;
+    if (obl.kind === "rent") {
+      newStatus = deriveRentStatus(totalPaid, balanceDue, obl.due_date);
+    } else {
+      newStatus = deriveServiceStatus(obl.payment_proofs, obl.due_date);
+    }
+
+    await supabase
+      .from("obligations")
+      .update({ status: newStatus })
+      .eq("id", oblId);
+  };
+
+  // --- Confirm modal (approve proof + register payment) ---
   const openConfirm = (obl: Obligation) => {
     setConfirmObl(obl);
     setConfirmDate(new Date().toISOString().split("T")[0]);
@@ -261,15 +409,6 @@ export default function PaymentProofs() {
     setConfirmFile(file);
   };
 
-  const uploadAttachment = async (oblId: string): Promise<string | null> => {
-    if (!confirmFile || !user) return null;
-    const ext = confirmFile.name.split(".").pop();
-    const path = `${user.id}/${oblId}/${Date.now()}.${ext}`;
-    const { error } = await supabase.storage.from("documents").upload(path, confirmFile);
-    if (error) throw error;
-    return supabase.storage.from("documents").getPublicUrl(path).data.publicUrl;
-  };
-
   const handleConfirm = async () => {
     if (!confirmObl) return;
     const amount = parseFloat(confirmAmount);
@@ -281,7 +420,7 @@ export default function PaymentProofs() {
     try {
       let attachmentUrl: string | null = null;
       if (confirmFile) {
-        attachmentUrl = await uploadAttachment(confirmObl.id);
+        attachmentUrl = await uploadFile(confirmFile, confirmObl.id);
       }
 
       // Approve linked payment proof if exists
@@ -292,62 +431,122 @@ export default function PaymentProofs() {
           .eq("id", confirmObl.payment_proof_id);
       }
 
-      // Derive obligation status from actual balance
-      let newOblStatus = "confirmed";
+      // Create payment record in the new payments table
+      await supabase.from("payments").insert({
+        obligation_id: confirmObl.id,
+        amount,
+        paid_at: confirmDate,
+        method: confirmMethod,
+        notes: confirmNotes || null,
+        attachment_url: attachmentUrl,
+      });
 
-      if (confirmObl.kind === "rent") {
-        const { data: rentDue } = await supabase
-          .from("rent_dues")
-          .select("id, expected_amount")
-          .eq("contract_id", confirmObl.contract_id)
-          .eq("period_month", confirmObl.period)
-          .maybeSingle();
-
-        if (rentDue) {
-          await supabase.from("rent_payments").insert({
-            rent_due_id: rentDue.id,
-            payment_date: confirmDate,
-            amount,
-            method: confirmMethod,
-            receipt_file_url: attachmentUrl,
-            notes: confirmNotes || null,
-          });
-
-          // Recalculate balance
-          const { data: payments } = await supabase
-            .from("rent_payments")
-            .select("amount")
-            .eq("rent_due_id", rentDue.id);
-
-          const newTotal = (payments || []).reduce((s, p) => s + Number(p.amount), 0);
-          const newBalance = Math.max(rentDue.expected_amount - newTotal, 0);
-
-          await supabase
-            .from("rent_dues")
-            .update({ status: newBalance <= 0 ? "paid" : "partial", balance_due: newBalance })
-            .eq("id", rentDue.id);
-
-          // Derive obligation status from balance
-          if (newBalance <= 0) {
-            newOblStatus = "confirmed";
-          } else if (newTotal > 0) {
-            newOblStatus = "awaiting_review";
-          } else {
-            newOblStatus = "pending_send";
-          }
-        }
+      // For services: copy proof amount to expected_amount if null
+      if (confirmObl.kind === "service" && !confirmObl.expected_amount && confirmObl.payment_proofs?.amount) {
+        await supabase
+          .from("obligations")
+          .update({ expected_amount: confirmObl.payment_proofs.amount })
+          .eq("id", confirmObl.id);
       }
 
-      await supabase
-        .from("obligations")
-        .update({ status: newOblStatus })
-        .eq("id", confirmObl.id);
+      // Sync obligation status based on actual payments
+      await syncOblStatus(confirmObl.id);
 
       toast({ title: t("obligations.proofApproved") });
       setConfirmOpen(false);
       fetchObligations();
     } catch (err) {
       console.error("Confirm error:", err);
+      toast({ title: t("common.error"), variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // --- Register payment modal (manual, no proof needed) ---
+  const openRegisterPayment = (obl: Obligation) => {
+    setPayObl(obl);
+    setPayDate(new Date().toISOString().split("T")[0]);
+    setPayAmount(String(obl.balance_due > 0 ? obl.balance_due : obl.expected_amount ?? 0));
+    setPayMethod("transfer");
+    setPayNotes("");
+    setPayFile(null);
+    setPayOpen(true);
+  };
+
+  const handlePayFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ title: t("common.error"), description: t("rent.fileTooLarge"), variant: "destructive" });
+      return;
+    }
+    setPayFile(file);
+  };
+
+  const handleRegisterPayment = async () => {
+    if (!payObl) return;
+    const amount = parseFloat(payAmount);
+    if (isNaN(amount) || amount <= 0) {
+      toast({ title: t("common.error"), description: t("rent.validAmount"), variant: "destructive" });
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      let attachmentUrl: string | null = null;
+      if (payFile) {
+        attachmentUrl = await uploadFile(payFile, payObl.id);
+      }
+
+      await supabase.from("payments").insert({
+        obligation_id: payObl.id,
+        amount,
+        paid_at: payDate,
+        method: payMethod,
+        notes: payNotes || null,
+        attachment_url: attachmentUrl,
+      });
+
+      await syncOblStatus(payObl.id);
+
+      toast({ title: isEs ? "Pago registrado" : "Payment recorded" });
+      setPayOpen(false);
+      fetchObligations();
+    } catch (err) {
+      console.error("Register payment error:", err);
+      toast({ title: t("common.error"), variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // --- View payments ---
+  const openViewPayments = (obl: Obligation) => {
+    setViewPayObl(obl);
+    setViewPayOpen(true);
+  };
+
+  // --- Delete payment ---
+  const handleDeletePayment = async () => {
+    if (!deletePayId || !deletePayOblId) return;
+    setIsSubmitting(true);
+    try {
+      await supabase.from("payments").delete().eq("id", deletePayId);
+      await syncOblStatus(deletePayOblId);
+
+      toast({ title: isEs ? "Pago eliminado" : "Payment deleted" });
+      setDeletePayId(null);
+      setDeletePayOblId(null);
+      fetchObligations();
+      // Also refresh view payments modal
+      if (viewPayObl && viewPayObl.id === deletePayOblId) {
+        const { data: updated } = await supabase
+          .from("payments")
+          .select("*")
+          .eq("obligation_id", deletePayOblId);
+        setViewPayObl({ ...viewPayObl, payments: (updated || []) as Payment[] });
+      }
+    } catch {
       toast({ title: t("common.error"), variant: "destructive" });
     } finally {
       setIsSubmitting(false);
@@ -391,12 +590,6 @@ export default function PaymentProofs() {
     }
   };
 
-  // --- Files dialog ---
-  const openFiles = (files: string[]) => {
-    setViewFiles(files);
-    setFilesOpen(true);
-  };
-
   // --- Render ---
   if (loading) {
     return (
@@ -407,8 +600,7 @@ export default function PaymentProofs() {
   }
 
   const renderRentRow = (obl: Obligation) => {
-    const totalPaid = obl.total_paid ?? 0;
-    const balanceDue = obl.balance_due ?? (obl.expected_amount ? obl.expected_amount - totalPaid : 0);
+    const showActions = ["pending_send", "awaiting_review", "rejected", "partial"].includes(obl.display_status);
 
     return (
       <TableRow key={obl.id}>
@@ -425,35 +617,52 @@ export default function PaymentProofs() {
           {obl.expected_amount ? formatCurrency(obl.expected_amount, obl.currency) : "—"}
         </TableCell>
         <TableCell className="text-right">
-          <span className={totalPaid > 0 ? "font-semibold text-success" : "text-muted-foreground"}>
-            {formatCurrency(totalPaid, obl.currency)}
+          <span className={obl.total_paid > 0 ? "font-semibold text-success" : "text-muted-foreground"}>
+            {formatCurrency(obl.total_paid, obl.currency)}
           </span>
         </TableCell>
         <TableCell className="text-right">
-          <span className={balanceDue > 0 ? "font-semibold text-warning" : "text-muted-foreground"}>
-            {formatCurrency(balanceDue, obl.currency)}
+          <span className={obl.balance_due > 0 ? "font-semibold text-warning" : "text-muted-foreground"}>
+            {formatCurrency(obl.balance_due, obl.currency)}
           </span>
         </TableCell>
         <TableCell>
-          <StatusBadge variant={obl.status as any} />
+          <StatusBadge variant={obl.display_status as any} />
           {obl.payment_proofs?.rejection_reason && (
             <p className="text-xs text-destructive mt-1">{obl.payment_proofs.rejection_reason}</p>
           )}
         </TableCell>
         <TableCell className="text-right">
-          <div className="flex items-center justify-end gap-1">
+          <div className="flex items-center justify-end gap-1 flex-wrap">
+            {/* View files */}
             {obl.payment_proofs?.files && obl.payment_proofs.files.length > 0 && (
-              <Button size="sm" variant="ghost" onClick={() => openFiles(obl.payment_proofs!.files)}>
+              <Button size="sm" variant="ghost" onClick={() => openFiles(obl.payment_proofs!.files)} title={isEs ? "Ver adjuntos" : "View attachments"}>
                 <Eye className="w-4 h-4" />
               </Button>
             )}
-            {["pending_send", "awaiting_review", "rejected"].includes(obl.status) && (
+            {/* View payments */}
+            {obl.payments.length > 0 && (
+              <Button size="sm" variant="ghost" onClick={() => openViewPayments(obl)} title={isEs ? "Ver pagos" : "View payments"}>
+                <List className="w-4 h-4 mr-1" />
+                {obl.payments.length}
+              </Button>
+            )}
+            {/* Register manual payment */}
+            {obl.balance_due > 0 && (
+              <Button size="sm" variant="outline" onClick={() => openRegisterPayment(obl)}>
+                <Plus className="w-4 h-4 mr-1" />
+                {isEs ? "Registrar pago" : "Record payment"}
+              </Button>
+            )}
+            {/* Confirm (approve proof) */}
+            {obl.display_status === "awaiting_review" && (
               <Button size="sm" variant="outline" className="text-success" onClick={() => openConfirm(obl)}>
                 <CheckCircle className="w-4 h-4 mr-1" />
                 {t("obligations.confirm")}
               </Button>
             )}
-            {obl.status === "awaiting_review" && (
+            {/* Reject */}
+            {obl.display_status === "awaiting_review" && (
               <Button size="sm" variant="outline" className="text-destructive" onClick={() => openReject(obl)}>
                 <XCircle className="w-4 h-4 mr-1" />
                 {t("obligations.reject")}
@@ -465,50 +674,55 @@ export default function PaymentProofs() {
     );
   };
 
-  const renderServiceRow = (obl: Obligation) => (
-    <TableRow key={obl.id}>
-      <TableCell>
-        <div className="flex items-center gap-2">
-          <Building2 className="w-4 h-4 text-primary shrink-0" />
-          <span className="font-medium">{obl.properties?.internal_identifier}</span>
-        </div>
-      </TableCell>
-      <TableCell className="text-muted-foreground">{obl.tenants?.full_name}</TableCell>
-      <TableCell className="capitalize">{getServiceLabel(obl.service_type)}</TableCell>
-      <TableCell className="capitalize">{formatMonth(obl.period)}</TableCell>
-      <TableCell>{formatDate(obl.due_date)}</TableCell>
-      <TableCell className="text-right font-semibold">
-        {obl.expected_amount ? formatCurrency(obl.expected_amount, obl.currency) : "—"}
-      </TableCell>
-      <TableCell>
-        <StatusBadge variant={obl.status as any} />
-        {obl.payment_proofs?.rejection_reason && (
-          <p className="text-xs text-destructive mt-1">{obl.payment_proofs.rejection_reason}</p>
-        )}
-      </TableCell>
-      <TableCell className="text-right">
-        <div className="flex items-center justify-end gap-1">
-          {obl.payment_proofs?.files && obl.payment_proofs.files.length > 0 && (
-            <Button size="sm" variant="ghost" onClick={() => openFiles(obl.payment_proofs!.files)}>
-              <Eye className="w-4 h-4" />
-            </Button>
+  const renderServiceRow = (obl: Obligation) => {
+    // Show amount: expected_amount or proof amount as fallback
+    const displayAmount = obl.expected_amount ?? obl.payment_proofs?.amount ?? null;
+
+    return (
+      <TableRow key={obl.id}>
+        <TableCell>
+          <div className="flex items-center gap-2">
+            <Building2 className="w-4 h-4 text-primary shrink-0" />
+            <span className="font-medium">{obl.properties?.internal_identifier}</span>
+          </div>
+        </TableCell>
+        <TableCell className="text-muted-foreground">{obl.tenants?.full_name}</TableCell>
+        <TableCell className="capitalize">{getServiceLabel(obl.service_type)}</TableCell>
+        <TableCell className="capitalize">{formatMonth(obl.period)}</TableCell>
+        <TableCell>{formatDate(obl.due_date)}</TableCell>
+        <TableCell className="text-right font-semibold">
+          {displayAmount ? formatCurrency(displayAmount, obl.currency) : "—"}
+        </TableCell>
+        <TableCell>
+          <StatusBadge variant={obl.display_status as any} />
+          {obl.payment_proofs?.rejection_reason && (
+            <p className="text-xs text-destructive mt-1">{obl.payment_proofs.rejection_reason}</p>
           )}
-          {["pending_send", "awaiting_review", "rejected"].includes(obl.status) && (
-            <Button size="sm" variant="outline" className="text-success" onClick={() => openConfirm(obl)}>
-              <CheckCircle className="w-4 h-4 mr-1" />
-              {t("obligations.confirm")}
-            </Button>
-          )}
-          {obl.status === "awaiting_review" && (
-            <Button size="sm" variant="outline" className="text-destructive" onClick={() => openReject(obl)}>
-              <XCircle className="w-4 h-4 mr-1" />
-              {t("obligations.reject")}
-            </Button>
-          )}
-        </div>
-      </TableCell>
-    </TableRow>
-  );
+        </TableCell>
+        <TableCell className="text-right">
+          <div className="flex items-center justify-end gap-1">
+            {obl.payment_proofs?.files && obl.payment_proofs.files.length > 0 && (
+              <Button size="sm" variant="ghost" onClick={() => openFiles(obl.payment_proofs!.files)}>
+                <Eye className="w-4 h-4" />
+              </Button>
+            )}
+            {["pending_send", "awaiting_review", "rejected"].includes(obl.display_status) && (
+              <Button size="sm" variant="outline" className="text-success" onClick={() => openConfirm(obl)}>
+                <CheckCircle className="w-4 h-4 mr-1" />
+                {t("obligations.confirm")}
+              </Button>
+            )}
+            {obl.display_status === "awaiting_review" && (
+              <Button size="sm" variant="outline" className="text-destructive" onClick={() => openReject(obl)}>
+                <XCircle className="w-4 h-4 mr-1" />
+                {t("obligations.reject")}
+              </Button>
+            )}
+          </div>
+        </TableCell>
+      </TableRow>
+    );
+  };
 
   return (
     <div>
@@ -607,7 +821,7 @@ export default function PaymentProofs() {
         </Card>
       )}
 
-      {/* Confirm Payment Modal */}
+      {/* Confirm Payment Modal (approve proof) */}
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col p-0">
           <DialogHeader className="px-6 pt-6 pb-4 border-b flex-shrink-0">
@@ -630,18 +844,10 @@ export default function PaymentProofs() {
                 <Label>{t("rent.paymentDate")} *</Label>
                 <Input type="date" value={confirmDate} onChange={(e) => setConfirmDate(e.target.value)} />
               </div>
-
               <div className="space-y-2">
                 <Label>{t("rent.amount")} *</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={confirmAmount}
-                  onChange={(e) => setConfirmAmount(e.target.value)}
-                />
+                <Input type="number" step="0.01" min="0" value={confirmAmount} onChange={(e) => setConfirmAmount(e.target.value)} />
               </div>
-
               <div className="space-y-2">
                 <Label>{t("rent.method")} *</Label>
                 <Select value={confirmMethod} onValueChange={setConfirmMethod}>
@@ -649,64 +855,209 @@ export default function PaymentProofs() {
                   <SelectContent>
                     <SelectItem value="transfer">{t("rent.transfer")}</SelectItem>
                     <SelectItem value="cash">{t("rent.cash")}</SelectItem>
-                    <SelectItem value="other">{t("obligations.otherMethod")}</SelectItem>
+                    <SelectItem value="other">{isEs ? "Otro" : "Other"}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-
               <div className="space-y-2">
                 <Label>{t("rent.notesOptional")}</Label>
-                <Textarea
-                  value={confirmNotes}
-                  onChange={(e) => setConfirmNotes(e.target.value)}
-                  placeholder={t("rent.addNotes")}
-                  rows={2}
-                />
+                <Textarea value={confirmNotes} onChange={(e) => setConfirmNotes(e.target.value)} placeholder={t("rent.addNotes")} rows={2} />
               </div>
-
               <div className="space-y-2">
                 <Label>{t("obligations.attachOptional")}</Label>
                 {confirmFile ? (
                   <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
                     <FileText className="w-5 h-5 text-muted-foreground" />
                     <span className="flex-1 text-sm truncate">{confirmFile.name}</span>
-                    <Button type="button" variant="ghost" size="sm" onClick={() => {
-                      setConfirmFile(null);
-                      if (confirmFileRef.current) confirmFileRef.current.value = "";
-                    }}>
+                    <Button type="button" variant="ghost" size="sm" onClick={() => { setConfirmFile(null); if (confirmFileRef.current) confirmFileRef.current.value = ""; }}>
                       <X className="w-4 h-4" />
                     </Button>
                   </div>
                 ) : (
-                  <div
-                    className="border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:border-primary/50 transition-colors"
-                    onClick={() => confirmFileRef.current?.click()}
-                  >
+                  <div className="border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:border-primary/50 transition-colors" onClick={() => confirmFileRef.current?.click()}>
                     <Upload className="w-6 h-6 mx-auto mb-1 text-muted-foreground" />
                     <p className="text-sm text-muted-foreground">{t("rent.clickUpload")}</p>
                   </div>
                 )}
-                <input
-                  ref={confirmFileRef}
-                  type="file"
-                  className="hidden"
-                  accept=".pdf,.jpg,.jpeg,.png,.webp"
-                  onChange={handleConfirmFileChange}
-                />
+                <input ref={confirmFileRef} type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png,.webp" onChange={handleConfirmFileChange} />
               </div>
             </div>
           </div>
 
           <DialogFooter className="px-6 py-4 border-t flex-shrink-0">
-            <Button variant="outline" onClick={() => setConfirmOpen(false)} disabled={isSubmitting}>
-              {t("common.cancel")}
-            </Button>
+            <Button variant="outline" onClick={() => setConfirmOpen(false)} disabled={isSubmitting}>{t("common.cancel")}</Button>
             <Button onClick={handleConfirm} disabled={isSubmitting}>
               {isSubmitting ? t("common.saving") : t("obligations.confirmPaymentTitle")}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Register Payment Modal (manual) */}
+      <Dialog open={payOpen} onOpenChange={setPayOpen}>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col p-0">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b flex-shrink-0">
+            <DialogTitle>{isEs ? "Registrar pago" : "Record Payment"}</DialogTitle>
+            <DialogDescription>
+              {payObl && (
+                <>
+                  {payObl.properties?.internal_identifier} – {formatMonth(payObl.period)}
+                  {payObl.balance_due > 0 && (
+                    <span className="ml-2 text-warning font-medium">
+                      {isEs ? "Saldo:" : "Balance:"} {formatCurrency(payObl.balance_due, payObl.currency)}
+                    </span>
+                  )}
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto px-6 py-4">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>{t("rent.paymentDate")} *</Label>
+                <Input type="date" value={payDate} onChange={(e) => setPayDate(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>{t("rent.amount")} *</Label>
+                <Input type="number" step="0.01" min="0" value={payAmount} onChange={(e) => setPayAmount(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>{t("rent.method")} *</Label>
+                <Select value={payMethod} onValueChange={setPayMethod}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="transfer">{t("rent.transfer")}</SelectItem>
+                    <SelectItem value="cash">{t("rent.cash")}</SelectItem>
+                    <SelectItem value="other">{isEs ? "Otro" : "Other"}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>{t("rent.notesOptional")}</Label>
+                <Textarea value={payNotes} onChange={(e) => setPayNotes(e.target.value)} placeholder={t("rent.addNotes")} rows={2} />
+              </div>
+              <div className="space-y-2">
+                <Label>{t("obligations.attachOptional")}</Label>
+                {payFile ? (
+                  <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
+                    <FileText className="w-5 h-5 text-muted-foreground" />
+                    <span className="flex-1 text-sm truncate">{payFile.name}</span>
+                    <Button type="button" variant="ghost" size="sm" onClick={() => { setPayFile(null); if (payFileRef.current) payFileRef.current.value = ""; }}>
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:border-primary/50 transition-colors" onClick={() => payFileRef.current?.click()}>
+                    <Upload className="w-6 h-6 mx-auto mb-1 text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">{t("rent.clickUpload")}</p>
+                  </div>
+                )}
+                <input ref={payFileRef} type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png,.webp" onChange={handlePayFileChange} />
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="px-6 py-4 border-t flex-shrink-0">
+            <Button variant="outline" onClick={() => setPayOpen(false)} disabled={isSubmitting}>{t("common.cancel")}</Button>
+            <Button onClick={handleRegisterPayment} disabled={isSubmitting}>
+              {isSubmitting ? t("common.saving") : (isEs ? "Registrar pago" : "Record Payment")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Payments Modal */}
+      <Dialog open={viewPayOpen} onOpenChange={setViewPayOpen}>
+        <DialogContent className="sm:max-w-[700px]">
+          <DialogHeader>
+            <DialogTitle>{isEs ? "Historial de pagos" : "Payment History"}</DialogTitle>
+            <DialogDescription>
+              {viewPayObl && (
+                <>
+                  {viewPayObl.properties?.internal_identifier} – {formatMonth(viewPayObl.period)}
+                  {viewPayObl.expected_amount && (
+                    <> | {isEs ? "Esperado:" : "Expected:"} {formatCurrency(viewPayObl.expected_amount, viewPayObl.currency)}</>
+                  )}
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          {viewPayObl && viewPayObl.payments.length > 0 ? (
+            <div className="space-y-3">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t("rent.paymentDate")}</TableHead>
+                    <TableHead className="text-right">{t("rent.amount")}</TableHead>
+                    <TableHead>{t("rent.method")}</TableHead>
+                    <TableHead>{isEs ? "Notas" : "Notes"}</TableHead>
+                    <TableHead className="text-right"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {viewPayObl.payments
+                    .sort((a, b) => new Date(a.paid_at).getTime() - new Date(b.paid_at).getTime())
+                    .map((p) => (
+                      <TableRow key={p.id}>
+                        <TableCell>{formatDate(p.paid_at)}</TableCell>
+                        <TableCell className="text-right font-semibold">
+                          {formatCurrency(p.amount, viewPayObl.currency)}
+                        </TableCell>
+                        <TableCell className="capitalize">{p.method}</TableCell>
+                        <TableCell className="text-muted-foreground text-sm">{p.notes || "—"}</TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-destructive"
+                            onClick={() => { setDeletePayId(p.id); setDeletePayOblId(viewPayObl.id); }}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                </TableBody>
+              </Table>
+              <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
+                <span className="font-medium">{isEs ? "Total pagado" : "Total paid"}</span>
+                <span className="font-bold text-success">
+                  {formatCurrency(viewPayObl.total_paid, viewPayObl.currency)}
+                </span>
+              </div>
+              {viewPayObl.balance_due > 0 && (
+                <div className="flex justify-between items-center p-3 bg-warning/10 rounded-lg">
+                  <span className="font-medium text-warning">{isEs ? "Saldo pendiente" : "Balance due"}</span>
+                  <span className="font-bold text-warning">
+                    {formatCurrency(viewPayObl.balance_due, viewPayObl.currency)}
+                  </span>
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-muted-foreground text-center py-6">{isEs ? "Sin pagos registrados" : "No payments recorded"}</p>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Payment Confirmation */}
+      <AlertDialog open={!!deletePayId} onOpenChange={(open) => { if (!open) { setDeletePayId(null); setDeletePayOblId(null); } }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{isEs ? "Eliminar pago" : "Delete Payment"}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {isEs ? "¿Estás seguro? Esta acción no se puede deshacer y recalculará el saldo de la obligación." : "Are you sure? This action cannot be undone and will recalculate the obligation balance."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeletePayment} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {isSubmitting ? t("common.saving") : (isEs ? "Eliminar" : "Delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Reject Modal */}
       <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>
@@ -717,17 +1068,10 @@ export default function PaymentProofs() {
           </DialogHeader>
           <div className="space-y-2">
             <Label>{t("obligations.reason")} *</Label>
-            <Textarea
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-              placeholder={t("obligations.reasonPlaceholder")}
-              rows={3}
-            />
+            <Textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder={t("obligations.reasonPlaceholder")} rows={3} />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setRejectOpen(false)} disabled={isSubmitting}>
-              {t("common.cancel")}
-            </Button>
+            <Button variant="outline" onClick={() => setRejectOpen(false)} disabled={isSubmitting}>{t("common.cancel")}</Button>
             <Button variant="destructive" onClick={handleReject} disabled={isSubmitting}>
               {isSubmitting ? t("common.saving") : t("obligations.reject")}
             </Button>
@@ -735,30 +1079,42 @@ export default function PaymentProofs() {
         </DialogContent>
       </Dialog>
 
-      {/* Files dialog */}
-      <Dialog open={filesOpen} onOpenChange={setFilesOpen}>
+      {/* Files dialog with signed URLs */}
+      <Dialog open={filesOpen} onOpenChange={(open) => { setFilesOpen(open); if (!open) setSignedUrls([]); }}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>{t("obligations.attachments")}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4">
-            {viewFiles.map((url, i) => (
-              <div key={i}>
-                {url.match(/\.(jpg|jpeg|png)$/i) ? (
-                  <img src={url} alt={`Attachment ${i + 1}`} className="w-full rounded-lg border" />
-                ) : (
-                  <a
-                    href={url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 p-3 rounded-lg border hover:bg-muted"
-                  >
-                    <FileCheck className="w-5 h-5 text-primary" />
-                    <span className="text-sm">{t("obligations.file", { num: i + 1 })}</span>
-                  </a>
-                )}
+            {viewFiles.map((originalUrl, i) => {
+              const url = signedUrls[i] || originalUrl;
+              const isImage = url.match(/\.(jpg|jpeg|png|webp)($|\?)/i) || originalUrl.match(/\.(jpg|jpeg|png|webp)($|\?)/i);
+              return (
+                <div key={i}>
+                  {isImage ? (
+                    <a href={url} target="_blank" rel="noopener noreferrer">
+                      <img src={url} alt={`Attachment ${i + 1}`} className="w-full rounded-lg border cursor-pointer hover:opacity-90 transition-opacity" />
+                    </a>
+                  ) : (
+                    <a
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 p-3 rounded-lg border hover:bg-muted"
+                    >
+                      <FileCheck className="w-5 h-5 text-primary" />
+                      <span className="text-sm">{isEs ? `Archivo ${i + 1}` : `File ${i + 1}`}</span>
+                    </a>
+                  )}
+                </div>
+              );
+            })}
+            {signedUrls.length === 0 && viewFiles.length > 0 && (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                <span className="ml-2 text-sm text-muted-foreground">{isEs ? "Cargando..." : "Loading..."}</span>
               </div>
-            ))}
+            )}
           </div>
         </DialogContent>
       </Dialog>

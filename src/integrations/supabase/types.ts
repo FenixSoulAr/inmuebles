@@ -503,6 +503,47 @@ export type Database = {
           },
         ]
       }
+      payments: {
+        Row: {
+          amount: number
+          attachment_url: string | null
+          created_at: string
+          id: string
+          method: string
+          notes: string | null
+          obligation_id: string
+          paid_at: string
+        }
+        Insert: {
+          amount: number
+          attachment_url?: string | null
+          created_at?: string
+          id?: string
+          method?: string
+          notes?: string | null
+          obligation_id: string
+          paid_at?: string
+        }
+        Update: {
+          amount?: number
+          attachment_url?: string | null
+          created_at?: string
+          id?: string
+          method?: string
+          notes?: string | null
+          obligation_id?: string
+          paid_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_obligation_id_fkey"
+            columns: ["obligation_id"]
+            isOneToOne: false
+            referencedRelation: "obligations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
