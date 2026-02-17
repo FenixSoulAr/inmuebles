@@ -63,9 +63,11 @@ interface RentDue {
     full_name: string;
   };
   rent_payments?: RentPayment[];
+  obligation_status?: string; // from obligations table
 }
 
 // Compute derived values for a rent due
+// Uses obligation_status as source of truth when available
 function computeRentDueStatus(rentDue: RentDue): {
   totalPaid: number;
   balanceDue: number;
@@ -75,6 +77,15 @@ function computeRentDueStatus(rentDue: RentDue): {
   const totalPaid = payments.reduce((sum, p) => sum + Number(p.amount), 0);
   const balanceDue = Math.max(rentDue.expected_amount - totalPaid, 0);
 
+  // Use obligation status as source of truth
+  if (rentDue.obligation_status) {
+    const oblStatus = rentDue.obligation_status;
+    if (oblStatus === "paid_confirmed") return { totalPaid, balanceDue: 0, derivedStatus: "paid" };
+    if (oblStatus === "awaiting_review") return { totalPaid, balanceDue, derivedStatus: "awaiting_review" };
+    if (oblStatus === "rejected") return { totalPaid, balanceDue, derivedStatus: "overdue" };
+  }
+
+  // Fallback for obligations without status
   let derivedStatus: string;
   if (totalPaid >= rentDue.expected_amount) {
     derivedStatus = "paid";
@@ -168,14 +179,37 @@ export default function Rent() {
 
       if (error) throw error;
 
+      // Fetch obligation statuses for these rent_dues
+      const oblContractIds = [...new Set((data || []).map((rd: any) => rd.contract_id))];
+      const oblPeriods = [...new Set((data || []).map((rd: any) => rd.period_month))];
+      
+      let oblMap = new Map<string, string>();
+      if (oblContractIds.length > 0) {
+        const { data: oblData } = await supabase
+          .from("obligations")
+          .select("contract_id, period, status")
+          .in("contract_id", oblContractIds)
+          .in("period", oblPeriods)
+          .eq("kind", "rent");
+        
+        if (oblData) {
+          for (const o of oblData) {
+            oblMap.set(`${o.contract_id}|${o.period}`, o.status);
+          }
+        }
+      }
+
       // Additional client-side filter: exclude periods beyond contract endDate
       const contractEndMap = new Map(activeContracts.map((c) => [c.id, c.end_date]));
-      const filtered = (data || []).filter((rd) => {
+      const filtered = (data || []).filter((rd: any) => {
         const endDate = contractEndMap.get(rd.contract_id);
         if (!endDate) return false;
-        const endPeriod = endDate.substring(0, 7); // YYYY-MM
+        const endPeriod = endDate.substring(0, 7);
         return rd.period_month <= endPeriod;
-      });
+      }).map((rd: any) => ({
+        ...rd,
+        obligation_status: oblMap.get(`${rd.contract_id}|${rd.period_month}`) || null,
+      }));
 
       setRentDues(filtered);
     } catch (error) {
@@ -343,9 +377,8 @@ export default function Rent() {
 
       if (updateError) throw updateError;
 
-      // Sync obligation status when rent is fully paid
-      if (newStatus === "paid") {
-        // Find the matching obligation for this contract/period
+      // Sync obligation status - set to awaiting_review (pending confirmation)
+      {
         const { data: matchingObl } = await supabase
           .from("obligations")
           .select("id, payment_proof_id")
@@ -357,16 +390,8 @@ export default function Rent() {
         if (matchingObl) {
           await supabase
             .from("obligations")
-            .update({ status: "approved" })
+            .update({ status: "awaiting_review" })
             .eq("id", matchingObl.id);
-
-          // Also approve linked payment proof if exists
-          if (matchingObl.payment_proof_id) {
-            await supabase
-              .from("payment_proofs")
-              .update({ status: "approved" })
-              .eq("id", matchingObl.payment_proof_id);
-          }
         }
       }
 
@@ -464,6 +489,7 @@ export default function Rent() {
           <SelectContent>
             <SelectItem value="all">{t("common.allStatus")}</SelectItem>
             <SelectItem value="paid">{t("rent.paid")}</SelectItem>
+            <SelectItem value="awaiting_review">{t("obligations.pendingConfirmation")}</SelectItem>
             <SelectItem value="partial">{t("rent.partial")}</SelectItem>
             <SelectItem value="overdue">{t("rent.overdue")}</SelectItem>
             <SelectItem value="due">{t("rent.due")}</SelectItem>

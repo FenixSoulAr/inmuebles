@@ -149,16 +149,38 @@ export default function PaymentProofs() {
   };
 
   const handleApprove = async (obl: Obligation) => {
-    if (!obl.payment_proof_id) return;
     try {
-      await supabase
-        .from("payment_proofs")
-        .update({ status: "approved" })
-        .eq("id", obl.payment_proof_id);
+      // Update obligation to paid_confirmed
       await supabase
         .from("obligations")
-        .update({ status: "approved" })
+        .update({ status: "paid_confirmed" })
         .eq("id", obl.id);
+
+      // Approve linked payment proof if exists
+      if (obl.payment_proof_id) {
+        await supabase
+          .from("payment_proofs")
+          .update({ status: "approved" })
+          .eq("id", obl.payment_proof_id);
+      }
+
+      // Sync rent_dues: mark as paid if this is a rent obligation
+      if (obl.kind === "rent") {
+        const { data: rentDue } = await supabase
+          .from("rent_dues")
+          .select("id")
+          .eq("contract_id", obl.contract_id)
+          .eq("period_month", obl.period)
+          .maybeSingle();
+
+        if (rentDue) {
+          await supabase
+            .from("rent_dues")
+            .update({ status: "paid", balance_due: 0 })
+            .eq("id", rentDue.id);
+        }
+      }
+
       toast({ title: t("obligations.proofApproved") });
       fetchObligations();
     } catch {
@@ -235,7 +257,7 @@ export default function PaymentProofs() {
     }
     if (activeTab === "pending_send") return filtered.filter((o) => o.status === "pending_send");
     if (activeTab === "awaiting_review") return filtered.filter((o) => o.status === "awaiting_review");
-    if (activeTab === "approved") return filtered.filter((o) => o.status === "approved");
+    if (activeTab === "approved") return filtered.filter((o) => o.status === "paid_confirmed");
     if (activeTab === "rejected") return filtered.filter((o) => o.status === "rejected");
     if (activeTab === "all") return filtered.filter((o) => o.status !== "upcoming");
     return filtered;
@@ -286,13 +308,20 @@ export default function PaymentProofs() {
           )}
           {obl.status === "awaiting_review" && (
             <>
-              <Button size="sm" variant="ghost" className="text-success" onClick={() => handleApprove(obl)}>
+              <Button size="sm" variant="ghost" className="text-success" onClick={() => handleApprove(obl)}
+                title={t("obligations.confirmPayment")}>
                 <CheckCircle className="w-4 h-4" />
               </Button>
               <Button size="sm" variant="ghost" className="text-destructive" onClick={() => openReject(obl)}>
                 <XCircle className="w-4 h-4" />
               </Button>
             </>
+          )}
+          {obl.status === "pending_send" && (
+            <Button size="sm" variant="ghost" className="text-success" onClick={() => handleApprove(obl)}
+              title={t("obligations.confirmPayment")}>
+              <CheckCircle className="w-4 h-4" />
+            </Button>
           )}
         </div>
       </TableCell>
