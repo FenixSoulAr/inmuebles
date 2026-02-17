@@ -21,8 +21,8 @@ export function ContractPublicLink({ contractId, token, tokenStatus, propertyNam
   const { toast } = useToast();
   const [rotating, setRotating] = useState(false);
 
-  const baseUrl = window.location.origin;
-  const publicLink = token ? `${baseUrl}/submit/${token}` : null;
+  const publicDomain = "https://inmuebles.fenixsoular.com.ar";
+  const publicLink = token ? `${publicDomain}/submit/${token}` : null;
   const isActive = tokenStatus === "active" && !!token;
 
   const copyLink = () => {
@@ -34,8 +34,8 @@ export function ContractPublicLink({ contractId, token, tokenStatus, propertyNam
   const copyWhatsApp = () => {
     if (!publicLink) return;
     const msg = isEs
-      ? `Hola ${tenantName}, te comparto el link para enviar tus comprobantes de pago de ${propertyName}:\n${publicLink}`
-      : `Hi ${tenantName}, here's the link to submit your payment proofs for ${propertyName}:\n${publicLink}`;
+      ? `Hola ${tenantName},\n\nte comparto el link para enviar tu comprobante de pago correspondiente a ${propertyName}:\n\n${publicLink}\n\nPodés subir el comprobante de forma simple y segura desde tu celular o computadora.\n\nGracias.`
+      : `Hi ${tenantName},\n\nhere's the link to submit your payment proof for ${propertyName}:\n\n${publicLink}\n\nYou can upload your proof easily and securely from your phone or computer.\n\nThank you.`;
     navigator.clipboard.writeText(msg);
     toast({ title: isEs ? "Mensaje copiado" : "Message copied" });
   };
