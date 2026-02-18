@@ -75,6 +75,10 @@ interface Obligation {
     proof_status: string | null;
     approved_at: string | null;
     approved_by: string | null;
+    proof_waived_reason: string | null;
+    proof_waived_note: string | null;
+    proof_reviewed_by: string | null;
+    proof_reviewed_at: string | null;
   } | null;
   total_paid: number;
   balance_due: number;
@@ -402,6 +406,11 @@ export default function PaymentProofs() {
   // Approve without proof modal
   const [approveNoProofOpen, setApproveNoProofOpen] = useState(false);
   const [approveNoProofObl, setApproveNoProofObl] = useState<Obligation | null>(null);
+  const [waivedReason, setWaivedReason] = useState("cash");
+  const [waivedNote, setWaivedNote] = useState("");
+
+  // Proof filter state (uploaded/waived/required/all)
+  const [proofFilter, setProofFilter] = useState<"all" | "required" | "uploaded" | "waived">("all");
 
   // Register payment modal
   const [payOpen, setPayOpen] = useState(false);
@@ -456,7 +465,7 @@ export default function PaymentProofs() {
           *,
           properties(internal_identifier),
           tenants(full_name),
-          payment_proofs!obligations_payment_proof_id_fkey(id, amount, paid_at, files, status, rejection_reason, comment, proof_status, approved_at, approved_by)
+          payment_proofs!obligations_payment_proof_id_fkey(id, amount, paid_at, files, status, rejection_reason, comment, proof_status, approved_at, approved_by, proof_waived_reason, proof_waived_note, proof_reviewed_by, proof_reviewed_at)
         `)
         .order("period", { ascending: true });
 
@@ -536,13 +545,19 @@ export default function PaymentProofs() {
     return obl.due_date >= periodBounds.from && obl.due_date <= periodBounds.to;
   };
 
-  // Check if an obligation's proof is "missing" (not approved without proof)
-  const isMissingProof = (obl: Obligation): boolean => {
+  // Derive proof_status for an obligation
+  const getProofStatus = (obl: Obligation): "uploaded" | "waived" | "required" => {
     const proofStatus = obl.payment_proofs?.proof_status;
-    if (proofStatus === "approved_without_proof") return false;
-    const hasAttachment = (obl.payments || []).some((p: any) => p.attachment_url);
+    if (proofStatus === "waived" || proofStatus === "approved_without_proof") return "waived";
     const hasProofFile = obl.payment_proofs?.files?.length > 0;
-    return !hasAttachment && !hasProofFile;
+    const hasAttachment = (obl.payments || []).some((p: any) => p.attachment_url);
+    if (proofStatus === "uploaded" || hasProofFile || hasAttachment) return "uploaded";
+    return "required";
+  };
+
+  // Check if an obligation's proof is "missing" (not waived/uploaded)
+  const isMissingProof = (obl: Obligation): boolean => {
+    return getProofStatus(obl) === "required";
   };
 
   const getFiltered = () => {
@@ -581,9 +596,13 @@ export default function PaymentProofs() {
       if (periodBounds) {
         filtered = filtered.filter(isInPeriodFilter);
       }
-      // Apply missing proof filter
+      // Apply missing proof filter (legacy toggle — only "required")
       if (missingProofFilter) {
         filtered = filtered.filter(isMissingProof);
+      }
+      // Apply proof_status filter
+      if (proofFilter !== "all") {
+        filtered = filtered.filter((o) => getProofStatus(o) === proofFilter);
       }
       return filtered;
     }
@@ -624,6 +643,7 @@ export default function PaymentProofs() {
     setDueScope("");
     setPeriodFilter({ preset: "current_month" });
     setMissingProofFilter(false);
+    setProofFilter("all");
   };
 
   // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -758,6 +778,8 @@ export default function PaymentProofs() {
   // ─── Approve without proof ──────────────────────────────────────────────────
   const openApproveNoProof = (obl: Obligation) => {
     setApproveNoProofObl(obl);
+    setWaivedReason("cash");
+    setWaivedNote("");
     setApproveNoProofOpen(true);
   };
 
@@ -765,12 +787,18 @@ export default function PaymentProofs() {
     if (!approveNoProofObl) return;
     setIsSubmitting(true);
     try {
-      // Upsert a payment_proof with proof_status=approved_without_proof
+      const now = new Date().toISOString();
+      const nowDate = now.split("T")[0];
+
       if (approveNoProofObl.payment_proof_id) {
         await supabase.from("payment_proofs")
           .update({
-            proof_status: "approved_without_proof",
-            approved_at: new Date().toISOString(),
+            proof_status: "waived",
+            proof_waived_reason: waivedReason,
+            proof_waived_note: waivedNote || null,
+            proof_reviewed_by: user?.id || null,
+            proof_reviewed_at: now,
+            approved_at: now,
             approved_by: user?.id || null,
           })
           .eq("id", approveNoProofObl.payment_proof_id);
@@ -780,18 +808,24 @@ export default function PaymentProofs() {
           contract_id: approveNoProofObl.contract_id,
           obligation_id: approveNoProofObl.id,
           amount: approveNoProofObl.total_paid || approveNoProofObl.expected_amount || 0,
-          paid_at: new Date().toISOString().split("T")[0],
+          paid_at: nowDate,
           period: approveNoProofObl.period,
           type: "rent",
           files: [],
           status: "approved",
-          proof_status: "approved_without_proof",
-          approved_at: new Date().toISOString(),
+          proof_status: "waived",
+          proof_waived_reason: waivedReason,
+          proof_waived_note: waivedNote || null,
+          proof_reviewed_by: user?.id || null,
+          proof_reviewed_at: now,
+          approved_at: now,
           approved_by: user?.id || null,
         });
       }
-      toast({ title: isEs ? "Aprobado sin comprobante" : "Approved without proof",
-        description: isEs ? "El pago quedó registrado como excepción administrativa." : "Recorded as administrative exception." });
+      toast({
+        title: isEs ? "Comprobante eximido" : "Proof waived",
+        description: isEs ? "El pago quedó registrado como excepción. Desaparecerá de 'Faltantes'." : "Recorded as administrative exception.",
+      });
       setApproveNoProofOpen(false);
       fetchObligations();
     } catch (err) {
@@ -913,10 +947,33 @@ export default function PaymentProofs() {
     );
   }
 
+  const renderProofBadge = (obl: Obligation) => {
+    const ps = getProofStatus(obl);
+    if (ps === "uploaded") {
+      return (
+        <span className="inline-flex items-center gap-1 rounded-full bg-success/10 text-success border border-success/20 px-2.5 py-0.5 text-xs font-medium">
+          Adjunto ✓
+        </span>
+      );
+    }
+    if (ps === "waived") {
+      return (
+        <span className="inline-flex items-center gap-1 rounded-full bg-muted text-muted-foreground border border-border px-2.5 py-0.5 text-xs font-medium">
+          <Ban className="w-3 h-3" /> Eximido
+        </span>
+      );
+    }
+    // required
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-warning/10 text-warning border border-warning/20 px-2.5 py-0.5 text-xs font-medium">
+        Falta
+      </span>
+    );
+  };
+
   const renderRentRow = (obl: Obligation) => {
-    const isCash = (obl.payments || []).some((p) => p.method === "cash");
-    const isConfirmedMissingProof = obl.display_status === "confirmed" && isMissingProof(obl);
-    const isApprovedNoProof = obl.payment_proofs?.proof_status === "approved_without_proof";
+    const ps = getProofStatus(obl);
+    const isConfirmed = obl.display_status === "confirmed";
 
     return (
       <TableRow key={obl.id}>
@@ -944,13 +1001,15 @@ export default function PaymentProofs() {
         </TableCell>
         <TableCell>
           <StatusBadge variant={obl.display_status as any} />
-          {isApprovedNoProof && (
-            <span className="block text-xs text-muted-foreground mt-1 flex items-center gap-1">
-              <Ban className="w-3 h-3" /> Sin comprobante (aprobado)
-            </span>
-          )}
           {obl.payment_proofs?.rejection_reason && (
             <p className="text-xs text-destructive mt-1">{obl.payment_proofs.rejection_reason}</p>
+          )}
+        </TableCell>
+        {/* Comprobante badge column */}
+        <TableCell>
+          {isConfirmed ? renderProofBadge(obl) : <span className="text-muted-foreground text-xs">—</span>}
+          {ps === "waived" && obl.payment_proofs?.proof_waived_reason && (
+            <p className="text-xs text-muted-foreground mt-0.5">{obl.payment_proofs.proof_waived_reason}</p>
           )}
         </TableCell>
         <TableCell className="text-right">
@@ -986,12 +1045,12 @@ export default function PaymentProofs() {
                 {t("obligations.reject")}
               </Button>
             )}
-            {/* Approve without proof — only for confirmed with missing proof */}
-            {isConfirmedMissingProof && !isApprovedNoProof && (
+            {/* Contextual proof actions — only for confirmed obligations */}
+            {isConfirmed && ps === "required" && (
               <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={() => openApproveNoProof(obl)}
                 title={isEs ? "Aprobar sin comprobante" : "Approve without proof"}>
                 <Ban className="w-4 h-4 mr-1" />
-                {isEs ? "Aprobar sin adj." : "No proof"}
+                {isEs ? "Eximir" : "Waive"}
               </Button>
             )}
           </div>
@@ -1096,6 +1155,21 @@ export default function PaymentProofs() {
       <div className="flex flex-wrap items-center gap-2 mb-4">
         <PeriodFilterDropdown value={periodFilter} onChange={setPeriodFilter} />
 
+        {/* Proof status filter — only shown on rent confirmed tab */}
+        {kindTab === "rent" && statusTab === "confirmed" && (
+          <Select value={proofFilter} onValueChange={(v) => setProofFilter(v as typeof proofFilter)}>
+            <SelectTrigger className="h-9 text-sm w-auto min-w-[180px]">
+              <SelectValue placeholder="Comprobante" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos los comprobantes</SelectItem>
+              <SelectItem value="required">Falta comprobante</SelectItem>
+              <SelectItem value="uploaded">Con comprobante</SelectItem>
+              <SelectItem value="waived">Eximido (sin comprobante)</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
+
         {/* View mode chip — set from Dashboard navigation */}
         {initialViewMode === "cumulative" && (
           <Badge variant="secondary" className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium">
@@ -1131,7 +1205,13 @@ export default function PaymentProofs() {
             <button onClick={() => setMissingProofFilter(false)} className="ml-1 rounded-full hover:bg-muted-foreground/20 p-0.5"><X className="w-3 h-3" /></button>
           </Badge>
         )}
-        {(dueScope || missingProofFilter || periodFilter.preset !== "current_month") && (
+        {proofFilter !== "all" && (
+          <Badge variant="secondary" className="flex items-center gap-1.5 pl-3 pr-2 py-1 text-xs font-medium">
+            {proofFilter === "required" ? "Falta comprobante" : proofFilter === "uploaded" ? "Con comprobante" : "Eximido"}
+            <button onClick={() => setProofFilter("all")} className="ml-1 rounded-full hover:bg-muted-foreground/20 p-0.5"><X className="w-3 h-3" /></button>
+          </Badge>
+        )}
+        {(dueScope || missingProofFilter || proofFilter !== "all" || periodFilter.preset !== "current_month") && (
           <button
             onClick={clearAllFilters}
             className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors"
@@ -1176,7 +1256,7 @@ export default function PaymentProofs() {
           <CardContent className="p-0">
             <div className="overflow-x-auto">
               {kindTab === "rent" ? (
-                <Table className="min-w-[1000px]">
+                <Table className="min-w-[1100px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead>{t("common.property")}</TableHead>
@@ -1187,6 +1267,7 @@ export default function PaymentProofs() {
                       <TableHead className="text-right">{t("rent.totalPaid")}</TableHead>
                       <TableHead className="text-right">{t("rent.balanceDue")}</TableHead>
                       <TableHead>{t("common.status")}</TableHead>
+                      <TableHead>Comprobante</TableHead>
                       <TableHead className="text-right">{t("common.actions")}</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -1291,35 +1372,56 @@ export default function PaymentProofs() {
         </DialogContent>
       </Dialog>
 
-      {/* Approve Without Proof Modal */}
-      <AlertDialog open={approveNoProofOpen} onOpenChange={setApproveNoProofOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{isEs ? "Aprobar sin comprobante" : "Approve without proof"}</AlertDialogTitle>
-            <AlertDialogDescription className="space-y-2">
-              <span className="block">
-                {approveNoProofObl && (
-                  <>
-                    <strong>{approveNoProofObl.properties?.internal_identifier}</strong> – {formatMonth(approveNoProofObl.period)}
-                  </>
-                )}
-              </span>
-              <span className="block">
-                {isEs
-                  ? "El pago quedará registrado como excepción administrativa. No se puede adjuntar un comprobante después de aprobar de esta forma."
-                  : "This payment will be recorded as an administrative exception. Proof cannot be attached afterwards."}
-              </span>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isSubmitting}>{t("common.cancel")}</AlertDialogCancel>
-            <AlertDialogAction onClick={handleApproveNoProof} disabled={isSubmitting}
-              className="bg-secondary text-secondary-foreground hover:bg-secondary/80 border border-border">
-              {isSubmitting ? t("common.saving") : (isEs ? "Confirmar excepción" : "Confirm exception")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Approve Without Proof Modal — proper Dialog with reason/note */}
+      <Dialog open={approveNoProofOpen} onOpenChange={setApproveNoProofOpen}>
+        <DialogContent className="sm:max-w-[480px]">
+          <DialogHeader>
+            <DialogTitle>{isEs ? "Eximir comprobante" : "Waive Proof Requirement"}</DialogTitle>
+            <DialogDescription>
+              {approveNoProofObl && (
+                <><strong>{approveNoProofObl.properties?.internal_identifier}</strong> – {formatMonth(approveNoProofObl.period)}</>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="rounded-lg border bg-muted/40 px-3 py-2.5 text-sm text-muted-foreground">
+              {isEs
+                ? "El comprobante quedará marcado como 'Eximido'. Desaparecerá de la lista de faltantes y se registrará quién y cuándo lo aprobó."
+                : "The proof will be marked as 'Waived'. It will disappear from the missing list and the audit trail will be saved."}
+            </div>
+            <div className="space-y-2">
+              <Label>{isEs ? "Motivo" : "Reason"} *</Label>
+              <Select value={waivedReason} onValueChange={setWaivedReason}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cash">{isEs ? "Pago en efectivo" : "Cash payment"}</SelectItem>
+                  <SelectItem value="no_receipt">{isEs ? "Sin recibo disponible" : "No receipt available"}</SelectItem>
+                  <SelectItem value="owner_decision">{isEs ? "Decisión del propietario" : "Owner decision"}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>{isEs ? "Nota interna (opcional)" : "Internal note (optional)"}</Label>
+              <Textarea
+                value={waivedNote}
+                onChange={(e) => setWaivedNote(e.target.value)}
+                placeholder={isEs ? "Ej: Pago en mano, se acordó verbalmente." : "E.g. Cash handed directly."}
+                rows={2}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setApproveNoProofOpen(false)} disabled={isSubmitting}>
+              {t("common.cancel")}
+            </Button>
+            <Button onClick={handleApproveNoProof} disabled={isSubmitting}>
+              {isSubmitting ? t("common.saving") : (isEs ? "Eximir comprobante" : "Waive proof")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Register Payment Modal */}
       <Dialog open={payOpen} onOpenChange={setPayOpen}>

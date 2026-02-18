@@ -580,7 +580,11 @@ export type Database = {
           obligation_id: string | null
           paid_at: string
           period: string
+          proof_reviewed_at: string | null
+          proof_reviewed_by: string | null
           proof_status: string
+          proof_waived_note: string | null
+          proof_waived_reason: string | null
           rejection_reason: string | null
           replaces_proof_id: string | null
           service_type: string | null
@@ -599,7 +603,11 @@ export type Database = {
           obligation_id?: string | null
           paid_at?: string
           period: string
+          proof_reviewed_at?: string | null
+          proof_reviewed_by?: string | null
           proof_status?: string
+          proof_waived_note?: string | null
+          proof_waived_reason?: string | null
           rejection_reason?: string | null
           replaces_proof_id?: string | null
           service_type?: string | null
@@ -618,7 +626,11 @@ export type Database = {
           obligation_id?: string | null
           paid_at?: string
           period?: string
+          proof_reviewed_at?: string | null
+          proof_reviewed_by?: string | null
           proof_status?: string
+          proof_waived_note?: string | null
+          proof_waived_reason?: string | null
           rejection_reason?: string | null
           replaces_proof_id?: string | null
           service_type?: string | null
