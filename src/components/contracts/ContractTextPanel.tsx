@@ -170,40 +170,137 @@ function buildContractText(c: ContractForText): string {
   Correo electrónico: ________________________________________________
   Teléfono: __________________________________________________________`;
 
-  // Build guarantors block
-  const guarantorBlock = guarantors.length > 0
-    ? guarantors.map((g, i) => {
-        const typeLabel =
-          g.guarantee_type === "fiador_solidario" ? "FIADOR SOLIDARIO"
-          : g.guarantee_type === "garantia_propietaria" ? "GARANTE PROPIETARIO"
-          : "GARANTE — SEGURO DE CAUCIÓN";
-        const name = g.full_name || g.company_name || "___________";
-        if (g.guarantee_type === "seguro_caucion") {
-          return `${i + 1}) ${typeLabel}
-  Aseguradora: ${g.company_name || "___________________________________________"}
-  N° de póliza: ${g.insurance_policy_number || "_______________________________"}
-  Cobertura: ${g.coverage_amount != null ? fmt(g.coverage_amount, "ARS") : "___________"}
-  Vigencia: ${g.insurance_valid_from || "____/____/____"} hasta ${g.insurance_valid_to || "____/____/____"}${g.notes ? `\n  Notas: ${g.notes}` : ""}`;
-        }
-        if (g.guarantee_type === "garantia_propietaria") {
-          const det = g.details as Record<string, string> | null;
-          return `${i + 1}) ${typeLabel}
-  Titular: ${name}
-  DNI / CUIT: ${g.document_or_cuit || "___________________________________________"}
-  Inmueble en garantía: ${g.address || "______________________________________"}
-  Matrícula / Folio Real: ${det?.matricula || "_____________________________"}${g.notes ? `\n  Notas: ${g.notes}` : ""}`;
-        }
-        return `${i + 1}) ${typeLabel}
-  Nombre: ${name}
+  // ── Guarantee clause builder ───────────────────────────────────────────────
+  const fiadores = guarantors.filter(g => g.guarantee_type === "fiador_solidario");
+  const propietarios = guarantors.filter(g => g.guarantee_type === "garantia_propietaria");
+  const seguros = guarantors.filter(g => g.guarantee_type === "seguro_caucion");
+
+  // Build Cláusula 12 content dynamically
+  const buildGuaranteeClause = (): string => {
+    if (guarantors.length === 0) {
+      return `El contrato no cuenta con garantía al momento de la firma. Las partes
+podrán acordar garantías adicionales mediante instrumento separado que
+formará parte integrante del presente contrato.`;
+    }
+
+    const sections: string[] = [];
+
+    // A) FIADOR SOLIDARIO
+    if (fiadores.length > 0) {
+      const isMultiple = fiadores.length > 1;
+      const heading = isMultiple
+        ? `A) FIADORES SOLIDARIOS (${fiadores.length} garantes)`
+        : "A) FIADOR SOLIDARIO";
+      const legalText = `El/Los FIADOR/ES que se identifica/n a continuación actúa/n en carácter de
+fiador/es solidario/s, liso/s, llano/s y principal/es pagador/es, con renuncia
+expresa a los beneficios de excusión y división (art. 1590 CCyCN), obligándose
+al cumplimiento íntegro de todas las obligaciones emergentes del presente
+contrato en caso de incumplimiento del LOCATARIO.`;
+
+      const list = fiadores.map((g, i) => {
+        const name = g.full_name || "___________________________________________";
+        return `${isMultiple ? `  [${i + 1}] ` : "  "}Nombre y Apellido: ${name}
   DNI / CUIT: ${g.document_or_cuit || "____________________________________________"}
-  Domicilio: ${g.address || "____________________________________________________"}
-  Teléfono: ${g.phone || "__________________________________________"}
-  Email: ${g.email || "_______________________________________________"}${g.notes ? `\n  Notas: ${g.notes}` : ""}`;
-      }).join("\n\n")
-    : `  Nombre:
-  DNI:
-  Aclaración:
-  Fecha:`;
+  Domicilio real: ${g.address || "________________________________________________"}
+  Teléfono: ${g.phone || "___________________________________________________"}
+  Correo electrónico: ${g.email || "____________________________________________"}${g.notes ? `\n  Observaciones: ${g.notes}` : ""}`;
+      }).join("\n\n");
+
+      sections.push(`${heading}\n\n${legalText}\n\n${list}`);
+    }
+
+    // B) GARANTÍA PROPIETARIA
+    if (propietarios.length > 0) {
+      const isMultiple = propietarios.length > 1;
+      const heading = isMultiple
+        ? `B) GARANTÍA PROPIETARIA (${propietarios.length} garantes)`
+        : "B) GARANTÍA PROPIETARIA";
+      const legalText = `El/Los garante/s propietario/s que se identifica/n a continuación ofrece/n
+como garantía real un inmueble de su propiedad, libre de gravámenes, embargos
+e inhibiciones, cuya descripción y datos registrales se detallan a continuación.
+El garante se obliga solidariamente con el LOCATARIO al cumplimiento de todas
+las obligaciones emergentes del presente contrato.`;
+
+      const list = propietarios.map((g, i) => {
+        const name = g.full_name || g.company_name || "___________________________________________";
+        const det = (g.details as Record<string, string> | null) ?? {};
+        return `${isMultiple ? `  [${i + 1}] ` : "  "}Titular del inmueble: ${name}
+  DNI / CUIT: ${g.document_or_cuit || "____________________________________________"}
+  Domicilio del garante: ${g.address || "________________________________________"}
+  Inmueble en garantía — Dirección: ${det.direccion_inmueble || g.address || "_______________________"}
+  Matrícula / Folio Real: ${det.matricula || "____________________________________"}
+  Partido / Sección: ${det.partido || "__________________________________________"}
+  Nomenclatura catastral: ${det.nomenclatura || "_________________________________"}${g.notes ? `\n  Observaciones: ${g.notes}` : ""}`;
+      }).join("\n\n");
+
+      sections.push(`${heading}\n\n${legalText}\n\n${list}`);
+    }
+
+    // C) SEGURO DE CAUCIÓN
+    if (seguros.length > 0) {
+      const isMultiple = seguros.length > 1;
+      const heading = isMultiple
+        ? `C) SEGURO DE CAUCIÓN (${seguros.length} pólizas)`
+        : "C) SEGURO DE CAUCIÓN";
+      const legalText = `En sustitución de garantía personal, el LOCATARIO presenta seguro/s de caución
+emitido/s por una compañía aseguradora habilitada por la Superintendencia de
+Seguros de la Nación, con las coberturas y vigencias que se detallan a continuación.
+La póliza cubre el fiel cumplimiento de las obligaciones del LOCATARIO
+emergentes del presente contrato.`;
+
+      const list = seguros.map((g, i) => {
+        const currency = (g.details as Record<string, string> | null)?.currency || "ARS";
+        const vigDesde = g.insurance_valid_from
+          ? new Date(g.insurance_valid_from + "T00:00:00").toLocaleDateString(locale, { day: "numeric", month: "long", year: "numeric" })
+          : "____/____/____";
+        const vigHasta = g.insurance_valid_to
+          ? new Date(g.insurance_valid_to + "T00:00:00").toLocaleDateString(locale, { day: "numeric", month: "long", year: "numeric" })
+          : "____/____/____";
+        return `${isMultiple ? `  [${i + 1}] ` : "  "}Aseguradora / Compañía: ${g.company_name || "___________________________________________"}
+  Número de póliza: ${g.insurance_policy_number || "______________________________________"}
+  Monto de cobertura: ${g.coverage_amount != null ? fmt(g.coverage_amount, currency) + ` (${currency})` : "____________________________________________"}
+  Vigencia desde: ${vigDesde}
+  Vigencia hasta: ${vigHasta}${g.notes ? `\n  Observaciones: ${g.notes}` : ""}`;
+      }).join("\n\n");
+
+      sections.push(`${heading}\n\n${legalText}\n\n${list}`);
+    }
+
+    return sections.join("\n\n" + "─".repeat(60) + "\n\n");
+  };
+
+  // Signature block for guarantors
+  const buildGuarantorSignatureBlock = (): string => {
+    if (guarantors.length === 0) {
+      return "  (Sin garantes al momento de la firma)";
+    }
+
+    return guarantors.map((g, i) => {
+      const typeLabel =
+        g.guarantee_type === "fiador_solidario" ? "FIADOR SOLIDARIO"
+        : g.guarantee_type === "garantia_propietaria" ? "GARANTE PROPIETARIO"
+        : "GARANTE — SEGURO DE CAUCIÓN";
+      const name = g.full_name || g.company_name || "";
+      const docId = g.document_or_cuit || "";
+
+      if (g.guarantee_type === "seguro_caucion") {
+        return `${guarantors.length > 1 ? `[${i + 1}] ` : ""}${typeLabel}
+
+_________________________________
+Aseguradora: ${g.company_name || "______________________"}
+Póliza N°: ${g.insurance_policy_number || "________________"}
+Vigencia hasta: ${g.insurance_valid_to || "________________"}`;
+      }
+
+      return `${guarantors.length > 1 ? `[${i + 1}] ` : ""}${typeLabel}
+
+_________________________________
+Nombre: ${name || "_______________________"}
+DNI / CUIT: ${docId || "___________________"}
+Aclaración:
+Fecha:`;
+    }).join("\n\n");
+  };
 
   return `\
 ═══════════════════════════════════════════════════════════════════════
@@ -418,13 +515,10 @@ legales que correspondan, una compensación equivalente al doble del valor
 diario del canon locativo vigente por cada día de retardo.
 
 ───────────────────────────────────────────────────────────────────────
-CLÁUSULA 12ª — GARANTÍA PERSONAL O REAL
+CLÁUSULA 12ª — GARANTÍAS
 ───────────────────────────────────────────────────────────────────────
 
-Las partes podrán acordar garantía personal (fiadores solidarios,
-liso llano pagadores) o garantía real (seguro de caución, garantía
-bancaria), mediante instrumento separado que formará parte integrante
-del presente contrato.
+${buildGuaranteeClause()}
 
 ───────────────────────────────────────────────────────────────────────
 CLÁUSULA 13ª — RESCISIÓN ANTICIPADA
@@ -492,7 +586,7 @@ Fecha:                                      Fecha:
 
 GARANTES:
 
-${guarantorBlock}
+${buildGuarantorSignatureBlock()}
 
 
 ═══════════════════════════════════════════════════════════════════════
