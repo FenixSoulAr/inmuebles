@@ -55,9 +55,9 @@ const App: React.FC = () => {
                 <Route path="/properties/:id" element={<PropertyDetail />} />
                 <Route path="/tenants" element={<Tenants />} />
                 <Route path="/tenants/:id" element={<TenantDetail />} />
-                <Route path="/contracts" element={<Contracts />} />
-                <Route path="/contracts/new" element={<ContractNew />} />
-                <Route path="/contracts/:id" element={<ContractDetail />} />
+                <Route path="/contracts" element={<ErrorBoundary><Contracts /></ErrorBoundary>} />
+                <Route path="/contracts/new" element={<ErrorBoundary><ContractNew /></ErrorBoundary>} />
+                <Route path="/contracts/:id" element={<ErrorBoundary><ContractDetail /></ErrorBoundary>} />
                 <Route path="/rent" element={<Navigate to="/payment-proofs" replace />} />
                 <Route path="/payment-proofs" element={<PaymentProofs />} />
                 <Route path="/utilities" element={<Utilities />} />

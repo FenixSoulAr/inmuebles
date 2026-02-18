@@ -337,9 +337,11 @@ export type Database = {
           grace_days: number | null
           id: string
           impuestos_a_cargo_locatario: boolean | null
+          index_notes: string | null
           initial_rent: number
           is_active: boolean
           next_adjustment_date: string | null
+          pdf_url: string | null
           penalty_type: string | null
           penalty_value: number | null
           permite_mascotas: boolean | null
@@ -353,6 +355,7 @@ export type Database = {
           start_date: string
           submission_language: string
           tenant_id: string
+          tenant_insurance_notes: string | null
           texto_contrato: string | null
           tipo_contrato: string | null
           token_created_at: string | null
@@ -379,9 +382,11 @@ export type Database = {
           grace_days?: number | null
           id?: string
           impuestos_a_cargo_locatario?: boolean | null
+          index_notes?: string | null
           initial_rent: number
           is_active?: boolean
           next_adjustment_date?: string | null
+          pdf_url?: string | null
           penalty_type?: string | null
           penalty_value?: number | null
           permite_mascotas?: boolean | null
@@ -395,6 +400,7 @@ export type Database = {
           start_date: string
           submission_language?: string
           tenant_id: string
+          tenant_insurance_notes?: string | null
           texto_contrato?: string | null
           tipo_contrato?: string | null
           token_created_at?: string | null
@@ -421,9 +427,11 @@ export type Database = {
           grace_days?: number | null
           id?: string
           impuestos_a_cargo_locatario?: boolean | null
+          index_notes?: string | null
           initial_rent?: number
           is_active?: boolean
           next_adjustment_date?: string | null
+          pdf_url?: string | null
           penalty_type?: string | null
           penalty_value?: number | null
           permite_mascotas?: boolean | null
@@ -437,6 +445,7 @@ export type Database = {
           start_date?: string
           submission_language?: string
           tenant_id?: string
+          tenant_insurance_notes?: string | null
           texto_contrato?: string | null
           tipo_contrato?: string | null
           token_created_at?: string | null
