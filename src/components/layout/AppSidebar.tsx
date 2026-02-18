@@ -25,7 +25,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { LanguageSelector } from "./LanguageSelector";
-import sidebarLogo from "@/assets/sidebar-logo.png";
+import logoLockup from "@/assets/logo-lockup-transparent.png";
 
 interface AppSidebarProps {
   /** Called after a nav item is clicked — used to close mobile drawer */
@@ -79,33 +79,38 @@ export function AppSidebar({ onNavigate, isMobileDrawer = false }: AppSidebarPro
       className="flex flex-col bg-sidebar text-sidebar-foreground h-full transition-[width] duration-300 ease-in-out overflow-hidden"
       style={{ width: effectiveCollapsed ? 64 : 280 }}
     >
-      {/* Logo Section */}
+      {/* ── Branding header — white block ── */}
       <div
         className={cn(
-          "flex items-center border-b border-sidebar-border shrink-0 transition-all duration-300",
-          effectiveCollapsed ? "h-[72px] justify-center px-2" : "h-[72px] px-4"
+          "shrink-0 border-b flex items-center",
+          effectiveCollapsed
+            ? "justify-center px-2 py-4"
+            : "px-4 py-4"
         )}
+        style={{
+          background: "#FFFFFF",
+          borderBottomColor: "#E5E7EB",
+          minHeight: 88,
+        }}
       >
         <button
           onClick={() => handleNavigate("/dashboard")}
-          className="focus:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring rounded-lg"
+          className="focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 rounded-lg"
           aria-label="Ir al panel principal"
         >
           {effectiveCollapsed ? (
-            /* Collapsed: solo el ícono (recorte izquierdo del lockup) */
             <img
               src="/android-chrome-192x192.png"
               alt="MyRentaHub"
-              className="object-contain"
+              className="object-contain rounded-md"
               style={{ height: 40, width: 40 }}
             />
           ) : (
-            /* Expanded: sidebar-logo con icono + texto */
             <img
-              src={sidebarLogo}
+              src={logoLockup}
               alt="MyRentaHub"
               className="object-contain object-left"
-              style={{ height: 48, width: "auto", maxWidth: 220 }}
+              style={{ height: 44, width: "auto", maxWidth: 220 }}
             />
           )}
         </button>
