@@ -355,16 +355,23 @@ export default function PaymentProofs() {
   const initialDueScope = searchParams.get("dueScope") || "";
   const initialPeriod = searchParams.get("period") || "";
   const initialMissingProof = searchParams.get("missingProof") === "true";
+  const initialViewMode = searchParams.get("viewMode") || "monthly"; // "monthly" | "cumulative"
+  const initialMonth = searchParams.get("month") || format(new Date(), "yyyy-MM");
 
   // Derive initial period filter from URL params
   const deriveInitialPeriodFilter = (): PeriodFilter => {
+    if (initialViewMode === "cumulative") return { preset: "none" }; // no date filter for cumulative
     if (initialDueScope === "current_month" || initialPeriod === format(new Date(), "yyyy-MM")) {
       return { preset: "current_month" };
     }
     if (initialDueScope === "overdue") return { preset: "none" }; // overdue is handled by dueScope
     if (initialPeriod) {
-      // Specific month from dashboard → current_month or custom
       const [y, m] = initialPeriod.split("-").map(Number);
+      const d = new Date(y, m - 1, 1);
+      return { preset: "custom", dateFrom: startOfMonth(d), dateTo: endOfMonth(d) };
+    }
+    if (initialMonth && initialMonth !== format(new Date(), "yyyy-MM")) {
+      const [y, m] = initialMonth.split("-").map(Number);
       const d = new Date(y, m - 1, 1);
       return { preset: "custom", dateFrom: startOfMonth(d), dateTo: endOfMonth(d) };
     }
@@ -1088,6 +1095,23 @@ export default function PaymentProofs() {
       {/* Period filter + chips row */}
       <div className="flex flex-wrap items-center gap-2 mb-4">
         <PeriodFilterDropdown value={periodFilter} onChange={setPeriodFilter} />
+
+        {/* View mode chip — set from Dashboard navigation */}
+        {initialViewMode === "cumulative" && (
+          <Badge variant="secondary" className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium">
+            Vista acumulada
+          </Badge>
+        )}
+        {initialViewMode === "monthly" && initialMonth && (
+          <Badge variant="secondary" className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium">
+            {(() => {
+              const [y, m] = initialMonth.split("-").map(Number);
+              const d = new Date(y, m - 1, 1);
+              const label = d.toLocaleDateString("es-AR", { month: "long", year: "numeric" });
+              return `Vista mensual · ${label.charAt(0).toUpperCase() + label.slice(1)}`;
+            })()}
+          </Badge>
+        )}
 
         {dueScope === "current_month" && (
           <Badge variant="secondary" className="flex items-center gap-1.5 pl-3 pr-2 py-1 text-xs font-medium">

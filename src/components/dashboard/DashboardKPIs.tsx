@@ -1,6 +1,9 @@
-import { DollarSign, AlertTriangle, Clock, FileWarning, Receipt, ChevronRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { format, startOfMonth, endOfMonth, parseISO } from "date-fns";
+import { es } from "date-fns/locale";
+import type { DashboardViewMode } from "./DashboardViewSelector";
 
 interface DashboardKPIsProps {
   rentCollectedThisMonth: number;
@@ -8,6 +11,8 @@ interface DashboardKPIsProps {
   rentOverdueAccumulated: number;
   missingProofsCount: number;
   taxesDueSoon: number;
+  viewMode: DashboardViewMode;
+  selectedMonth: string; // "yyyy-MM"
 }
 
 interface KpiCardProps {
@@ -61,17 +66,24 @@ function KpiCard({ label, microcopy, value, variant, onClick }: KpiCardProps) {
   );
 }
 
+function getMonthLabel(yearMonth: string): string {
+  const [y, m] = yearMonth.split("-").map(Number);
+  const d = new Date(y, m - 1, 1);
+  const label = format(d, "MMMM yyyy", { locale: es });
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
 export function DashboardKPIs({
   rentCollectedThisMonth,
   rentPendingThisMonth,
   rentOverdueAccumulated,
   missingProofsCount,
   taxesDueSoon,
+  viewMode,
+  selectedMonth,
 }: DashboardKPIsProps) {
   const navigate = useNavigate();
-
-  const now = new Date();
-  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const monthLabel = getMonthLabel(selectedMonth);
 
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat("es-AR", {
@@ -81,42 +93,80 @@ export function DashboardKPIs({
       maximumFractionDigits: 0,
     }).format(amount);
 
+  // Build navigation URLs based on view mode
+  const buildUrl = (base: string) => {
+    if (viewMode === "cumulative") {
+      return `${base}&viewMode=cumulative`;
+    }
+    return `${base}&viewMode=monthly&month=${selectedMonth}`;
+  };
+
   const kpis: (KpiCardProps & { key: string })[] = [
     {
       key: "collected",
-      label: "Cobrado (mes)",
-      microcopy: "Pagos registrados este mes (fecha de pago)",
+      label: "Cobrado",
+      microcopy:
+        viewMode === "monthly"
+          ? `Pagos registrados en ${monthLabel}`
+          : "Total cobrado (histórico)",
       value: formatCurrency(rentCollectedThisMonth),
       variant: rentCollectedThisMonth > 0 ? "success" : "default",
       onClick: () =>
-        navigate(`/payment-proofs?kindTab=rent&statusTab=confirmed&period=${currentMonth}`),
+        navigate(
+          buildUrl(
+            viewMode === "monthly"
+              ? `/payment-proofs?kindTab=rent&statusTab=confirmed&period=${selectedMonth}`
+              : `/payment-proofs?kindTab=rent&statusTab=confirmed`
+          )
+        ),
     },
     {
       key: "pending",
-      label: "Pendiente (mes)",
-      microcopy: "Vence este mes (no cobrado)",
+      label: "Pendiente",
+      microcopy:
+        viewMode === "monthly"
+          ? `Vence en ${monthLabel} (no cobrado)`
+          : "Pendiente total (sin filtro temporal)",
       value: formatCurrency(rentPendingThisMonth),
       variant: rentPendingThisMonth > 0 ? "warning" : "default",
       onClick: () =>
-        navigate(`/payment-proofs?kindTab=rent&statusTab=action&dueScope=current_month`),
+        navigate(
+          buildUrl(
+            viewMode === "monthly"
+              ? `/payment-proofs?kindTab=rent&statusTab=action&dueScope=current_month`
+              : `/payment-proofs?kindTab=rent&statusTab=action`
+          )
+        ),
     },
     {
       key: "overdue",
       label: "Mora acumulada",
-      microcopy: "Vencidos antes de este mes",
+      microcopy:
+        viewMode === "monthly"
+          ? `Vencidos antes de ${monthLabel}`
+          : "Mora total histórica (due_date < hoy)",
       value: formatCurrency(rentOverdueAccumulated),
       variant: rentOverdueAccumulated > 0 ? "destructive" : "default",
       onClick: () =>
-        navigate(`/payment-proofs?kindTab=rent&statusTab=action&dueScope=overdue`),
+        navigate(
+          buildUrl(`/payment-proofs?kindTab=rent&statusTab=action&dueScope=overdue`)
+        ),
     },
     {
       key: "missing",
       label: "Comprobantes faltantes",
-      microcopy: "Pagados sin adjunto",
+      microcopy:
+        viewMode === "monthly"
+          ? `Confirmados en ${monthLabel} sin adjunto`
+          : "Confirmados sin comprobante (histórico)",
       value: missingProofsCount,
       variant: missingProofsCount > 0 ? "warning" : "default",
       onClick: () =>
-        navigate(`/payment-proofs?kindTab=rent&statusTab=confirmed&missingProof=true`),
+        navigate(
+          buildUrl(
+            `/payment-proofs?kindTab=rent&statusTab=confirmed&missingProof=true`
+          )
+        ),
     },
     {
       key: "taxes",

@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { DashboardKPIs } from "@/components/dashboard/DashboardKPIs";
+import { DashboardViewSelector, type DashboardViewMode } from "@/components/dashboard/DashboardViewSelector";
 import {
   ActionCenter,
   OverdueRentItem,
@@ -16,13 +17,14 @@ import {
   TaxDueItem,
   MaintenanceItem,
 } from "@/components/dashboard/ActionCenter";
+import { format, startOfMonth, endOfMonth, parseISO, subMonths } from "date-fns";
 
 interface DashboardStats {
-  rentCollectedThisMonth: number;    // obligations kind=rent, status=confirmed, payment paid_at in current month
-  rentPendingThisMonth: number;       // obligations kind=rent, not confirmed, due_date in current month → SUM expected_amount - total_paid
-  rentOverdueAccumulated: number;     // obligations kind=rent, not confirmed, due_date < first day of current month → SUM balance
-  missingProofsCount: number;         // obligations kind=rent, status=confirmed, balance<=0, no payment attachment
-  taxesDueSoon: number;               // tax_obligations status=pending, due_date within 30 days
+  rentCollectedThisMonth: number;
+  rentPendingThisMonth: number;
+  rentOverdueAccumulated: number;
+  missingProofsCount: number;
+  taxesDueSoon: number;
 }
 
 export default function Dashboard() {
@@ -40,6 +42,12 @@ export default function Dashboard() {
   const [openMaintenance, setOpenMaintenance] = useState<MaintenanceItem[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // View mode state
+  const [viewMode, setViewMode] = useState<DashboardViewMode>("monthly");
+  const [selectedMonth, setSelectedMonth] = useState<string>(
+    format(new Date(), "yyyy-MM")
+  );
+
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -51,20 +59,221 @@ export default function Dashboard() {
     }
   }, [user]);
 
+  // Recalculate KPIs when view mode or selected month changes (without refetching)
+  useEffect(() => {
+    if (!loading) {
+      computeKPIs();
+    }
+  }, [viewMode, selectedMonth]);
+
+  // Store raw data for recalculation
+  const [rawEnriched, setRawEnriched] = useState<any[]>([]);
+  const [rawAllPayments, setRawAllPayments] = useState<any[]>([]);
+  const [rawTaxItems, setRawTaxItems] = useState<TaxDueItem[]>([]);
+  const [rawMaintenanceItems, setRawMaintenanceItems] = useState<MaintenanceItem[]>([]);
+
+  const computeKPIs = () => {
+    const enriched = rawEnriched;
+    const allPayments = rawAllPayments;
+    if (enriched.length === 0 && allPayments.length === 0) return;
+
+    const now = new Date();
+    const todayStr = now.toISOString().split("T")[0];
+
+    if (viewMode === "monthly") {
+      // Parse the selected month to get bounds
+      const [y, m] = selectedMonth.split("-").map(Number);
+      const monthDate = new Date(y, m - 1, 1);
+      const monthStartStr = format(startOfMonth(monthDate), "yyyy-MM-dd");
+      const monthEndStr = format(endOfMonth(monthDate), "yyyy-MM-dd");
+
+      // KPI 1: Cobrado — confirmed obligations with payments paid_at in selected month
+      const paymentsInMonth = allPayments.filter(
+        (p: any) => p.paid_at >= monthStartStr && p.paid_at <= monthEndStr
+      );
+      const confirmedOblIds = new Set(
+        enriched.filter((o: any) => o.balanceDue <= 0).map((o: any) => o.id)
+      );
+      const rentCollected = paymentsInMonth
+        .filter((p: any) => confirmedOblIds.has(p.obligation_id))
+        .reduce((s: number, p: any) => s + Number(p.amount), 0);
+
+      // KPI 2: Pendiente — not confirmed, due_date in selected month
+      const pendingThisMonth = enriched.filter(
+        (o: any) =>
+          o.balanceDue > 0 &&
+          o.due_date >= monthStartStr &&
+          o.due_date <= monthEndStr
+      );
+      const rentPending = pendingThisMonth.reduce((s: number, o: any) => s + o.balanceDue, 0);
+
+      // KPI 3: Mora — not confirmed, due_date < first day of selected month
+      const overdueObls = enriched.filter(
+        (o: any) => o.balanceDue > 0 && o.due_date < monthStartStr
+      );
+      const rentOverdue = overdueObls.reduce((s: number, o: any) => s + o.balanceDue, 0);
+
+      // KPI 4: Missing proofs — confirmed in selected month + proof_status = required
+      const confirmedInMonth = enriched.filter((o: any) => {
+        if (o.balanceDue > 0) return false;
+        const sortedPays = [...(o.payments || [])].sort(
+          (a: any, b: any) => new Date(b.paid_at).getTime() - new Date(a.paid_at).getTime()
+        );
+        const lastPaidAt = sortedPays[0]?.paid_at;
+        return lastPaidAt && lastPaidAt >= monthStartStr && lastPaidAt <= monthEndStr;
+      });
+      const missingProofsCount = confirmedInMonth.filter((o: any) => {
+        if (o.payment_proofs?.proof_status === "approved_without_proof") return false;
+        const hasAttachment = (o.payments || []).some((p: any) => p.attachment_url);
+        const hasProofFile = o.payment_proofs?.files?.length > 0;
+        return !hasAttachment && !hasProofFile;
+      }).length;
+
+      // Action center items
+      const overdueItems: OverdueRentItem[] = overdueObls.map((o: any) => ({
+        id: o.id,
+        property: o.properties?.internal_identifier || "—",
+        tenant: o.tenants?.full_name || "—",
+        dueDate: o.due_date,
+        balanceDue: o.balanceDue,
+        status: "overdue",
+      }));
+
+      const in7DaysStr = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+      const dueSoonItems: DueSoonItem[] = enriched
+        .filter(
+          (o: any) =>
+            o.balanceDue > 0 &&
+            o.due_date >= todayStr &&
+            o.due_date <= in7DaysStr
+        )
+        .map((o: any) => ({
+          id: o.id,
+          property: o.properties?.internal_identifier || "—",
+          tenant: o.tenants?.full_name || "—",
+          dueDate: o.due_date,
+          expectedAmount: Number(o.expected_amount ?? 0),
+        }));
+
+      const confirmedRentObls = enriched.filter((o: any) => o.balanceDue <= 0);
+      const missingProofItems: MissingProofItem[] = confirmedRentObls
+        .filter((o: any) => {
+          if (o.payment_proofs?.proof_status === "approved_without_proof") return false;
+          const hasAttachment = (o.payments || []).some((p: any) => p.attachment_url);
+          const hasProofFile = o.payment_proofs?.files?.length > 0;
+          return !hasAttachment && !hasProofFile;
+        })
+        .slice(0, 8)
+        .map((o: any) => ({
+          id: o.id,
+          property: o.properties?.internal_identifier || "—",
+          utilityType: "Alquiler",
+          period: formatPeriod(o.period),
+          status: "not_submitted",
+          dueDate: o.due_date,
+        }));
+
+      setStats({
+        rentCollectedThisMonth: rentCollected,
+        rentPendingThisMonth: rentPending,
+        rentOverdueAccumulated: rentOverdue,
+        missingProofsCount,
+        taxesDueSoon: rawTaxItems.length,
+      });
+      setOverdueRent(overdueItems);
+      setDueSoon(dueSoonItems);
+      setMissingProofs(missingProofItems);
+    } else {
+      // CUMULATIVE VIEW
+      // KPI 1: Cobrado — ALL confirmed obligations, sum all payments
+      const rentCollected = allPayments
+        .filter((p: any) => {
+          const obl = enriched.find((o: any) => o.id === p.obligation_id);
+          return obl && obl.balanceDue <= 0;
+        })
+        .reduce((s: number, p: any) => s + Number(p.amount), 0);
+
+      // KPI 2: Pendiente — all not confirmed (no date filter)
+      const rentPending = enriched
+        .filter((o: any) => o.balanceDue > 0)
+        .reduce((s: number, o: any) => s + o.balanceDue, 0);
+
+      // KPI 3: Mora — not confirmed, due_date < today
+      const overdueObls = enriched.filter(
+        (o: any) => o.balanceDue > 0 && o.due_date < todayStr
+      );
+      const rentOverdue = overdueObls.reduce((s: number, o: any) => s + o.balanceDue, 0);
+
+      // KPI 4: Missing proofs — ALL confirmed + proof_status = required (no date filter)
+      const confirmedRentObls = enriched.filter((o: any) => o.balanceDue <= 0);
+      const missingProofsCount = confirmedRentObls.filter((o: any) => {
+        if (o.payment_proofs?.proof_status === "approved_without_proof") return false;
+        const hasAttachment = (o.payments || []).some((p: any) => p.attachment_url);
+        const hasProofFile = o.payment_proofs?.files?.length > 0;
+        return !hasAttachment && !hasProofFile;
+      }).length;
+
+      const overdueItems: OverdueRentItem[] = overdueObls.map((o: any) => ({
+        id: o.id,
+        property: o.properties?.internal_identifier || "—",
+        tenant: o.tenants?.full_name || "—",
+        dueDate: o.due_date,
+        balanceDue: o.balanceDue,
+        status: "overdue",
+      }));
+
+      const in7DaysStr = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+      const dueSoonItems: DueSoonItem[] = enriched
+        .filter(
+          (o: any) =>
+            o.balanceDue > 0 &&
+            o.due_date >= todayStr &&
+            o.due_date <= in7DaysStr
+        )
+        .map((o: any) => ({
+          id: o.id,
+          property: o.properties?.internal_identifier || "—",
+          tenant: o.tenants?.full_name || "—",
+          dueDate: o.due_date,
+          expectedAmount: Number(o.expected_amount ?? 0),
+        }));
+
+      const missingProofItems: MissingProofItem[] = confirmedRentObls
+        .filter((o: any) => {
+          if (o.payment_proofs?.proof_status === "approved_without_proof") return false;
+          const hasAttachment = (o.payments || []).some((p: any) => p.attachment_url);
+          const hasProofFile = o.payment_proofs?.files?.length > 0;
+          return !hasAttachment && !hasProofFile;
+        })
+        .slice(0, 8)
+        .map((o: any) => ({
+          id: o.id,
+          property: o.properties?.internal_identifier || "—",
+          utilityType: "Alquiler",
+          period: formatPeriod(o.period),
+          status: "not_submitted",
+          dueDate: o.due_date,
+        }));
+
+      setStats({
+        rentCollectedThisMonth: rentCollected,
+        rentPendingThisMonth: rentPending,
+        rentOverdueAccumulated: rentOverdue,
+        missingProofsCount,
+        taxesDueSoon: rawTaxItems.length,
+      });
+      setOverdueRent(overdueItems);
+      setDueSoon(dueSoonItems);
+      setMissingProofs(missingProofItems);
+    }
+  };
+
   const fetchDashboardData = async () => {
     try {
       const now = new Date();
-      // Current month boundaries
-      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-      const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-      const monthStartStr = monthStart.toISOString().split("T")[0];
-      const monthEndStr = monthEnd.toISOString().split("T")[0];
-      const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-      const in30DaysStr = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
-      const in7DaysStr = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
       const todayStr = now.toISOString().split("T")[0];
+      const in30DaysStr = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
 
-      // Fetch all rent obligations + their payments
       const [oblRes, allPaymentsRes, taxesRes, maintenanceRes] = await Promise.all([
         supabase
           .from("obligations")
@@ -94,15 +303,13 @@ export default function Dashboard() {
       const rawObls = (oblRes.data || []) as any[];
       const allPayments = (allPaymentsRes.data || []) as any[];
 
-      // Build payments map
-      const paymentsByObl = new Map<string, { amount: number; paid_at: string; attachment_url: string | null }[]>();
+      const paymentsByObl = new Map<string, any[]>();
       for (const p of allPayments) {
         const list = paymentsByObl.get(p.obligation_id) || [];
         list.push(p);
         paymentsByObl.set(p.obligation_id, list);
       }
 
-      // Enrich obligations
       const enriched = rawObls.map((o) => {
         const payments = paymentsByObl.get(o.id) || [];
         const totalPaid = payments.reduce((s: number, p: any) => s + Number(p.amount), 0);
@@ -111,94 +318,6 @@ export default function Dashboard() {
         return { ...o, payments, totalPaid, balanceDue };
       });
 
-      // --- KPI 1: Cobrado (mes) ---
-      // Obligations (kind=rent) that have payments with paid_at in current month
-      const paymentsThisMonth = allPayments.filter(
-        (p: any) => p.paid_at >= monthStartStr && p.paid_at <= monthEndStr
-      );
-      // Group payments by obligation, find obligations that are confirmed
-      const confirmedOblIds = new Set(
-        enriched.filter((o) => o.balanceDue <= 0).map((o) => o.id)
-      );
-      const rentCollected = paymentsThisMonth
-        .filter((p: any) => confirmedOblIds.has(p.obligation_id))
-        .reduce((s: number, p: any) => s + Number(p.amount), 0);
-
-      // --- KPI 2: Pendiente (mes) ---
-      // Obligations kind=rent, not confirmed, due_date in current month
-      const pendingThisMonth = enriched.filter(
-        (o) =>
-          o.balanceDue > 0 &&
-          o.due_date >= monthStartStr &&
-          o.due_date <= monthEndStr
-      );
-      const rentPending = pendingThisMonth.reduce((s: number, o: any) => s + o.balanceDue, 0);
-
-      // --- KPI 3: Mora acumulada ---
-      // Obligations kind=rent, not confirmed, due_date < first day of current month
-      const overdueObls = enriched.filter(
-        (o) => o.balanceDue > 0 && o.due_date < monthStartStr
-      );
-      const rentOverdue = overdueObls.reduce((s: number, o: any) => s + o.balanceDue, 0);
-
-      // --- KPI 4: Comprobantes faltantes ---
-      // Confirmed rent obligations (balance <= 0) with NO attachment AND proof_status != approved_without_proof
-      const confirmedRentObls = enriched.filter((o) => o.balanceDue <= 0);
-      const missingProofsCount = confirmedRentObls.filter((o) => {
-        // Exclude explicitly approved-without-proof
-        if (o.payment_proofs?.proof_status === "approved_without_proof") return false;
-        const oblPayments = o.payments || [];
-        const hasAttachment = oblPayments.some((p: any) => p.attachment_url);
-        const hasProofFile = o.payment_proofs?.files?.length > 0;
-        return !hasAttachment && !hasProofFile;
-      }).length;
-
-      // --- Action Center: Overdue items ---
-      const overdueItems: OverdueRentItem[] = overdueObls.map((o: any) => ({
-        id: o.id,
-        property: o.properties?.internal_identifier || "—",
-        tenant: o.tenants?.full_name || "—",
-        dueDate: o.due_date,
-        balanceDue: o.balanceDue,
-        status: "overdue",
-      }));
-
-      // --- Action Center: Due soon (next 7 days) ---
-      const dueSoonItems: DueSoonItem[] = enriched
-        .filter(
-          (o) =>
-            o.balanceDue > 0 &&
-            o.due_date >= todayStr &&
-            o.due_date <= in7DaysStr
-        )
-        .map((o: any) => ({
-          id: o.id,
-          property: o.properties?.internal_identifier || "—",
-          tenant: o.tenants?.full_name || "—",
-          dueDate: o.due_date,
-          expectedAmount: Number(o.expected_amount ?? 0),
-        }));
-
-      // --- Action Center: Missing proofs (for display) ---
-      const missingProofItems: MissingProofItem[] = confirmedRentObls
-        .filter((o) => {
-          if (o.payment_proofs?.proof_status === "approved_without_proof") return false;
-          const oblPayments = o.payments || [];
-          const hasAttachment = oblPayments.some((p: any) => p.attachment_url);
-          const hasProofFile = o.payment_proofs?.files?.length > 0;
-          return !hasAttachment && !hasProofFile;
-        })
-        .slice(0, 8)
-        .map((o: any) => ({
-          id: o.id,
-          property: o.properties?.internal_identifier || "—",
-          utilityType: "Alquiler",
-          period: formatPeriod(o.period),
-          status: "not_submitted",
-          dueDate: o.due_date,
-        }));
-
-      // --- Taxes due soon ---
       const taxes = taxesRes.data || [];
       const taxItems: TaxDueItem[] = taxes.map((t: any) => ({
         id: t.id,
@@ -208,7 +327,6 @@ export default function Dashboard() {
         status: t.status,
       }));
 
-      // --- Open maintenance ---
       const maintenance = maintenanceRes.data || [];
       const maintenanceItems: MaintenanceItem[] = maintenance.map((m: any) => ({
         id: m.id,
@@ -217,16 +335,11 @@ export default function Dashboard() {
         status: m.status,
       }));
 
-      setStats({
-        rentCollectedThisMonth: rentCollected,
-        rentPendingThisMonth: rentPending,
-        rentOverdueAccumulated: rentOverdue,
-        missingProofsCount,
-        taxesDueSoon: taxItems.length,
-      });
-      setOverdueRent(overdueItems);
-      setDueSoon(dueSoonItems);
-      setMissingProofs(missingProofItems);
+      // Store raw data for recalculation on view mode / month changes
+      setRawEnriched(enriched);
+      setRawAllPayments(allPayments);
+      setRawTaxItems(taxItems);
+      setRawMaintenanceItems(maintenanceItems);
       setTaxesDue(taxItems);
       setOpenMaintenance(maintenanceItems);
     } catch (error) {
@@ -240,6 +353,13 @@ export default function Dashboard() {
       setLoading(false);
     }
   };
+
+  // Trigger initial KPI computation after raw data is loaded
+  useEffect(() => {
+    if (!loading && rawEnriched.length >= 0) {
+      computeKPIs();
+    }
+  }, [rawEnriched, rawAllPayments]);
 
   const formatPeriod = (period: string) => {
     const [year, month] = period.split("-");
@@ -275,6 +395,16 @@ export default function Dashboard() {
         </Button>
       </PageHeader>
 
+      {/* View mode selector — aligned to the right */}
+      <div className="flex justify-end mb-5">
+        <DashboardViewSelector
+          mode={viewMode}
+          onModeChange={(m) => setViewMode(m)}
+          selectedMonth={selectedMonth}
+          onMonthChange={(month) => setSelectedMonth(month)}
+        />
+      </div>
+
       {/* KPI Cards */}
       <DashboardKPIs
         rentCollectedThisMonth={stats.rentCollectedThisMonth}
@@ -282,6 +412,8 @@ export default function Dashboard() {
         rentOverdueAccumulated={stats.rentOverdueAccumulated}
         missingProofsCount={stats.missingProofsCount}
         taxesDueSoon={stats.taxesDueSoon}
+        viewMode={viewMode}
+        selectedMonth={selectedMonth}
       />
 
       {/* Action Center */}
