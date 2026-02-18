@@ -14,6 +14,8 @@ import { ContractPublicLink } from "@/components/contracts/ContractPublicLink";
 import { ContractServices } from "@/components/contracts/ContractServices";
 import { ContractAdjustments } from "@/components/contracts/ContractAdjustments";
 import { CorrectCurrencyModal } from "@/components/contracts/CorrectCurrencyModal";
+import { ContractSheet } from "@/components/contracts/ContractSheet";
+import { ContractDocuments } from "@/components/contracts/ContractDocuments";
 
 
 interface Contract {
@@ -28,6 +30,7 @@ interface Contract {
   adjustment_frequency: number | null;
   adjustment_base_date: string | null;
   clauses_text: string | null;
+  basic_terms: string | null;
   public_submission_token: string | null;
   token_status: string;
   rent_due_day: number;
@@ -187,8 +190,9 @@ export default function ContractDetail() {
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Main Info */}
         <div className="lg:col-span-2 space-y-6">
+          {/* Status overview strip */}
           <Card>
-            <CardHeader className="pb-4">
+            <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
                   <FileText className="w-5 h-5" />
@@ -198,75 +202,40 @@ export default function ContractDetail() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-6 sm:grid-cols-2">
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">{t("contracts.startDate")}</p>
+              <div className="grid gap-4 sm:grid-cols-3 text-sm">
+                <div className="space-y-0.5">
+                  <p className="text-muted-foreground">Inicio</p>
                   <p className="font-medium">{formatDate(contract.start_date)}</p>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">{t("contracts.endDate")}</p>
+                <div className="space-y-0.5">
+                  <p className="text-muted-foreground">Vencimiento</p>
                   <p className="font-medium">{formatDate(contract.end_date)}</p>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">{t("contracts.initialRent")}</p>
-                  <div className="flex items-center gap-1">
-                    <p className="font-medium">{formatCurrencyWith(contract.initial_rent, contract.currency || "ARS")}</p>
-                    {currencyBadge(contract.currency || "ARS")}
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">{t("contracts.currentRent")}</p>
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <p className="font-semibold text-lg text-primary">
+                <div className="space-y-0.5">
+                  <p className="text-muted-foreground">Alquiler actual</p>
+                  <div className="flex items-center gap-1 flex-wrap">
+                    <p className="font-semibold text-primary">
                       {formatCurrencyWith(contract.current_rent, contract.currency || "ARS")}
                     </p>
                     {currencyBadge(contract.currency || "ARS")}
-                    <span className="text-sm font-normal text-muted-foreground">{t("contracts.perMonth")}</span>
                   </div>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">{t("contracts.deposit")}</p>
-                  {contract.deposit ? (
-                    <div className="flex items-center gap-1">
-                      <p className="font-medium">{formatCurrencyWith(contract.deposit, contract.currency_deposit || "ARS")}</p>
-                      {currencyBadge(contract.currency_deposit || "ARS")}
-                    </div>
-                  ) : (
-                    <p className="font-medium text-muted-foreground">—</p>
-                  )}
-                </div>
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">{t("contracts.rentDueDay")}</p>
-                  <p className="font-medium">{contract.rent_due_day || 5}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">{t("contracts.adjustmentSettings")}</p>
-                  <p className="font-medium">
-                    {adjustmentLabels[contract.adjustment_type] || contract.adjustment_type}
-                  </p>
-                  {contract.adjustment_frequency && (
-                    <p className="text-sm text-muted-foreground">{t("contracts.everyMonths", { count: contract.adjustment_frequency })}</p>
-                  )}
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {contract.clauses_text && (
-            <Card>
-              <CardHeader><CardTitle>{t("contracts.additionalClauses")}</CardTitle></CardHeader>
-              <CardContent>
-                <p className="text-sm whitespace-pre-wrap">{contract.clauses_text}</p>
-              </CardContent>
-            </Card>
-          )}
+          {/* Ficha estructurada del contrato */}
+          <ContractSheet contract={contract} onUpdate={fetchContract} />
+
+          {/* Documentación del contrato */}
+          <ContractDocuments contractId={contract.id} />
 
           {/* Contract Services */}
           {contract.is_active && (
             <ContractServices contractId={contract.id} rentDueDay={contract.rent_due_day || 5} />
           )}
 
-          {/* Adjustment history — shown regardless of active status */}
+          {/* Adjustment history */}
           <ContractAdjustments
             contractId={contract.id}
             currentRent={contract.current_rent}
@@ -338,7 +307,7 @@ export default function ContractDetail() {
               </Button>
               <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => navigate("/documents")}>
                 <FileText className="w-4 h-4 mr-2" />
-                {t("contracts.viewDocuments")}
+                Documentos de la propiedad
               </Button>
             </CardContent>
           </Card>
