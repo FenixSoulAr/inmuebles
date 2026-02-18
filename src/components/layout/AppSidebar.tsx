@@ -25,7 +25,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { LanguageSelector } from "./LanguageSelector";
-import logoFull from "@/assets/logo.png";
+import sidebarLogo from "@/assets/sidebar-logo.png";
 
 interface AppSidebarProps {
   /** Called after a nav item is clicked — used to close mobile drawer */
@@ -83,7 +83,7 @@ export function AppSidebar({ onNavigate, isMobileDrawer = false }: AppSidebarPro
       <div
         className={cn(
           "flex items-center border-b border-sidebar-border shrink-0 transition-all duration-300",
-          effectiveCollapsed ? "h-16 justify-center px-2" : "h-16 px-4"
+          effectiveCollapsed ? "h-[72px] justify-center px-2" : "h-[72px] px-4"
         )}
       >
         <button
@@ -92,20 +92,20 @@ export function AppSidebar({ onNavigate, isMobileDrawer = false }: AppSidebarPro
           aria-label="Ir al panel principal"
         >
           {effectiveCollapsed ? (
-            /* Collapsed: only the icon part of the logo */
+            /* Collapsed: solo el ícono (recorte izquierdo del lockup) */
             <img
-              src="/logo.png"
+              src="/android-chrome-192x192.png"
               alt="MyRentaHub"
-              className="h-8 w-8 object-contain"
-              style={{ objectPosition: "left center" }}
+              className="object-contain"
+              style={{ height: 40, width: 40 }}
             />
           ) : (
-            /* Expanded: full logo */
+            /* Expanded: sidebar-logo con icono + texto */
             <img
-              src="/logo.png"
+              src={sidebarLogo}
               alt="MyRentaHub"
-              className="h-8 w-auto object-contain object-left"
-              style={{ maxWidth: 180 }}
+              className="object-contain object-left"
+              style={{ height: 48, width: "auto", maxWidth: 220 }}
             />
           )}
         </button>
