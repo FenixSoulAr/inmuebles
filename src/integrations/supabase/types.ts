@@ -102,6 +102,119 @@ export type Database = {
           },
         ]
       }
+      contract_adjustments: {
+        Row: {
+          adjustment_date: string
+          calculated_amount: number
+          confirmed_amount: number | null
+          confirmed_at: string | null
+          confirmed_by: string | null
+          contract_id: string
+          created_at: string
+          id: string
+          note: string | null
+          previous_amount: number
+        }
+        Insert: {
+          adjustment_date: string
+          calculated_amount: number
+          confirmed_amount?: number | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          contract_id: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          previous_amount: number
+        }
+        Update: {
+          adjustment_date?: string
+          calculated_amount?: number
+          confirmed_amount?: number | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          contract_id?: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          previous_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_adjustments_confirmed_by_fkey"
+            columns: ["confirmed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contract_adjustments_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contract_guarantors: {
+        Row: {
+          address: string | null
+          contract_id: string
+          coverage_amount: number | null
+          created_at: string
+          document_or_cuit: string | null
+          full_name: string
+          guarantor_type: string
+          id: string
+          insurance_policy_number: string | null
+          insurance_valid_from: string | null
+          insurance_valid_to: string | null
+          notes: string | null
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          contract_id: string
+          coverage_amount?: number | null
+          created_at?: string
+          document_or_cuit?: string | null
+          full_name: string
+          guarantor_type?: string
+          id?: string
+          insurance_policy_number?: string | null
+          insurance_valid_from?: string | null
+          insurance_valid_to?: string | null
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          contract_id?: string
+          coverage_amount?: number | null
+          created_at?: string
+          document_or_cuit?: string | null
+          full_name?: string
+          guarantor_type?: string
+          id?: string
+          insurance_policy_number?: string | null
+          insurance_valid_from?: string | null
+          insurance_valid_to?: string | null
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_guarantors_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contract_services: {
         Row: {
           active: boolean
@@ -142,19 +255,24 @@ export type Database = {
       }
       contracts: {
         Row: {
+          adjustment_base_date: string | null
           adjustment_frequency: number | null
           adjustment_type: string
           clause_flags: Json | null
           clauses_text: string | null
           created_at: string
           currency: string | null
+          currency_deposit: string | null
           current_rent: number
           deposit: number | null
           end_date: string
+          grace_days: number | null
           id: string
           initial_rent: number
           is_active: boolean
           next_adjustment_date: string | null
+          penalty_type: string | null
+          penalty_value: number | null
           property_id: string
           public_submission_token: string | null
           rent_due_day: number | null
@@ -168,19 +286,24 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          adjustment_base_date?: string | null
           adjustment_frequency?: number | null
           adjustment_type?: string
           clause_flags?: Json | null
           clauses_text?: string | null
           created_at?: string
           currency?: string | null
+          currency_deposit?: string | null
           current_rent: number
           deposit?: number | null
           end_date: string
+          grace_days?: number | null
           id?: string
           initial_rent: number
           is_active?: boolean
           next_adjustment_date?: string | null
+          penalty_type?: string | null
+          penalty_value?: number | null
           property_id: string
           public_submission_token?: string | null
           rent_due_day?: number | null
@@ -194,19 +317,24 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          adjustment_base_date?: string | null
           adjustment_frequency?: number | null
           adjustment_type?: string
           clause_flags?: Json | null
           clauses_text?: string | null
           created_at?: string
           currency?: string | null
+          currency_deposit?: string | null
           current_rent?: number
           deposit?: number | null
           end_date?: string
+          grace_days?: number | null
           id?: string
           initial_rent?: number
           is_active?: boolean
           next_adjustment_date?: string | null
+          penalty_type?: string | null
+          penalty_value?: number | null
           property_id?: string
           public_submission_token?: string | null
           rent_due_day?: number | null
