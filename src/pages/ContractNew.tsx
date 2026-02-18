@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Loader2, Building2, User, Calendar, DollarSign, TrendingUp, Shield, CheckSquare, Home } from "lucide-react";
+import { GuarantorsSection, type GuarantorEntry } from "@/components/contracts/GuarantorsSection";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { PageHeader } from "@/components/ui/page-header";
@@ -86,6 +87,7 @@ export default function ContractNew() {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [guarantors, setGuarantors] = useState<GuarantorEntry[]>([]);
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -208,6 +210,29 @@ export default function ContractNew() {
         .single();
 
       if (error) throw error;
+
+      // Save guarantors
+      if (guarantors.length > 0) {
+        const guarantorRows = guarantors.map((g, idx) => ({
+          contract_id: created.id,
+          guarantee_type: g.guarantee_type,
+          guarantor_type: g.guarantee_type === "seguro_caucion" ? "insurance" : "individual",
+          full_name: g.full_name || g.company_name || "",
+          company_name: g.company_name || null,
+          document_or_cuit: g.document_or_cuit || null,
+          address: g.address || null,
+          phone: g.phone || null,
+          email: g.email || null,
+          notes: g.notes || null,
+          insurance_policy_number: g.insurance_policy_number || null,
+          coverage_amount: g.coverage_amount ? Number(g.coverage_amount) : null,
+          insurance_valid_from: g.insurance_valid_from || null,
+          insurance_valid_to: g.insurance_valid_to || null,
+          sort_order: idx,
+          details: g.matricula ? { matricula: g.matricula } : null,
+        }));
+        await supabase.from("contract_guarantors" as any).insert(guarantorRows as any);
+      }
 
       // Fire-and-forget helpers
       await Promise.allSettled([
@@ -644,6 +669,9 @@ export default function ContractNew() {
             </div>
           </CardContent>
         </Card>
+
+        {/* ── SECCIÓN H: Garantías ── */}
+        <GuarantorsSection value={guarantors} onChange={setGuarantors} />
 
         {/* ── Actions ── */}
         <div className="flex justify-end gap-3 pb-8">
