@@ -54,10 +54,12 @@ export default function Contracts() {
 
   useEffect(() => {
     if (user) fetchContracts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const fetchContracts = async () => {
     setFetchError(null);
+    setLoading(true);
     try {
       const { data, error } = await supabase
         .from("contracts")
@@ -66,7 +68,7 @@ export default function Contracts() {
 
       if (error) throw error;
 
-      const sorted = (data || []).sort((a: any, b: any) => {
+      const sorted = (data || []).sort((a: Contract, b: Contract) => {
         const propCmp = (a.properties?.internal_identifier || "").localeCompare(
           b.properties?.internal_identifier || ""
         );
@@ -75,9 +77,11 @@ export default function Contracts() {
       });
 
       setContracts(sorted);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "No se pudieron cargar los contratos.";
       console.error("Error fetching contracts:", error);
-      setFetchError(error?.message || "No se pudieron cargar los contratos.");
+      setFetchError(msg);
+      toast({ title: "Error al cargar contratos", description: msg, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -102,7 +106,7 @@ export default function Contracts() {
     const propName = contract.properties?.internal_identifier?.toLowerCase() ?? "";
     const tenantName = contract.tenants?.full_name?.toLowerCase() ?? "";
     const q = search.toLowerCase();
-    const matchesSearch = propName.includes(q) || tenantName.includes(q);
+    const matchesSearch = !q || propName.includes(q) || tenantName.includes(q);
     const matchesStatus =
       statusFilter === "all" ||
       (statusFilter === "active" && contract.is_active) ||
@@ -110,13 +114,15 @@ export default function Contracts() {
     return matchesSearch && matchesStatus;
   });
 
-  const formatCurrency = (amount: number, currency?: string | null) =>
-    new Intl.NumberFormat("es-AR", {
+  const formatCurrency = (amount: number | null | undefined, currency?: string | null) => {
+    if (amount == null) return "—";
+    return new Intl.NumberFormat("es-AR", {
       style: "currency",
       currency: currency || "ARS",
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount);
+  };
 
   const adjustmentLabels: Record<string, string> = {
     ipc: t("contracts.ipc"),
@@ -127,8 +133,20 @@ export default function Contracts() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      <div>
+        <PageHeader title={t("contracts.title")} description={t("contracts.description")}>
+          <Button onClick={() => navigate("/contracts/new")} disabled>
+            <Plus className="w-4 h-4 mr-2" />
+            {t("contracts.addContract")}
+          </Button>
+        </PageHeader>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <Card key={i} className="animate-pulse">
+              <CardContent className="p-5 h-36 bg-muted/30 rounded-lg" />
+            </Card>
+          ))}
+        </div>
       </div>
     );
   }
@@ -150,7 +168,7 @@ export default function Contracts() {
             {fetchError}{" "}
             <button
               className="underline ml-1 font-medium"
-              onClick={() => { setLoading(true); fetchContracts(); }}
+              onClick={fetchContracts}
             >
               Reintentar
             </button>
@@ -235,9 +253,7 @@ export default function Contracts() {
                   <div className="flex items-center gap-2">
                     <DollarSign className="w-4 h-4 text-success" />
                     <span className="font-semibold">
-                      {typeof contract.current_rent === "number"
-                        ? formatCurrency(contract.current_rent, contract.currency)
-                        : "—"}
+                      {formatCurrency(contract.current_rent, contract.currency)}
                       {t("contracts.perMonth")}
                     </span>
                   </div>
