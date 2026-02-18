@@ -5,6 +5,7 @@ import { AppSidebar } from "./AppSidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import sidebarLogo from "@/assets/sidebar-logo.png";
 
 const SIDEBAR_WIDTH = 280;
 const HEADER_HEIGHT = 56;
