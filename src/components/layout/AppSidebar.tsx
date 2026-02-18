@@ -27,7 +27,14 @@ import {
 } from "@/components/ui/tooltip";
 import { LanguageSelector } from "./LanguageSelector";
 
-export function AppSidebar() {
+interface AppSidebarProps {
+  /** Called after a nav item is clicked — used to close mobile drawer */
+  onNavigate?: () => void;
+  /** When true the sidebar is rendered inside a mobile drawer overlay */
+  isMobileDrawer?: boolean;
+}
+
+export function AppSidebar({ onNavigate, isMobileDrawer = false }: AppSidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
@@ -53,16 +60,25 @@ export function AppSidebar() {
     return location.pathname.startsWith(path);
   };
 
+  const handleNavigate = (url: string) => {
+    navigate(url);
+    onNavigate?.();
+  };
+
   const handleSignOut = async () => {
     await signOut();
     navigate("/signin");
+    onNavigate?.();
   };
+
+  // In mobile drawer: never collapse, always show full labels
+  const effectiveCollapsed = isMobileDrawer ? false : collapsed;
 
   return (
     <aside
       className={cn(
         "flex flex-col bg-sidebar text-sidebar-foreground h-screen transition-all duration-300 ease-in-out",
-        collapsed ? "w-16" : "w-64"
+        effectiveCollapsed ? "w-16" : "w-64"
       )}
     >
       {/* Logo Section */}
@@ -71,7 +87,7 @@ export function AppSidebar() {
           <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
             <Home className="w-5 h-5" />
           </div>
-          {!collapsed && (
+          {!effectiveCollapsed && (
             <span className="text-lg font-semibold tracking-tight animate-fade-in">
               MyRentaHub
             </span>
@@ -86,7 +102,7 @@ export function AppSidebar() {
             const active = isActive(item.url);
             const NavButton = (
               <button
-                onClick={() => navigate(item.url)}
+                onClick={() => handleNavigate(item.url)}
                 className={cn(
                   "flex items-center w-full gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
                   active
@@ -95,13 +111,13 @@ export function AppSidebar() {
                 )}
               >
                 <item.icon className="w-5 h-5 shrink-0" />
-                {!collapsed && <span>{item.title}</span>}
+                {!effectiveCollapsed && <span>{item.title}</span>}
               </button>
             );
 
             return (
               <li key={item.url}>
-                {collapsed ? (
+                {effectiveCollapsed ? (
                   <Tooltip delayDuration={0}>
                     <TooltipTrigger asChild>{NavButton}</TooltipTrigger>
                     <TooltipContent side="right" className="font-medium">
@@ -120,10 +136,10 @@ export function AppSidebar() {
       {/* Footer */}
       <div className="p-2 border-t border-sidebar-border">
         <Separator className="mb-2 bg-sidebar-border" />
-        
-        <LanguageSelector collapsed={collapsed} />
 
-        {collapsed ? (
+        <LanguageSelector collapsed={effectiveCollapsed} />
+
+        {effectiveCollapsed ? (
           <Tooltip delayDuration={0}>
             <TooltipTrigger asChild>
               <Button
@@ -148,19 +164,21 @@ export function AppSidebar() {
           </Button>
         )}
 
-        {/* Collapse Toggle */}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setCollapsed(!collapsed)}
-          className="w-full mt-2 text-sidebar-foreground/50 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-        >
-          {collapsed ? (
-            <ChevronRight className="w-4 h-4" />
-          ) : (
-            <ChevronLeft className="w-4 h-4" />
-          )}
-        </Button>
+        {/* Collapse Toggle — only on desktop */}
+        {!isMobileDrawer && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setCollapsed(!collapsed)}
+            className="w-full mt-2 text-sidebar-foreground/50 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          >
+            {effectiveCollapsed ? (
+              <ChevronRight className="w-4 h-4" />
+            ) : (
+              <ChevronLeft className="w-4 h-4" />
+            )}
+          </Button>
+        )}
       </div>
     </aside>
   );
