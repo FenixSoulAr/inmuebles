@@ -146,10 +146,12 @@ export default function Dashboard() {
         return lastPaidAt && lastPaidAt >= monthStartStr && lastPaidAt <= monthEndStr;
       });
       const missingProofsCount = confirmedInMonth.filter((o: any) => {
-        if (o.payment_proofs?.proof_status === "approved_without_proof") return false;
+        const ps = o.payment_proofs?.proof_status;
+        if (ps === "waived" || ps === "approved_without_proof") return false;
         const hasAttachment = (o.payments || []).some((p: any) => p.attachment_url);
         const hasProofFile = o.payment_proofs?.files?.length > 0;
-        return !hasAttachment && !hasProofFile;
+        if (ps === "uploaded" || hasProofFile || hasAttachment) return false;
+        return true;
       }).length;
 
       // --- Month-over-month comparison ---
@@ -215,10 +217,11 @@ export default function Dashboard() {
       const confirmedRentObls = enriched.filter((o: any) => o.balanceDue <= 0);
       const missingProofItems: MissingProofItem[] = confirmedRentObls
         .filter((o: any) => {
-          if (o.payment_proofs?.proof_status === "approved_without_proof") return false;
+          const ps = o.payment_proofs?.proof_status;
+          if (ps === "waived" || ps === "approved_without_proof") return false;
           const hasAttachment = (o.payments || []).some((p: any) => p.attachment_url);
           const hasProofFile = o.payment_proofs?.files?.length > 0;
-          return !hasAttachment && !hasProofFile;
+          return ps !== "uploaded" && !hasProofFile && !hasAttachment;
         })
         .slice(0, 8)
         .map((o: any) => ({
