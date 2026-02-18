@@ -112,8 +112,10 @@ export type Database = {
           contract_id: string
           created_at: string
           id: string
+          manual_percentage: number | null
           note: string | null
           previous_amount: number
+          status: string
         }
         Insert: {
           adjustment_date: string
@@ -124,8 +126,10 @@ export type Database = {
           contract_id: string
           created_at?: string
           id?: string
+          manual_percentage?: number | null
           note?: string | null
           previous_amount: number
+          status?: string
         }
         Update: {
           adjustment_date?: string
@@ -136,8 +140,10 @@ export type Database = {
           contract_id?: string
           created_at?: string
           id?: string
+          manual_percentage?: number | null
           note?: string | null
           previous_amount?: number
+          status?: string
         }
         Relationships: [
           {

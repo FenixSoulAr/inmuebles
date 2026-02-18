@@ -274,6 +274,7 @@ export default function ContractDetail() {
             adjustmentType={contract.adjustment_type}
             adjustmentFrequency={contract.adjustment_frequency}
             adjustmentBaseDate={contract.adjustment_base_date}
+            startDate={contract.start_date}
             isActive={contract.is_active}
             onRentUpdated={fetchContract}
           />
