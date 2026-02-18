@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { DashboardKPIs } from "@/components/dashboard/DashboardKPIs";
 import { DashboardViewSelector, type DashboardViewMode } from "@/components/dashboard/DashboardViewSelector";
 import { PortfolioHealth } from "@/components/dashboard/PortfolioHealth";
+import { RentTrendChart } from "@/components/dashboard/RentTrendChart";
 import {
   ActionCenter,
   OverdueRentItem,
@@ -422,6 +423,12 @@ export default function Dashboard() {
         taxesDueSoon={stats.taxesDueSoon}
         viewMode={viewMode}
         selectedMonth={selectedMonth}
+      />
+
+      {/* Rent trend chart — last 6 months */}
+      <RentTrendChart
+        enrichedObligations={rawEnriched}
+        allPayments={rawAllPayments}
       />
 
       {/* Action Center */}
