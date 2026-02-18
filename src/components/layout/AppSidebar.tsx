@@ -14,7 +14,6 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
-  Home,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -26,6 +25,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { LanguageSelector } from "./LanguageSelector";
+import logoFull from "@/assets/logo.png";
 
 interface AppSidebarProps {
   /** Called after a nav item is clicked — used to close mobile drawer */
@@ -80,17 +80,35 @@ export function AppSidebar({ onNavigate, isMobileDrawer = false }: AppSidebarPro
       style={{ width: effectiveCollapsed ? 64 : 280 }}
     >
       {/* Logo Section */}
-      <div className="flex items-center h-16 px-4 border-b border-sidebar-border">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-            <Home className="w-5 h-5" />
-          </div>
-          {!effectiveCollapsed && (
-            <span className="text-lg font-semibold tracking-tight animate-fade-in">
-              MyRentaHub
-            </span>
+      <div
+        className={cn(
+          "flex items-center border-b border-sidebar-border shrink-0 transition-all duration-300",
+          effectiveCollapsed ? "h-16 justify-center px-2" : "h-16 px-4"
+        )}
+      >
+        <button
+          onClick={() => handleNavigate("/dashboard")}
+          className="focus:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring rounded-lg"
+          aria-label="Ir al panel principal"
+        >
+          {effectiveCollapsed ? (
+            /* Collapsed: only the icon part of the logo */
+            <img
+              src="/logo.png"
+              alt="MyRentaHub"
+              className="h-8 w-8 object-contain"
+              style={{ objectPosition: "left center" }}
+            />
+          ) : (
+            /* Expanded: full logo */
+            <img
+              src="/logo.png"
+              alt="MyRentaHub"
+              className="h-8 w-auto object-contain object-left"
+              style={{ maxWidth: 180 }}
+            />
           )}
-        </div>
+        </button>
       </div>
 
       {/* Navigation */}

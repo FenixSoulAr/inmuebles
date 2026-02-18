@@ -138,9 +138,11 @@ export function AppLayout() {
             >
               <Menu className="w-5 h-5" />
             </Button>
-            <span className="text-base font-semibold tracking-tight truncate">
-              MyRentaHub
-            </span>
+            <img
+              src="/logo.png"
+              alt="MyRentaHub"
+              className="h-7 w-auto object-contain"
+            />
           </header>
 
           {/* ── Page content ── */}
