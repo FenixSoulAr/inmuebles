@@ -1,17 +1,19 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ArrowLeft, FileText, Calendar, DollarSign, RefreshCw, Loader2, Building2, User } from "lucide-react";
+import { ArrowLeft, FileText, DollarSign, RefreshCw, Loader2, Building2, User, Wrench } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { ContractPublicLink } from "@/components/contracts/ContractPublicLink";
 import { ContractServices } from "@/components/contracts/ContractServices";
 import { ContractAdjustments } from "@/components/contracts/ContractAdjustments";
+import { CorrectCurrencyModal } from "@/components/contracts/CorrectCurrencyModal";
 
 
 interface Contract {
@@ -47,6 +49,7 @@ export default function ContractDetail() {
   const [contract, setContract] = useState<Contract | null>(null);
   const [loading, setLoading] = useState(true);
   const [regenerating, setRegenerating] = useState(false);
+  const [currencyModalOpen, setCurrencyModalOpen] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -109,8 +112,24 @@ export default function ContractDetail() {
     }
   };
 
-  const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat(isEs ? "es-AR" : "en-US", { style: "currency", currency: "USD" }).format(amount);
+  // Currency formatting — respects per-field currency
+  const formatCurrencyWith = (amount: number, currency: string) => {
+    const curr = currency || "ARS";
+    return new Intl.NumberFormat(isEs ? "es-AR" : "en-US", {
+      style: "currency",
+      currency: curr,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  };
+
+  const formatCurrency = (amount: number) => formatCurrencyWith(amount, contract?.currency || "ARS");
+
+  const currencyBadge = (currency: string) => (
+    <Badge variant="outline" className="text-xs font-mono ml-1">
+      {currency || "ARS"}
+    </Badge>
+  );
 
   const formatDate = (dateString: string) =>
     new Date(dateString).toLocaleDateString(isEs ? "es-AR" : "en-US", { weekday: "short", month: "long", day: "numeric", year: "numeric" });
@@ -143,15 +162,26 @@ export default function ContractDetail() {
         title={t("contracts.contractDetails")}
         description={`${contract.properties.internal_identifier} - ${contract.tenants.full_name}`}
       >
-        {contract.is_active && (
-          <Button onClick={handleRegenerateRentSchedule} disabled={regenerating}>
-            {regenerating ? (
-              <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{t("contracts.regenerating")}</>
-            ) : (
-              <><RefreshCw className="w-4 h-4 mr-2" />{t("contracts.regenerateRent")}</>
-            )}
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrencyModalOpen(true)}
+            title="Corrección administrativa de moneda"
+          >
+            <Wrench className="w-4 h-4 mr-2" />
+            Corregir moneda
           </Button>
-        )}
+          {contract.is_active && (
+            <Button onClick={handleRegenerateRentSchedule} disabled={regenerating}>
+              {regenerating ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{t("contracts.regenerating")}</>
+              ) : (
+                <><RefreshCw className="w-4 h-4 mr-2" />{t("contracts.regenerateRent")}</>
+              )}
+            </Button>
+          )}
+        </div>
       </PageHeader>
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -179,18 +209,31 @@ export default function ContractDetail() {
                 </div>
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">{t("contracts.initialRent")}</p>
-                  <p className="font-medium">{formatCurrency(contract.initial_rent)}</p>
+                  <div className="flex items-center gap-1">
+                    <p className="font-medium">{formatCurrencyWith(contract.initial_rent, contract.currency || "ARS")}</p>
+                    {currencyBadge(contract.currency || "ARS")}
+                  </div>
                 </div>
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">{t("contracts.currentRent")}</p>
-                  <p className="font-semibold text-lg text-primary">
-                    {formatCurrency(contract.current_rent)}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <p className="font-semibold text-lg text-primary">
+                      {formatCurrencyWith(contract.current_rent, contract.currency || "ARS")}
+                    </p>
+                    {currencyBadge(contract.currency || "ARS")}
                     <span className="text-sm font-normal text-muted-foreground">{t("contracts.perMonth")}</span>
-                  </p>
+                  </div>
                 </div>
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">{t("contracts.deposit")}</p>
-                  <p className="font-medium">{contract.deposit ? formatCurrency(contract.deposit) : "—"}</p>
+                  {contract.deposit ? (
+                    <div className="flex items-center gap-1">
+                      <p className="font-medium">{formatCurrencyWith(contract.deposit, contract.currency_deposit || "ARS")}</p>
+                      {currencyBadge(contract.currency_deposit || "ARS")}
+                    </div>
+                  ) : (
+                    <p className="font-medium text-muted-foreground">—</p>
+                  )}
                 </div>
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">{t("contracts.rentDueDay")}</p>
@@ -300,6 +343,18 @@ export default function ContractDetail() {
           </Card>
         </div>
       </div>
+
+      {/* Currency correction modal */}
+      <CorrectCurrencyModal
+        open={currencyModalOpen}
+        onOpenChange={setCurrencyModalOpen}
+        contractId={contract.id}
+        currentCurrencyRent={contract.currency || "ARS"}
+        currentCurrencyDeposit={contract.currency_deposit || "ARS"}
+        currentRent={contract.current_rent}
+        currentDeposit={contract.deposit}
+        onSuccess={fetchContract}
+      />
     </div>
   );
 }
