@@ -1,4 +1,4 @@
-import { ChevronRight, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { ChevronRight, TrendingUp, TrendingDown, Minus, CalendarClock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -11,6 +11,7 @@ interface DashboardKPIsProps {
   rentOverdueAccumulated: number;
   missingProofsCount: number;
   taxesDueSoon: number;
+  adjustmentsDueSoon: number;
   viewMode: DashboardViewMode;
   selectedMonth: string; // "yyyy-MM"
   // Month-over-month comparison (only in monthly view)
@@ -147,6 +148,7 @@ export function DashboardKPIs({
   rentOverdueAccumulated,
   missingProofsCount,
   taxesDueSoon,
+  adjustmentsDueSoon,
   viewMode,
   selectedMonth,
   prevMonthCobrado,
@@ -258,10 +260,18 @@ export function DashboardKPIs({
       variant: taxesDueSoon > 0 ? "warning" : "default",
       onClick: () => navigate("/taxes?filter=upcoming"),
     },
+    {
+      key: "adjustments",
+      label: "Ajustes próximos",
+      microcopy: "Contratos con ajuste en 90 días",
+      value: adjustmentsDueSoon,
+      variant: adjustmentsDueSoon > 0 ? "warning" : "default",
+      onClick: () => navigate("/upcoming-adjustments"),
+    },
   ];
 
   return (
-    <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 mb-8">
+    <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 mb-8">
       {kpis.map((kpi) => (
         <KpiCard
           key={kpi.key}
