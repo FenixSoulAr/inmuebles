@@ -545,13 +545,17 @@ export default function PaymentProofs() {
     return obl.due_date >= periodBounds.from && obl.due_date <= periodBounds.to;
   };
 
-  // Derive proof_status for an obligation
+  // Derive proof_status for an obligation — exclusively from the DB field
   const getProofStatus = (obl: Obligation): "uploaded" | "waived" | "required" => {
-    const proofStatus = obl.payment_proofs?.proof_status;
-    if (proofStatus === "waived" || proofStatus === "approved_without_proof") return "waived";
-    const hasProofFile = obl.payment_proofs?.files?.length > 0;
-    const hasAttachment = (obl.payments || []).some((p: any) => p.attachment_url);
-    if (proofStatus === "uploaded" || hasProofFile || hasAttachment) return "uploaded";
+    const ps = obl.payment_proofs?.proof_status;
+    if (ps === "waived") return "waived";
+    if (ps === "uploaded") return "uploaded";
+    // Fallback only for legacy records where proof_status column is null
+    if (ps == null) {
+      const hasProofFile = (obl.payment_proofs?.files?.length ?? 0) > 0;
+      const hasAttachment = (obl.payments || []).some((p: any) => p.attachment_url);
+      if (hasProofFile || hasAttachment) return "uploaded";
+    }
     return "required";
   };
 
@@ -804,25 +808,38 @@ export default function PaymentProofs() {
           .eq("id", approveNoProofObl.payment_proof_id);
         if (error) throw error;
       } else {
-        // Create a minimal payment_proof record to store the audit
-        const { error } = await supabase.from("payment_proofs").insert({
-          contract_id: approveNoProofObl.contract_id,
-          obligation_id: approveNoProofObl.id,
-          amount: approveNoProofObl.total_paid || approveNoProofObl.expected_amount || 0,
-          paid_at: nowDate,
-          period: approveNoProofObl.period,
-          type: "rent",
-          files: [],
-          status: "approved",
-          proof_status: "waived",
-          proof_waived_reason: waivedReason,
-          proof_waived_note: waivedNote || null,
-          proof_reviewed_by: user?.id || null,
-          proof_reviewed_at: nowIso,
-          approved_at: nowIso,
-          approved_by: user?.id || null,
-        });
-        if (error) throw error;
+        // Create a new payment_proof record and link it back to the obligation
+        const { data: newProof, error: insertError } = await supabase
+          .from("payment_proofs")
+          .insert({
+            contract_id: approveNoProofObl.contract_id,
+            obligation_id: approveNoProofObl.id,
+            amount: approveNoProofObl.total_paid || approveNoProofObl.expected_amount || 0,
+            paid_at: nowDate,
+            period: approveNoProofObl.period,
+            type: "rent",
+            files: [],
+            status: "approved",
+            proof_status: "waived",
+            proof_waived_reason: waivedReason,
+            proof_waived_note: waivedNote || null,
+            proof_reviewed_by: user?.id || null,
+            proof_reviewed_at: nowIso,
+            approved_at: nowIso,
+            approved_by: user?.id || null,
+          })
+          .select("id")
+          .single();
+        if (insertError) throw insertError;
+
+        // Link the new proof to the obligation so the JOIN works on next fetch
+        if (newProof?.id) {
+          const { error: linkError } = await supabase
+            .from("obligations")
+            .update({ payment_proof_id: newProof.id })
+            .eq("id", approveNoProofObl.id);
+          if (linkError) console.warn("Could not link proof to obligation:", linkError);
+        }
       }
 
       // ─── Optimistic UI: update local state immediately ───────────────────
