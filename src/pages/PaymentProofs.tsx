@@ -787,24 +787,25 @@ export default function PaymentProofs() {
     if (!approveNoProofObl) return;
     setIsSubmitting(true);
     try {
-      const now = new Date().toISOString();
-      const nowDate = now.split("T")[0];
+      const nowIso = new Date().toISOString();
+      const nowDate = nowIso.split("T")[0];
 
       if (approveNoProofObl.payment_proof_id) {
-        await supabase.from("payment_proofs")
+        const { error } = await supabase.from("payment_proofs")
           .update({
             proof_status: "waived",
             proof_waived_reason: waivedReason,
             proof_waived_note: waivedNote || null,
             proof_reviewed_by: user?.id || null,
-            proof_reviewed_at: now,
-            approved_at: now,
+            proof_reviewed_at: nowIso,
+            approved_at: nowIso,
             approved_by: user?.id || null,
           })
           .eq("id", approveNoProofObl.payment_proof_id);
+        if (error) throw error;
       } else {
         // Create a minimal payment_proof record to store the audit
-        await supabase.from("payment_proofs").insert({
+        const { error } = await supabase.from("payment_proofs").insert({
           contract_id: approveNoProofObl.contract_id,
           obligation_id: approveNoProofObl.id,
           amount: approveNoProofObl.total_paid || approveNoProofObl.expected_amount || 0,
@@ -817,16 +818,54 @@ export default function PaymentProofs() {
           proof_waived_reason: waivedReason,
           proof_waived_note: waivedNote || null,
           proof_reviewed_by: user?.id || null,
-          proof_reviewed_at: now,
-          approved_at: now,
+          proof_reviewed_at: nowIso,
+          approved_at: nowIso,
           approved_by: user?.id || null,
         });
+        if (error) throw error;
       }
+
+      // ─── Optimistic UI: update local state immediately ───────────────────
+      const oblId = approveNoProofObl.id;
+      const waivedProofPatch = {
+        proof_status: "waived",
+        proof_waived_reason: waivedReason,
+        proof_waived_note: waivedNote || null,
+        proof_reviewed_by: user?.id || null,
+        proof_reviewed_at: nowIso,
+        approved_at: nowIso,
+        approved_by: user?.id || null,
+      };
+      setObligations((prev) =>
+        prev.map((o) => {
+          if (o.id !== oblId) return o;
+          return {
+            ...o,
+            payment_proofs: o.payment_proofs
+              ? { ...o.payment_proofs, ...waivedProofPatch }
+              : {
+                  // Synthesise a minimal proof object so getProofStatus returns "waived"
+                  id: "__optimistic__",
+                  amount: o.total_paid || o.expected_amount || 0,
+                  paid_at: nowDate,
+                  files: [],
+                  status: "approved",
+                  rejection_reason: null,
+                  comment: null,
+                  ...waivedProofPatch,
+                },
+          };
+        })
+      );
+
       toast({
         title: isEs ? "Comprobante eximido" : "Proof waived",
-        description: isEs ? "El pago quedó registrado como excepción. Desaparecerá de 'Faltantes'." : "Recorded as administrative exception.",
+        description: isEs
+          ? "El pago quedó registrado como excepción. Desaparecerá de 'Faltantes'."
+          : "Recorded as administrative exception.",
       });
       setApproveNoProofOpen(false);
+      // Also do a background refresh to ensure consistency
       fetchObligations();
     } catch (err) {
       console.error("Approve no proof error:", err);
