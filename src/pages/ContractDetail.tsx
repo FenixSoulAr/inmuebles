@@ -17,6 +17,7 @@ import { CorrectCurrencyModal } from "@/components/contracts/CorrectCurrencyModa
 import { ContractSheet } from "@/components/contracts/ContractSheet";
 import { ContractDocuments } from "@/components/contracts/ContractDocuments";
 import { ContractTextPanel, type OwnerForContract, type GuarantorForContract } from "@/components/contracts/ContractTextPanel";
+import { DocumentsPanel } from "@/components/documents/DocumentsPanel";
 
 
 interface Contract {
@@ -281,6 +282,22 @@ export default function ContractDetail() {
 
           {/* Documentación del contrato */}
           <ContractDocuments contractId={contract.id} />
+
+          {/* Nuevos documentos del contrato (sistema unificado) */}
+          <div className="rounded-xl border border-border bg-card">
+            <div className="px-6 py-4 border-b border-border">
+              <h3 className="font-semibold text-base flex items-center gap-2">
+                <FileText className="w-4 h-4 text-primary" />
+                Documentos del contrato
+              </h3>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Contrato firmado, pólizas, DNI, inventarios y actas.
+              </p>
+            </div>
+            <div className="p-6">
+              <DocumentsPanel scope="contract" contractId={contract.id} />
+            </div>
+          </div>
 
           {/* Contract Services */}
           {contract.is_active && (
