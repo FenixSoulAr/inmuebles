@@ -25,6 +25,8 @@ import Taxes from "./pages/Taxes";
 import Agenda from "./pages/Agenda";
 import Documents from "./pages/Documents";
 import UpcomingAdjustments from "./pages/UpcomingAdjustments";
+import Owners from "./pages/Owners";
+import Guarantors from "./pages/Guarantors";
 import NotFound from "./pages/NotFound";
 
 // Create QueryClient as a module-level singleton
@@ -67,6 +69,13 @@ const App: React.FC = () => {
                 <Route path="/agenda" element={<Agenda />} />
                 <Route path="/documents" element={<Documents />} />
                 <Route path="/upcoming-adjustments" element={<UpcomingAdjustments />} />
+                {/* Personas module */}
+                <Route path="/owners" element={<Owners />} />
+                <Route path="/guarantors" element={<Guarantors />} />
+                {/* /people/* aliases for deep links */}
+                <Route path="/people/owners" element={<Navigate to="/owners" replace />} />
+                <Route path="/people/tenants" element={<Navigate to="/tenants" replace />} />
+                <Route path="/people/guarantors" element={<Navigate to="/guarantors" replace />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
@@ -78,3 +87,4 @@ const App: React.FC = () => {
 };
 
 export default App;
+
