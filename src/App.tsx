@@ -23,6 +23,7 @@ import Maintenance from "./pages/Maintenance";
 import Taxes from "./pages/Taxes";
 import Agenda from "./pages/Agenda";
 import Documents from "./pages/Documents";
+import UpcomingAdjustments from "./pages/UpcomingAdjustments";
 import NotFound from "./pages/NotFound";
 
 // Create QueryClient as a module-level singleton
@@ -64,6 +65,7 @@ const App: React.FC = () => {
                 <Route path="/taxes" element={<Taxes />} />
                 <Route path="/agenda" element={<Agenda />} />
                 <Route path="/documents" element={<Documents />} />
+                <Route path="/upcoming-adjustments" element={<UpcomingAdjustments />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>

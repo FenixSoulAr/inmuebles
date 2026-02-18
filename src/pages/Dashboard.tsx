@@ -18,8 +18,9 @@ import {
   MissingProofItem,
   TaxDueItem,
   MaintenanceItem,
+  UpcomingAdjustmentItem,
 } from "@/components/dashboard/ActionCenter";
-import { format, startOfMonth, endOfMonth, parseISO, subMonths } from "date-fns";
+import { format, startOfMonth, endOfMonth, parseISO, subMonths, addMonths } from "date-fns";
 
 interface DashboardStats {
   rentCollectedThisMonth: number;
@@ -27,6 +28,7 @@ interface DashboardStats {
   rentOverdueAccumulated: number;
   missingProofsCount: number;
   taxesDueSoon: number;
+  adjustmentsDueSoon: number;
   // Month-over-month comparison (only used in monthly view)
   prevMonthCobrado: number | null;
   prevMonthFacturado: number | null;
@@ -42,6 +44,7 @@ export default function Dashboard() {
     rentOverdueAccumulated: 0,
     missingProofsCount: 0,
     taxesDueSoon: 0,
+    adjustmentsDueSoon: 0,
     prevMonthCobrado: null,
     prevMonthFacturado: null,
     prevMonthMora: null,
@@ -53,6 +56,7 @@ export default function Dashboard() {
   const [missingProofs, setMissingProofs] = useState<MissingProofItem[]>([]);
   const [taxesDue, setTaxesDue] = useState<TaxDueItem[]>([]);
   const [openMaintenance, setOpenMaintenance] = useState<MaintenanceItem[]>([]);
+  const [upcomingAdjustments, setUpcomingAdjustments] = useState<UpcomingAdjustmentItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   // View mode state
@@ -84,6 +88,7 @@ export default function Dashboard() {
   const [rawAllPayments, setRawAllPayments] = useState<any[]>([]);
   const [rawTaxItems, setRawTaxItems] = useState<TaxDueItem[]>([]);
   const [rawMaintenanceItems, setRawMaintenanceItems] = useState<MaintenanceItem[]>([]);
+  const [rawAdjustmentsCount, setRawAdjustmentsCount] = useState<number>(0);
 
   const computeKPIs = () => {
     const enriched = rawEnriched;
@@ -231,6 +236,7 @@ export default function Dashboard() {
         rentOverdueAccumulated: rentOverdue,
         missingProofsCount,
         taxesDueSoon: rawTaxItems.length,
+        adjustmentsDueSoon: rawAdjustmentsCount,
         prevMonthCobrado,
         prevMonthFacturado,
         prevMonthMora,
@@ -314,6 +320,7 @@ export default function Dashboard() {
         rentOverdueAccumulated: rentOverdue,
         missingProofsCount,
         taxesDueSoon: rawTaxItems.length,
+        adjustmentsDueSoon: rawAdjustmentsCount,
         prevMonthCobrado: null,
         prevMonthFacturado: null,
         prevMonthMora: null,
@@ -332,8 +339,9 @@ export default function Dashboard() {
       const now = new Date();
       const todayStr = now.toISOString().split("T")[0];
       const in30DaysStr = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+      const in90DaysStr = format(addMonths(now, 3), "yyyy-MM-dd");
 
-      const [oblRes, allPaymentsRes, taxesRes, maintenanceRes] = await Promise.all([
+      const [oblRes, allPaymentsRes, taxesRes, maintenanceRes, contractsRes, confirmedAdjRes] = await Promise.all([
         supabase
           .from("obligations")
           .select(`
@@ -357,6 +365,15 @@ export default function Dashboard() {
           .from("maintenance_issues")
           .select("*, properties(internal_identifier)")
           .neq("status", "resolved"),
+        supabase
+          .from("contracts")
+          .select(`id, start_date, adjustment_frequency, current_rent, currency, properties(internal_identifier), tenants(full_name)`)
+          .eq("is_active", true),
+        supabase
+          .from("contract_adjustments")
+          .select("contract_id, adjustment_date")
+          .eq("status", "confirmed")
+          .order("adjustment_date", { ascending: false }),
       ]);
 
       const rawObls = (oblRes.data || []) as any[];
@@ -394,13 +411,47 @@ export default function Dashboard() {
         status: m.status,
       }));
 
+      // Compute upcoming adjustments count (within 90 days)
+      const lastConfirmedMap: Record<string, string> = {};
+      for (const adj of confirmedAdjRes.data || []) {
+        if (!lastConfirmedMap[adj.contract_id]) {
+          lastConfirmedMap[adj.contract_id] = adj.adjustment_date;
+        }
+      }
+
+      let adjCount = 0;
+      const adjItems: UpcomingAdjustmentItem[] = [];
+      for (const c of (contractsRes.data || []) as any[]) {
+        const freq = c.adjustment_frequency ?? 12;
+        if (freq <= 0) continue;
+        const base = lastConfirmedMap[c.id]
+          ? parseISO(lastConfirmedMap[c.id])
+          : parseISO(c.start_date);
+        const nextDate = format(addMonths(base, freq), "yyyy-MM-dd");
+        if (nextDate >= todayStr && nextDate <= in90DaysStr) {
+          adjCount++;
+          adjItems.push({
+            contractId: c.id,
+            property: c.properties?.internal_identifier || "—",
+            tenant: c.tenants?.full_name || "—",
+            nextAdjustmentDate: nextDate,
+            currentRent: Number(c.current_rent),
+            currencyRent: c.currency ?? "ARS",
+            adjustmentFrequency: freq,
+          });
+        }
+      }
+      adjItems.sort((a, b) => a.nextAdjustmentDate.localeCompare(b.nextAdjustmentDate));
+
       // Store raw data for recalculation on view mode / month changes
       setRawEnriched(enriched);
       setRawAllPayments(allPayments);
       setRawTaxItems(taxItems);
       setRawMaintenanceItems(maintenanceItems);
+      setRawAdjustmentsCount(adjCount);
       setTaxesDue(taxItems);
       setOpenMaintenance(maintenanceItems);
+      setUpcomingAdjustments(adjItems);
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
       toast({
@@ -478,6 +529,7 @@ export default function Dashboard() {
         rentOverdueAccumulated={stats.rentOverdueAccumulated}
         missingProofsCount={stats.missingProofsCount}
         taxesDueSoon={stats.taxesDueSoon}
+        adjustmentsDueSoon={stats.adjustmentsDueSoon}
         viewMode={viewMode}
         selectedMonth={selectedMonth}
         prevMonthCobrado={stats.prevMonthCobrado}
@@ -500,6 +552,7 @@ export default function Dashboard() {
         missingProofs={missingProofs}
         taxesDueSoon={taxesDue}
         openMaintenance={openMaintenance}
+        upcomingAdjustments={upcomingAdjustments}
         onRecordPayment={(_id) => navigate(`/payment-proofs?kindTab=rent&statusTab=action`)}
         onUploadProof={() => navigate("/payment-proofs?kindTab=rent&statusTab=confirmed&missingProof=true")}
         onUploadTaxReceipt={() => navigate("/taxes?filter=upcoming")}
