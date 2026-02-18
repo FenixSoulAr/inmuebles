@@ -36,6 +36,16 @@ interface Contract {
   rent_due_day: number;
   currency: string | null;
   currency_deposit: string | null;
+  // New condition fields
+  tipo_contrato: string | null;
+  usa_seguro: boolean | null;
+  seguro_tipo: string | null;
+  seguro_obligatorio: boolean | null;
+  expensas_ordinarias: boolean | null;
+  expensas_extraordinarias: boolean | null;
+  impuestos_a_cargo_locatario: boolean | null;
+  permite_subalquiler: boolean | null;
+  permite_mascotas: boolean | null;
   properties: {
     internal_identifier: string;
     full_address: string;
@@ -44,6 +54,7 @@ interface Contract {
     full_name: string;
     email: string | null;
     phone: string | null;
+    doc_id: string | null;
   };
 }
 
@@ -70,7 +81,7 @@ export default function ContractDetail() {
         .select(`
           *,
           properties(internal_identifier, full_address),
-          tenants(full_name, email, phone)
+          tenants(full_name, email, phone, doc_id)
         ` as any)
         .eq("id", id)
         .maybeSingle();
