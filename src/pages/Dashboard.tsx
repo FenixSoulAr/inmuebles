@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { DashboardKPIs } from "@/components/dashboard/DashboardKPIs";
 import { DashboardViewSelector, type DashboardViewMode } from "@/components/dashboard/DashboardViewSelector";
+import { PortfolioHealth } from "@/components/dashboard/PortfolioHealth";
 import {
   ActionCenter,
   OverdueRentItem,
@@ -404,6 +405,13 @@ export default function Dashboard() {
           onMonthChange={(month) => setSelectedMonth(month)}
         />
       </div>
+
+      {/* Portfolio Health indicator */}
+      <PortfolioHealth
+        enrichedObligations={rawEnriched}
+        viewMode={viewMode}
+        selectedMonth={selectedMonth}
+      />
 
       {/* KPI Cards */}
       <DashboardKPIs
