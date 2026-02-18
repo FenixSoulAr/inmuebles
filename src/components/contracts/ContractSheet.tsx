@@ -162,6 +162,18 @@ export function ContractSheet({ contract, onUpdate }: ContractSheetProps) {
   };
 
   // ──────────────────────────────────────────────────────────────────────────
+  // Helpers
+  // ──────────────────────────────────────────────────────────────────────────
+  const numberToWords = (n: number): string => {
+    const words: Record<number, string> = {
+      1: "uno", 2: "dos", 3: "tres", 4: "cuatro", 5: "cinco",
+      6: "seis", 7: "siete", 8: "ocho", 9: "nueve", 10: "diez",
+      15: "quince", 20: "veinte", 25: "veinticinco", 28: "veintiocho",
+    };
+    return words[n] || n.toString();
+  };
+
+  // ──────────────────────────────────────────────────────────────────────────
   // Professional legal contract text builder
   // ──────────────────────────────────────────────────────────────────────────
   const buildDraft = () => {
@@ -383,14 +395,6 @@ Contrato generado el ${today} — ${contract.properties.internal_identifier}
 ═══════════════════════════════════════════════════════════`;
   };
 
-  const numberToWords = (n: number): string => {
-    const words: Record<number, string> = {
-      1: "uno", 2: "dos", 3: "tres", 4: "cuatro", 5: "cinco",
-      6: "seis", 7: "siete", 8: "ocho", 9: "nueve", 10: "diez",
-      15: "quince", 20: "veinte", 25: "veinticinco", 28: "veintiocho",
-    };
-    return words[n] || n.toString();
-  };
 
   const handleCopyDraft = () => {
     navigator.clipboard.writeText(buildDraft());
