@@ -332,24 +332,34 @@ export type Database = {
           current_rent: number
           deposit: number | null
           end_date: string
+          expensas_extraordinarias: boolean | null
+          expensas_ordinarias: boolean | null
           grace_days: number | null
           id: string
+          impuestos_a_cargo_locatario: boolean | null
           initial_rent: number
           is_active: boolean
           next_adjustment_date: string | null
           penalty_type: string | null
           penalty_value: number | null
+          permite_mascotas: boolean | null
+          permite_subalquiler: boolean | null
           property_id: string
           public_submission_token: string | null
           rent_due_day: number | null
+          seguro_obligatorio: boolean | null
+          seguro_tipo: string | null
           signed_contract_file_url: string | null
           start_date: string
           submission_language: string
           tenant_id: string
+          texto_contrato: string | null
+          tipo_contrato: string | null
           token_created_at: string | null
           token_rotated_at: string | null
           token_status: string
           updated_at: string
+          usa_seguro: boolean | null
         }
         Insert: {
           adjustment_base_date?: string | null
@@ -364,24 +374,34 @@ export type Database = {
           current_rent: number
           deposit?: number | null
           end_date: string
+          expensas_extraordinarias?: boolean | null
+          expensas_ordinarias?: boolean | null
           grace_days?: number | null
           id?: string
+          impuestos_a_cargo_locatario?: boolean | null
           initial_rent: number
           is_active?: boolean
           next_adjustment_date?: string | null
           penalty_type?: string | null
           penalty_value?: number | null
+          permite_mascotas?: boolean | null
+          permite_subalquiler?: boolean | null
           property_id: string
           public_submission_token?: string | null
           rent_due_day?: number | null
+          seguro_obligatorio?: boolean | null
+          seguro_tipo?: string | null
           signed_contract_file_url?: string | null
           start_date: string
           submission_language?: string
           tenant_id: string
+          texto_contrato?: string | null
+          tipo_contrato?: string | null
           token_created_at?: string | null
           token_rotated_at?: string | null
           token_status?: string
           updated_at?: string
+          usa_seguro?: boolean | null
         }
         Update: {
           adjustment_base_date?: string | null
@@ -396,24 +416,34 @@ export type Database = {
           current_rent?: number
           deposit?: number | null
           end_date?: string
+          expensas_extraordinarias?: boolean | null
+          expensas_ordinarias?: boolean | null
           grace_days?: number | null
           id?: string
+          impuestos_a_cargo_locatario?: boolean | null
           initial_rent?: number
           is_active?: boolean
           next_adjustment_date?: string | null
           penalty_type?: string | null
           penalty_value?: number | null
+          permite_mascotas?: boolean | null
+          permite_subalquiler?: boolean | null
           property_id?: string
           public_submission_token?: string | null
           rent_due_day?: number | null
+          seguro_obligatorio?: boolean | null
+          seguro_tipo?: string | null
           signed_contract_file_url?: string | null
           start_date?: string
           submission_language?: string
           tenant_id?: string
+          texto_contrato?: string | null
+          tipo_contrato?: string | null
           token_created_at?: string | null
           token_rotated_at?: string | null
           token_status?: string
           updated_at?: string
+          usa_seguro?: boolean | null
         }
         Relationships: [
           {
