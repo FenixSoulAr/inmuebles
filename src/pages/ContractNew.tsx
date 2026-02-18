@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Loader2, Building2, User, Calendar, DollarSign, TrendingUp, Shield, CheckSquare, Home } from "lucide-react";
+import { ArrowLeft, Loader2, Building2, User, Calendar, DollarSign, TrendingUp, Shield, CheckSquare, Home, AlertTriangle, UserCircle2 } from "lucide-react";
 import { GuarantorsSection, type GuarantorEntry } from "@/components/contracts/GuarantorsSection";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -12,6 +12,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Select,
   SelectContent,
@@ -33,6 +35,21 @@ interface Property {
 interface Tenant {
   id: string;
   full_name: string;
+}
+
+interface PropertyOwner {
+  id: string;
+  owner_id: string;
+  ownership_percent: number | null;
+  role: string | null;
+  owners: {
+    id: string;
+    full_name: string;
+    dni_cuit: string | null;
+    address: string | null;
+    email: string | null;
+    phone: string | null;
+  };
 }
 
 const schema = z.object({
@@ -88,6 +105,8 @@ export default function ContractNew() {
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [guarantors, setGuarantors] = useState<GuarantorEntry[]>([]);
+  const [propertyOwners, setPropertyOwners] = useState<PropertyOwner[]>([]);
+  const [ownersLoading, setOwnersLoading] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -120,6 +139,34 @@ export default function ContractNew() {
   });
 
   const watchUsaSeguro = watch("usa_seguro");
+  const watchPropertyId = watch("property_id");
+
+  // Fetch property owners whenever selected property changes
+  const fetchPropertyOwners = useCallback(async (propertyId: string) => {
+    if (!propertyId) {
+      setPropertyOwners([]);
+      return;
+    }
+    setOwnersLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("property_owners" as any)
+        .select("id, owner_id, ownership_percent, role, owners(id, full_name, dni_cuit, address, email, phone)")
+        .eq("property_id", propertyId)
+        .order("created_at");
+      if (error) throw error;
+      setPropertyOwners((data as any[]) || []);
+    } catch (err) {
+      console.error("Error loading property owners:", err);
+      setPropertyOwners([]);
+    } finally {
+      setOwnersLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchPropertyOwners(watchPropertyId || "");
+  }, [watchPropertyId, fetchPropertyOwners]);
 
   useEffect(() => {
     if (user) fetchData();
@@ -140,6 +187,7 @@ export default function ContractNew() {
       setLoading(false);
     }
   };
+
 
   const onSubmit = async (data: FormData) => {
     setIsSubmitting(true);
@@ -333,6 +381,61 @@ export default function ContractNew() {
                 {errors.tenant_id && <p className="text-xs text-destructive">{errors.tenant_id.message}</p>}
               </div>
             </div>
+
+            {/* LOCADOR/ES — Auto-populated from property owners */}
+            {watchPropertyId && (
+              <>
+                <Separator />
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <UserCircle2 className="w-4 h-4 text-primary" />
+                    <Label className="text-sm font-semibold">
+                      {propertyOwners.length > 1 ? "LOS LOCADORES (Propietarios)" : "EL LOCADOR (Propietario)"}
+                    </Label>
+                    {ownersLoading && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />}
+                  </div>
+
+                  {!ownersLoading && propertyOwners.length === 0 && (
+                    <Alert variant="destructive" className="py-2">
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertDescription className="text-xs">
+                        Esta propiedad no tiene propietarios asignados. Asigná al menos 1 propietario en la ficha de la propiedad para poder generar el contrato.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  {!ownersLoading && propertyOwners.length > 0 && (
+                    <div className="space-y-2">
+                      {propertyOwners.map((link, idx) => (
+                        <div key={link.id} className="flex items-start gap-3 p-3 rounded-lg bg-muted/40 border border-border/50">
+                          <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold shrink-0 mt-0.5">
+                            {idx + 1}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-medium text-sm">{link.owners?.full_name}</span>
+                              {link.role && (
+                                <Badge variant="outline" className="text-xs capitalize">{link.role}</Badge>
+                              )}
+                              {link.ownership_percent != null && (
+                                <Badge variant="secondary" className="text-xs">{link.ownership_percent}%</Badge>
+                              )}
+                            </div>
+                            {link.owners?.dni_cuit && (
+                              <p className="text-xs text-muted-foreground">DNI/CUIT: {link.owners.dni_cuit}</p>
+                            )}
+                            {link.owners?.address && (
+                              <p className="text-xs text-muted-foreground truncate">{link.owners.address}</p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+
             <div className="space-y-2">
               <Label>Tipo de contrato</Label>
               <Controller
@@ -674,11 +777,22 @@ export default function ContractNew() {
         <GuarantorsSection value={guarantors} onChange={setGuarantors} />
 
         {/* ── Actions ── */}
+        {watchPropertyId && propertyOwners.length === 0 && !ownersLoading && (
+          <Alert variant="destructive" className="py-2">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription className="text-sm">
+              No se puede crear el contrato: la propiedad seleccionada no tiene propietarios asignados. Ingresá a la ficha de la propiedad → pestaña <strong>Propietarios</strong> y asigná al menos uno.
+            </AlertDescription>
+          </Alert>
+        )}
         <div className="flex justify-end gap-3 pb-8">
           <Button type="button" variant="outline" onClick={() => navigate("/contracts")}>
             Cancelar
           </Button>
-          <Button type="submit" disabled={isSubmitting}>
+          <Button
+            type="submit"
+            disabled={isSubmitting || (watchPropertyId !== undefined && watchPropertyId !== "" && !ownersLoading && propertyOwners.length === 0)}
+          >
             {isSubmitting ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
