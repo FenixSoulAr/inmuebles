@@ -76,10 +76,8 @@ export function AppSidebar({ onNavigate, isMobileDrawer = false }: AppSidebarPro
 
   return (
     <aside
-      className={cn(
-        "flex flex-col bg-sidebar text-sidebar-foreground h-screen transition-all duration-300 ease-in-out",
-        effectiveCollapsed ? "w-16" : "w-64"
-      )}
+      className="flex flex-col bg-sidebar text-sidebar-foreground h-full transition-[width] duration-300 ease-in-out overflow-hidden"
+      style={{ width: effectiveCollapsed ? 64 : 280 }}
     >
       {/* Logo Section */}
       <div className="flex items-center h-16 px-4 border-b border-sidebar-border">
