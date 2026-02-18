@@ -642,24 +642,21 @@ export default function PaymentProofs() {
     return null;
   })();
 
-  // ─── Active filter chips ────────────────────────────────────────────────────
-  interface FilterChip { label: string; onRemove: () => void; }
-  const activeChips: FilterChip[] = [];
-  if (dueScope === "current_month") {
-    activeChips.push({ label: "Mes actual", onRemove: () => setDueScope("") });
-  }
-  if (dueScope === "overdue") {
-    activeChips.push({ label: "Vencidos (meses anteriores)", onRemove: () => setDueScope("") });
-  }
-  if (missingProofFilter) {
-    activeChips.push({ label: "Sin comprobante adjunto", onRemove: () => setMissingProofFilter(false) });
-  }
+  const hasActiveFilters =
+    dueScope !== "" ||
+    missingProofFilter ||
+    proofFilter !== "all" ||
+    periodFilter.preset !== "current_month" ||
+    search !== "" ||
+    statusTab !== "action";
 
   const clearAllFilters = () => {
     setDueScope("");
     setPeriodFilter({ preset: "current_month" });
     setMissingProofFilter(false);
     setProofFilter("all");
+    setSearch("");
+    setStatusTab("action");
   };
 
   // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -1198,94 +1195,83 @@ export default function PaymentProofs() {
         </TabsList>
       </Tabs>
 
-      {/* Search + status filter */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-3">
+      {/* ─── Unified filter bar ─────────────────────────────────────────────────
+          Order: [ Mes ] [ Estado de pago ] [ Comprobante ] [ Buscar ] [ Limpiar ]
+      ──────────────────────────────────────────────────────────────────────── */}
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        {/* 1. Mes */}
+        <PeriodFilterDropdown value={periodFilter} onChange={setPeriodFilter} />
+
+        {/* 2. Estado de pago */}
+        <Select
+          value={statusTab}
+          onValueChange={(v) => {
+            setStatusTab(v as StatusTab);
+            setDueScope("");
+            setMissingProofFilter(false);
+          }}
+        >
+          <SelectTrigger className="h-9 text-sm w-auto min-w-[160px]">
+            <SelectValue placeholder="Estado de pago" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="action">{t("obligations.actionNeeded")}</SelectItem>
+            <SelectItem value="confirmed">{t("obligations.confirmed")}</SelectItem>
+            <SelectItem value="all">{t("obligations.all")}</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {/* 3. Comprobante — always visible */}
+        <Select value={proofFilter} onValueChange={(v) => setProofFilter(v as typeof proofFilter)}>
+          <SelectTrigger className="h-9 text-sm w-auto min-w-[170px]">
+            <SelectValue placeholder="Comprobante" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos</SelectItem>
+            <SelectItem value="required">Falta</SelectItem>
+            <SelectItem value="uploaded">Con adjunto</SelectItem>
+            <SelectItem value="waived">Eximido</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {/* 4. Buscar */}
         <SearchBar
           value={search}
           onChange={setSearch}
           placeholder={t("obligations.searchPlaceholder")}
-          className="flex-1 max-w-md"
+          className="flex-1 min-w-[180px] max-w-xs h-9"
         />
-        <Tabs value={statusTab} onValueChange={(v) => {
-          setStatusTab(v as StatusTab);
-          setDueScope("");
-          setMissingProofFilter(false);
-        }}>
-          <TabsList>
-            <TabsTrigger value="action">{t("obligations.actionNeeded")}</TabsTrigger>
-            <TabsTrigger value="confirmed">{t("obligations.confirmed")}</TabsTrigger>
-            <TabsTrigger value="all">{t("obligations.all")}</TabsTrigger>
-          </TabsList>
-        </Tabs>
+
+        {/* 5. Limpiar filtros — always rendered, disabled when nothing active */}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={clearAllFilters}
+          disabled={!hasActiveFilters}
+          className="text-xs h-9 text-muted-foreground hover:text-foreground"
+        >
+          <X className="w-3.5 h-3.5 mr-1" />
+          {isEs ? "Limpiar filtros" : "Clear filters"}
+        </Button>
       </div>
 
-      {/* Period filter + chips row */}
-      <div className="flex flex-wrap items-center gap-2 mb-4">
-        <PeriodFilterDropdown value={periodFilter} onChange={setPeriodFilter} />
-
-        {/* Proof status filter — always visible */}
-        <Select value={proofFilter} onValueChange={(v) => setProofFilter(v as typeof proofFilter)}>
-          <SelectTrigger className="h-9 text-sm w-auto min-w-[180px]">
-            <SelectValue placeholder="Comprobante" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos los comprobantes</SelectItem>
-            <SelectItem value="required">Falta comprobante</SelectItem>
-            <SelectItem value="uploaded">Con comprobante</SelectItem>
-            <SelectItem value="waived">Eximido (sin comprobante)</SelectItem>
-          </SelectContent>
-        </Select>
-
-        {/* View mode chip — set from Dashboard navigation */}
-        {initialViewMode === "cumulative" && (
-          <Badge variant="secondary" className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium">
-            Vista acumulada
-          </Badge>
-        )}
-        {initialViewMode === "monthly" && initialMonth && (
-          <Badge variant="secondary" className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium">
-            {(() => {
-              const [y, m] = initialMonth.split("-").map(Number);
-              const d = new Date(y, m - 1, 1);
-              const label = d.toLocaleDateString("es-AR", { month: "long", year: "numeric" });
-              return `Vista mensual · ${label.charAt(0).toUpperCase() + label.slice(1)}`;
-            })()}
-          </Badge>
-        )}
-
-        {dueScope === "current_month" && (
-          <Badge variant="secondary" className="flex items-center gap-1.5 pl-3 pr-2 py-1 text-xs font-medium">
-            Mes actual
-            <button onClick={() => setDueScope("")} className="ml-1 rounded-full hover:bg-muted-foreground/20 p-0.5"><X className="w-3 h-3" /></button>
-          </Badge>
-        )}
-        {dueScope === "overdue" && (
-          <Badge variant="secondary" className="flex items-center gap-1.5 pl-3 pr-2 py-1 text-xs font-medium">
-            Vencidos (meses anteriores)
-            <button onClick={() => setDueScope("")} className="ml-1 rounded-full hover:bg-muted-foreground/20 p-0.5"><X className="w-3 h-3" /></button>
-          </Badge>
-        )}
-        {missingProofFilter && (
-          <Badge variant="secondary" className="flex items-center gap-1.5 pl-3 pr-2 py-1 text-xs font-medium">
-            Sin comprobante adjunto
-            <button onClick={() => setMissingProofFilter(false)} className="ml-1 rounded-full hover:bg-muted-foreground/20 p-0.5"><X className="w-3 h-3" /></button>
-          </Badge>
-        )}
-        {proofFilter !== "all" && (
-          <Badge variant="secondary" className="flex items-center gap-1.5 pl-3 pr-2 py-1 text-xs font-medium">
-            {proofFilter === "required" ? "Falta comprobante" : proofFilter === "uploaded" ? "Con comprobante" : "Eximido"}
-            <button onClick={() => setProofFilter("all")} className="ml-1 rounded-full hover:bg-muted-foreground/20 p-0.5"><X className="w-3 h-3" /></button>
-          </Badge>
-        )}
-        {(dueScope || missingProofFilter || proofFilter !== "all" || periodFilter.preset !== "current_month") && (
-          <button
-            onClick={clearAllFilters}
-            className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors"
-          >
-            {isEs ? "Limpiar filtros" : "Clear filters"}
-          </button>
-        )}
-      </div>
+      {/* Active dueScope chips (informational, below filter bar) */}
+      {(dueScope === "current_month" || dueScope === "overdue") && (
+        <div className="flex flex-wrap items-center gap-2 mb-3">
+          {dueScope === "current_month" && (
+            <Badge variant="secondary" className="flex items-center gap-1.5 pl-3 pr-2 py-1 text-xs font-medium">
+              Mes actual
+              <button onClick={() => setDueScope("")} className="ml-1 rounded-full hover:bg-muted-foreground/20 p-0.5"><X className="w-3 h-3" /></button>
+            </Badge>
+          )}
+          {dueScope === "overdue" && (
+            <Badge variant="secondary" className="flex items-center gap-1.5 pl-3 pr-2 py-1 text-xs font-medium">
+              Vencidos (meses anteriores)
+              <button onClick={() => setDueScope("")} className="ml-1 rounded-full hover:bg-muted-foreground/20 p-0.5"><X className="w-3 h-3" /></button>
+            </Badge>
+          )}
+        </div>
+      )}
 
       {/* Summary bar */}
       {summaryTotal !== null && filtered.length > 0 && (
