@@ -140,9 +140,10 @@ export function AppLayout() {
               <Menu className="w-5 h-5" />
             </Button>
             <img
-              src="/logo.png"
+              src={sidebarLogo}
               alt="MyRentaHub"
-              className="h-7 w-auto object-contain"
+              className="object-contain object-left"
+              style={{ height: 32, width: "auto", maxWidth: 160 }}
             />
           </header>
 
