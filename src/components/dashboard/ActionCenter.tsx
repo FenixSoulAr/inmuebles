@@ -299,7 +299,7 @@ export function ActionCenter({
                     variant="ghost"
                     size="sm"
                     className="text-muted-foreground hover:text-foreground gap-1"
-                    onClick={() => navigate("/payment-proofs?kindTab=rent&statusTab=confirmed&missingProof=true")}
+                    onClick={() => navigate("/payment-proofs?kindTab=rent&statusTab=confirmed&proof=required")}
                   >
                     Ver todos los faltantes ({missingProofs.length})
                     <ArrowRight className="w-3 h-3" />

@@ -546,7 +546,7 @@ export default function Dashboard() {
         openMaintenance={openMaintenance}
         upcomingAdjustments={upcomingAdjustments}
         onRecordPayment={(_id) => navigate(`/payment-proofs?kindTab=rent&statusTab=action`)}
-        onUploadProof={() => navigate("/payment-proofs?kindTab=rent&statusTab=confirmed&missingProof=true")}
+        onUploadProof={() => navigate("/payment-proofs?kindTab=rent&statusTab=confirmed&proof=required")}
         onUploadTaxReceipt={() => navigate("/taxes?filter=upcoming")}
       />
     </div>

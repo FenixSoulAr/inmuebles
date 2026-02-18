@@ -359,6 +359,8 @@ export default function PaymentProofs() {
   const initialDueScope = searchParams.get("dueScope") || "";
   const initialPeriod = searchParams.get("period") || "";
   const initialMissingProof = searchParams.get("missingProof") === "true";
+  // "proof" query param lets Dashboard pre-select a proof filter (e.g. ?proof=required)
+  const initialProofParam = searchParams.get("proof") as "all" | "required" | "uploaded" | "waived" | null;
   const initialViewMode = searchParams.get("viewMode") || "monthly"; // "monthly" | "cumulative"
   const initialMonth = searchParams.get("month") || format(new Date(), "yyyy-MM");
 
@@ -409,8 +411,10 @@ export default function PaymentProofs() {
   const [waivedReason, setWaivedReason] = useState("cash");
   const [waivedNote, setWaivedNote] = useState("");
 
-  // Proof filter state (uploaded/waived/required/all)
-  const [proofFilter, setProofFilter] = useState<"all" | "required" | "uploaded" | "waived">("all");
+  // Proof filter state (uploaded/waived/required/all) — always visible; may be pre-set via ?proof= or missingProof=true
+  const [proofFilter, setProofFilter] = useState<"all" | "required" | "uploaded" | "waived">(
+    initialProofParam ?? (initialMissingProof ? "required" : "all")
+  );
 
   // Register payment modal
   const [payOpen, setPayOpen] = useState(false);
@@ -591,6 +595,10 @@ export default function PaymentProofs() {
       if (periodBounds && !dueScope) {
         filtered = filtered.filter(isInPeriodFilter);
       }
+      // Apply proof status filter
+      if (proofFilter !== "all") {
+        filtered = filtered.filter((o) => getProofStatus(o) === proofFilter);
+      }
       return filtered;
     }
 
@@ -617,6 +625,10 @@ export default function PaymentProofs() {
     let result = filtered.filter((o) => o.display_status !== "upcoming" && o.period >= sixMonthsStr);
     if (periodBounds) {
       result = result.filter(isInPeriodFilter);
+    }
+    // Apply proof status filter
+    if (proofFilter !== "all") {
+      result = result.filter((o) => getProofStatus(o) === proofFilter);
     }
     return result;
   };
@@ -1211,20 +1223,18 @@ export default function PaymentProofs() {
       <div className="flex flex-wrap items-center gap-2 mb-4">
         <PeriodFilterDropdown value={periodFilter} onChange={setPeriodFilter} />
 
-        {/* Proof status filter — only shown on rent confirmed tab */}
-        {kindTab === "rent" && statusTab === "confirmed" && (
-          <Select value={proofFilter} onValueChange={(v) => setProofFilter(v as typeof proofFilter)}>
-            <SelectTrigger className="h-9 text-sm w-auto min-w-[180px]">
-              <SelectValue placeholder="Comprobante" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos los comprobantes</SelectItem>
-              <SelectItem value="required">Falta comprobante</SelectItem>
-              <SelectItem value="uploaded">Con comprobante</SelectItem>
-              <SelectItem value="waived">Eximido (sin comprobante)</SelectItem>
-            </SelectContent>
-          </Select>
-        )}
+        {/* Proof status filter — always visible */}
+        <Select value={proofFilter} onValueChange={(v) => setProofFilter(v as typeof proofFilter)}>
+          <SelectTrigger className="h-9 text-sm w-auto min-w-[180px]">
+            <SelectValue placeholder="Comprobante" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos los comprobantes</SelectItem>
+            <SelectItem value="required">Falta comprobante</SelectItem>
+            <SelectItem value="uploaded">Con comprobante</SelectItem>
+            <SelectItem value="waived">Eximido (sin comprobante)</SelectItem>
+          </SelectContent>
+        </Select>
 
         {/* View mode chip — set from Dashboard navigation */}
         {initialViewMode === "cumulative" && (
