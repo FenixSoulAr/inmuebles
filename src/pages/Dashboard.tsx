@@ -27,6 +27,12 @@ interface DashboardStats {
   rentOverdueAccumulated: number;
   missingProofsCount: number;
   taxesDueSoon: number;
+  // Month-over-month comparison (only used in monthly view)
+  prevMonthCobrado: number | null;
+  prevMonthFacturado: number | null;
+  prevMonthMora: number | null;
+  currentMonthFacturado: number | null;
+  currentMonthMora: number | null;
 }
 
 export default function Dashboard() {
@@ -36,6 +42,11 @@ export default function Dashboard() {
     rentOverdueAccumulated: 0,
     missingProofsCount: 0,
     taxesDueSoon: 0,
+    prevMonthCobrado: null,
+    prevMonthFacturado: null,
+    prevMonthMora: null,
+    currentMonthFacturado: null,
+    currentMonthMora: null,
   });
   const [overdueRent, setOverdueRent] = useState<OverdueRentItem[]>([]);
   const [dueSoon, setDueSoon] = useState<DueSoonItem[]>([]);
@@ -89,6 +100,11 @@ export default function Dashboard() {
       const monthStartStr = format(startOfMonth(monthDate), "yyyy-MM-dd");
       const monthEndStr = format(endOfMonth(monthDate), "yyyy-MM-dd");
 
+      // Compute previous month bounds
+      const prevMonthDate = subMonths(monthDate, 1);
+      const prevMonthStartStr = format(startOfMonth(prevMonthDate), "yyyy-MM-dd");
+      const prevMonthEndStr = format(endOfMonth(prevMonthDate), "yyyy-MM-dd");
+
       // KPI 1: Cobrado — confirmed obligations with payments paid_at in selected month
       const paymentsInMonth = allPayments.filter(
         (p: any) => p.paid_at >= monthStartStr && p.paid_at <= monthEndStr
@@ -130,6 +146,40 @@ export default function Dashboard() {
         const hasProofFile = o.payment_proofs?.files?.length > 0;
         return !hasAttachment && !hasProofFile;
       }).length;
+
+      // --- Month-over-month comparison ---
+      // Facturado M: SUM(expected_amount where due_date in M)
+      const currentMonthFacturado = enriched
+        .filter((o: any) => o.due_date >= monthStartStr && o.due_date <= monthEndStr)
+        .reduce((s: number, o: any) => s + Number(o.expected_amount ?? 0), 0);
+
+      // Mora M: SUM(expected_amount where due_date in M AND not confirmed)
+      const currentMonthMora = enriched
+        .filter((o: any) =>
+          o.due_date >= monthStartStr && o.due_date <= monthEndStr && o.balanceDue > 0
+        )
+        .reduce((s: number, o: any) => s + Number(o.expected_amount ?? 0), 0);
+
+      // Cobrado M-1: payments paid_at in prev month for confirmed obligations
+      const prevMonthCobrado = allPayments
+        .filter((p: any) =>
+          p.paid_at >= prevMonthStartStr &&
+          p.paid_at <= prevMonthEndStr &&
+          confirmedOblIds.has(p.obligation_id)
+        )
+        .reduce((s: number, p: any) => s + Number(p.amount), 0);
+
+      // Facturado M-1: SUM(expected_amount where due_date in M-1)
+      const prevMonthFacturado = enriched
+        .filter((o: any) => o.due_date >= prevMonthStartStr && o.due_date <= prevMonthEndStr)
+        .reduce((s: number, o: any) => s + Number(o.expected_amount ?? 0), 0);
+
+      // Mora M-1: SUM(expected_amount where due_date in M-1 AND not confirmed)
+      const prevMonthMora = enriched
+        .filter((o: any) =>
+          o.due_date >= prevMonthStartStr && o.due_date <= prevMonthEndStr && o.balanceDue > 0
+        )
+        .reduce((s: number, o: any) => s + Number(o.expected_amount ?? 0), 0);
 
       // Action center items
       const overdueItems: OverdueRentItem[] = overdueObls.map((o: any) => ({
@@ -181,13 +231,17 @@ export default function Dashboard() {
         rentOverdueAccumulated: rentOverdue,
         missingProofsCount,
         taxesDueSoon: rawTaxItems.length,
+        prevMonthCobrado,
+        prevMonthFacturado,
+        prevMonthMora,
+        currentMonthFacturado,
+        currentMonthMora,
       });
       setOverdueRent(overdueItems);
       setDueSoon(dueSoonItems);
       setMissingProofs(missingProofItems);
     } else {
-      // CUMULATIVE VIEW
-      // KPI 1: Cobrado — ALL confirmed obligations, sum all payments
+      // CUMULATIVE VIEW — no month-over-month comparison
       const rentCollected = allPayments
         .filter((p: any) => {
           const obl = enriched.find((o: any) => o.id === p.obligation_id);
@@ -195,18 +249,15 @@ export default function Dashboard() {
         })
         .reduce((s: number, p: any) => s + Number(p.amount), 0);
 
-      // KPI 2: Pendiente — all not confirmed (no date filter)
       const rentPending = enriched
         .filter((o: any) => o.balanceDue > 0)
         .reduce((s: number, o: any) => s + o.balanceDue, 0);
 
-      // KPI 3: Mora — not confirmed, due_date < today
       const overdueObls = enriched.filter(
         (o: any) => o.balanceDue > 0 && o.due_date < todayStr
       );
       const rentOverdue = overdueObls.reduce((s: number, o: any) => s + o.balanceDue, 0);
 
-      // KPI 4: Missing proofs — ALL confirmed + proof_status = required (no date filter)
       const confirmedRentObls = enriched.filter((o: any) => o.balanceDue <= 0);
       const missingProofsCount = confirmedRentObls.filter((o: any) => {
         if (o.payment_proofs?.proof_status === "approved_without_proof") return false;
@@ -263,12 +314,18 @@ export default function Dashboard() {
         rentOverdueAccumulated: rentOverdue,
         missingProofsCount,
         taxesDueSoon: rawTaxItems.length,
+        prevMonthCobrado: null,
+        prevMonthFacturado: null,
+        prevMonthMora: null,
+        currentMonthFacturado: null,
+        currentMonthMora: null,
       });
       setOverdueRent(overdueItems);
       setDueSoon(dueSoonItems);
       setMissingProofs(missingProofItems);
     }
   };
+
 
   const fetchDashboardData = async () => {
     try {
@@ -423,6 +480,11 @@ export default function Dashboard() {
         taxesDueSoon={stats.taxesDueSoon}
         viewMode={viewMode}
         selectedMonth={selectedMonth}
+        prevMonthCobrado={stats.prevMonthCobrado}
+        prevMonthFacturado={stats.prevMonthFacturado}
+        prevMonthMora={stats.prevMonthMora}
+        currentMonthFacturado={stats.currentMonthFacturado}
+        currentMonthMora={stats.currentMonthMora}
       />
 
       {/* Rent trend chart — last 6 months */}
