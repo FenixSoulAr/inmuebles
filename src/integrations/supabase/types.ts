@@ -224,11 +224,15 @@ export type Database = {
       contract_guarantors: {
         Row: {
           address: string | null
+          company_name: string | null
           contract_id: string
           coverage_amount: number | null
           created_at: string
+          details: Json | null
           document_or_cuit: string | null
+          email: string | null
           full_name: string
+          guarantee_type: string | null
           guarantor_type: string
           id: string
           insurance_policy_number: string | null
@@ -236,15 +240,20 @@ export type Database = {
           insurance_valid_to: string | null
           notes: string | null
           phone: string | null
+          sort_order: number | null
           updated_at: string
         }
         Insert: {
           address?: string | null
+          company_name?: string | null
           contract_id: string
           coverage_amount?: number | null
           created_at?: string
+          details?: Json | null
           document_or_cuit?: string | null
+          email?: string | null
           full_name: string
+          guarantee_type?: string | null
           guarantor_type?: string
           id?: string
           insurance_policy_number?: string | null
@@ -252,15 +261,20 @@ export type Database = {
           insurance_valid_to?: string | null
           notes?: string | null
           phone?: string | null
+          sort_order?: number | null
           updated_at?: string
         }
         Update: {
           address?: string | null
+          company_name?: string | null
           contract_id?: string
           coverage_amount?: number | null
           created_at?: string
+          details?: Json | null
           document_or_cuit?: string | null
+          email?: string | null
           full_name?: string
+          guarantee_type?: string | null
           guarantor_type?: string
           id?: string
           insurance_policy_number?: string | null
@@ -268,6 +282,7 @@ export type Database = {
           insurance_valid_to?: string | null
           notes?: string | null
           phone?: string | null
+          sort_order?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -633,6 +648,45 @@ export type Database = {
           },
         ]
       }
+      owners: {
+        Row: {
+          address: string | null
+          created_at: string
+          dni_cuit: string | null
+          email: string | null
+          full_name: string
+          id: string
+          notes: string | null
+          owner_user_id: string
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          dni_cuit?: string | null
+          email?: string | null
+          full_name: string
+          id?: string
+          notes?: string | null
+          owner_user_id: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          dni_cuit?: string | null
+          email?: string | null
+          full_name?: string
+          id?: string
+          notes?: string | null
+          owner_user_id?: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ownership_stakes: {
         Row: {
           created_at: string
@@ -902,6 +956,48 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "property_documents_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_owners: {
+        Row: {
+          created_at: string
+          id: string
+          owner_id: string
+          ownership_percent: number | null
+          property_id: string
+          role: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          owner_id: string
+          ownership_percent?: number | null
+          property_id: string
+          role?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          owner_id?: string
+          ownership_percent?: number | null
+          property_id?: string
+          role?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_owners_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "owners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_owners_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"

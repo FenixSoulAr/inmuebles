@@ -16,7 +16,7 @@ import { ContractAdjustments } from "@/components/contracts/ContractAdjustments"
 import { CorrectCurrencyModal } from "@/components/contracts/CorrectCurrencyModal";
 import { ContractSheet } from "@/components/contracts/ContractSheet";
 import { ContractDocuments } from "@/components/contracts/ContractDocuments";
-import { ContractTextPanel } from "@/components/contracts/ContractTextPanel";
+import { ContractTextPanel, type OwnerForContract, type GuarantorForContract } from "@/components/contracts/ContractTextPanel";
 
 
 interface Contract {
@@ -65,6 +65,8 @@ interface Contract {
 export default function ContractDetail() {
   const { id } = useParams<{ id: string }>();
   const [contract, setContract] = useState<Contract | null>(null);
+  const [owners, setOwners] = useState<OwnerForContract[]>([]);
+  const [contractGuarantors, setContractGuarantors] = useState<GuarantorForContract[]>([]);
   const [loading, setLoading] = useState(true);
   const [regenerating, setRegenerating] = useState(false);
   const [currencyModalOpen, setCurrencyModalOpen] = useState(false);
@@ -80,25 +82,54 @@ export default function ContractDetail() {
 
   const fetchContract = async () => {
     try {
-      const { data, error } = await supabase
-        .from("contracts")
-        .select(`
-          *,
-          properties(internal_identifier, full_address),
-          tenants(full_name, email, phone, doc_id)
-        ` as any)
-        .eq("id", id)
-        .maybeSingle();
+      const [contractRes, guarantorsRes] = await Promise.all([
+        supabase
+          .from("contracts")
+          .select(`
+            *,
+            properties(internal_identifier, full_address),
+            tenants(full_name, email, phone, doc_id)
+          ` as any)
+          .eq("id", id)
+          .maybeSingle(),
+        supabase
+          .from("contract_guarantors" as any)
+          .select("guarantee_type, full_name, company_name, document_or_cuit, address, phone, email, insurance_policy_number, coverage_amount, insurance_valid_from, insurance_valid_to, notes, details")
+          .eq("contract_id", id)
+          .order("sort_order"),
+      ]);
 
-      if (error) throw error;
+      if (contractRes.error) throw contractRes.error;
       
-      if (!data) {
+      if (!contractRes.data) {
         toast({ title: t("contracts.notFound"), description: t("contracts.contractNotFound"), variant: "destructive" });
         navigate("/contracts");
         return;
       }
-      
-      setContract(data as unknown as Contract);
+
+      const contractData = contractRes.data as unknown as Contract;
+      setContract(contractData);
+
+      // Fetch property owners
+      if (contractData.properties) {
+        const { data: ownerLinks } = await supabase
+          .from("property_owners" as any)
+          .select("ownership_percent, role, owners(full_name, dni_cuit, address, email, phone)")
+          .eq("property_id", (contractRes.data as any).property_id)
+          .order("created_at");
+        const mapped: OwnerForContract[] = ((ownerLinks as any[]) || []).map((l: any) => ({
+          full_name: l.owners?.full_name ?? "",
+          dni_cuit: l.owners?.dni_cuit ?? null,
+          address: l.owners?.address ?? null,
+          email: l.owners?.email ?? null,
+          phone: l.owners?.phone ?? null,
+          role: l.role ?? null,
+          ownership_percent: l.ownership_percent ?? null,
+        }));
+        setOwners(mapped);
+      }
+
+      setContractGuarantors((guarantorsRes.data as any[]) || []);
     } catch (error) {
       console.error("Error fetching contract:", error);
       toast({ title: t("common.error"), description: t("common.errorGeneric"), variant: "destructive" });
@@ -244,7 +275,7 @@ export default function ContractDetail() {
 
           {/* Generador de texto legal */}
           <ContractTextPanel
-            contract={contract}
+            contract={{ ...contract, owners, contractGuarantors }}
             onSaved={fetchContract}
           />
 

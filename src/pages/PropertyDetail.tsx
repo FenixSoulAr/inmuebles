@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/select";
 import { AddUtilityModal } from "@/components/utilities/AddUtilityModal";
 import { PropertyValuations } from "@/components/properties/PropertyValuations";
+import { PropertyOwners } from "@/components/properties/PropertyOwners";
 
 interface Property {
   id: string;
@@ -278,6 +279,7 @@ export default function PropertyDetail() {
           <TabsTrigger value="documents">{t("propertyDetail.documents")}</TabsTrigger>
           <TabsTrigger value="valuations">{t("propertyDetail.valuations")}</TabsTrigger>
           <TabsTrigger value="utilities">{t("propertyDetail.utilities")}</TabsTrigger>
+          <TabsTrigger value="owners">Propietarios</TabsTrigger>
           <TabsTrigger value="ownership">{t("propertyDetail.ownership")}</TabsTrigger>
         </TabsList>
 
@@ -381,6 +383,10 @@ export default function PropertyDetail() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="owners">
+          <PropertyOwners propertyId={property.id} />
         </TabsContent>
 
         <TabsContent value="ownership">
