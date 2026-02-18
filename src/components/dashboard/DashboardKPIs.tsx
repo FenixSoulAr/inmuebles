@@ -248,7 +248,7 @@ export function DashboardKPIs({
       onClick: () =>
         navigate(
           buildUrl(
-            `/payment-proofs?kindTab=rent&statusTab=confirmed&missingProof=true`
+            `/payment-proofs?kindTab=rent&statusTab=confirmed&proof=required`
           )
         ),
     },
