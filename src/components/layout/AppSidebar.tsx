@@ -25,7 +25,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { LanguageSelector } from "./LanguageSelector";
-import logoFull from "@/assets/logo.png";
+import sidebarLogo from "@/assets/sidebar-logo.png";
 
 interface AppSidebarProps {
   /** Called after a nav item is clicked — used to close mobile drawer */
