@@ -16,6 +16,7 @@ import { ContractAdjustments } from "@/components/contracts/ContractAdjustments"
 import { CorrectCurrencyModal } from "@/components/contracts/CorrectCurrencyModal";
 import { ContractSheet } from "@/components/contracts/ContractSheet";
 import { ContractDocuments } from "@/components/contracts/ContractDocuments";
+import { ContractTextPanel } from "@/components/contracts/ContractTextPanel";
 
 
 interface Contract {
@@ -46,6 +47,9 @@ interface Contract {
   impuestos_a_cargo_locatario: boolean | null;
   permite_subalquiler: boolean | null;
   permite_mascotas: boolean | null;
+  texto_contrato: string | null;
+  index_notes: string | null;
+  tenant_insurance_notes: string | null;
   properties: {
     internal_identifier: string;
     full_address: string;
@@ -237,6 +241,12 @@ export default function ContractDetail() {
 
           {/* Ficha estructurada del contrato */}
           <ContractSheet contract={contract} onUpdate={fetchContract} />
+
+          {/* Generador de texto legal */}
+          <ContractTextPanel
+            contract={contract}
+            onSaved={fetchContract}
+          />
 
           {/* Documentación del contrato */}
           <ContractDocuments contractId={contract.id} />
