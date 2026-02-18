@@ -11,6 +11,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { ContractPublicLink } from "@/components/contracts/ContractPublicLink";
 import { ContractServices } from "@/components/contracts/ContractServices";
+import { ContractAdjustments } from "@/components/contracts/ContractAdjustments";
+
 
 interface Contract {
   id: string;
@@ -22,11 +24,13 @@ interface Contract {
   is_active: boolean;
   adjustment_type: string;
   adjustment_frequency: number | null;
+  adjustment_base_date: string | null;
   clauses_text: string | null;
   public_submission_token: string | null;
   token_status: string;
   rent_due_day: number;
   currency: string | null;
+  currency_deposit: string | null;
   properties: {
     internal_identifier: string;
     full_address: string;
@@ -218,6 +222,18 @@ export default function ContractDetail() {
           {contract.is_active && (
             <ContractServices contractId={contract.id} rentDueDay={contract.rent_due_day || 5} />
           )}
+
+          {/* Adjustment history — shown regardless of active status */}
+          <ContractAdjustments
+            contractId={contract.id}
+            currentRent={contract.current_rent}
+            currency={contract.currency || "ARS"}
+            adjustmentType={contract.adjustment_type}
+            adjustmentFrequency={contract.adjustment_frequency}
+            adjustmentBaseDate={contract.adjustment_base_date}
+            isActive={contract.is_active}
+            onRentUpdated={fetchContract}
+          />
         </div>
 
         {/* Sidebar */}
