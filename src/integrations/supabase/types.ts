@@ -162,6 +162,65 @@ export type Database = {
           },
         ]
       }
+      contract_documents: {
+        Row: {
+          contract_id: string
+          doc_type: string
+          file_name: string | null
+          file_size: number | null
+          file_url: string
+          id: string
+          is_primary: boolean | null
+          mime_type: string | null
+          notes: string | null
+          status: string
+          title: string
+          uploaded_at: string
+          uploaded_by: string | null
+          version: number | null
+        }
+        Insert: {
+          contract_id: string
+          doc_type?: string
+          file_name?: string | null
+          file_size?: number | null
+          file_url: string
+          id?: string
+          is_primary?: boolean | null
+          mime_type?: string | null
+          notes?: string | null
+          status?: string
+          title: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+          version?: number | null
+        }
+        Update: {
+          contract_id?: string
+          doc_type?: string
+          file_name?: string | null
+          file_size?: number | null
+          file_url?: string
+          id?: string
+          is_primary?: boolean | null
+          mime_type?: string | null
+          notes?: string | null
+          status?: string
+          title?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+          version?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_documents_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contract_guarantors: {
         Row: {
           address: string | null
@@ -264,6 +323,7 @@ export type Database = {
           adjustment_base_date: string | null
           adjustment_frequency: number | null
           adjustment_type: string
+          basic_terms: string | null
           clause_flags: Json | null
           clauses_text: string | null
           created_at: string
@@ -295,6 +355,7 @@ export type Database = {
           adjustment_base_date?: string | null
           adjustment_frequency?: number | null
           adjustment_type?: string
+          basic_terms?: string | null
           clause_flags?: Json | null
           clauses_text?: string | null
           created_at?: string
@@ -326,6 +387,7 @@ export type Database = {
           adjustment_base_date?: string | null
           adjustment_frequency?: number | null
           adjustment_type?: string
+          basic_terms?: string | null
           clause_flags?: Json | null
           clauses_text?: string | null
           created_at?: string
