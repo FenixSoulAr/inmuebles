@@ -37,6 +37,7 @@ import {
 import { AddUtilityModal } from "@/components/utilities/AddUtilityModal";
 import { PropertyValuations } from "@/components/properties/PropertyValuations";
 import { PropertyOwners } from "@/components/properties/PropertyOwners";
+import { DocumentsPanel } from "@/components/documents/DocumentsPanel";
 
 interface Property {
   id: string;
@@ -275,8 +276,9 @@ export default function PropertyDetail() {
       </Card>
 
       <Tabs defaultValue="documents" className="space-y-4">
-        <TabsList>
+        <TabsList className="flex-wrap">
           <TabsTrigger value="documents">{t("propertyDetail.documents")}</TabsTrigger>
+          <TabsTrigger value="property-docs">Documentos</TabsTrigger>
           <TabsTrigger value="valuations">{t("propertyDetail.valuations")}</TabsTrigger>
           <TabsTrigger value="utilities">{t("propertyDetail.utilities")}</TabsTrigger>
           <TabsTrigger value="owners">Propietarios</TabsTrigger>
@@ -350,9 +352,23 @@ export default function PropertyDetail() {
           </Card>
         </TabsContent>
 
+        {/* New unified documents tab */}
+        <TabsContent value="property-docs">
+          <Card>
+            <CardHeader>
+              <CardTitle>Documentos de la propiedad</CardTitle>
+              <p className="text-sm text-muted-foreground">Título, escritura, planos, ABL, expensas y más.</p>
+            </CardHeader>
+            <CardContent>
+              <DocumentsPanel scope="property" propertyId={property.id} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="valuations">
           <PropertyValuations propertyId={property.id} valuations={valuations} onRefresh={fetchPropertyData} />
         </TabsContent>
+
 
         <TabsContent value="utilities">
           <Card>

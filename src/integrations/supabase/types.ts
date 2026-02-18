@@ -486,6 +486,69 @@ export type Database = {
           },
         ]
       }
+      documents: {
+        Row: {
+          contract_id: string | null
+          created_at: string
+          created_by: string
+          doc_type: string
+          file_name: string | null
+          file_size: number | null
+          file_url: string
+          id: string
+          mime_type: string | null
+          notes: string | null
+          property_id: string | null
+          scope: string
+          title: string
+        }
+        Insert: {
+          contract_id?: string | null
+          created_at?: string
+          created_by?: string
+          doc_type?: string
+          file_name?: string | null
+          file_size?: number | null
+          file_url: string
+          id?: string
+          mime_type?: string | null
+          notes?: string | null
+          property_id?: string | null
+          scope: string
+          title: string
+        }
+        Update: {
+          contract_id?: string | null
+          created_at?: string
+          created_by?: string
+          doc_type?: string
+          file_name?: string | null
+          file_size?: number | null
+          file_url?: string
+          id?: string
+          mime_type?: string | null
+          notes?: string | null
+          property_id?: string | null
+          scope?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       guarantors: {
         Row: {
           contact_info: string | null
