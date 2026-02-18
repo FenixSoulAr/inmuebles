@@ -147,11 +147,7 @@ export default function Dashboard() {
       });
       const missingProofsCount = confirmedInMonth.filter((o: any) => {
         const ps = o.payment_proofs?.proof_status;
-        if (ps === "waived" || ps === "approved_without_proof") return false;
-        const hasAttachment = (o.payments || []).some((p: any) => p.attachment_url);
-        const hasProofFile = o.payment_proofs?.files?.length > 0;
-        if (ps === "uploaded" || hasProofFile || hasAttachment) return false;
-        return true;
+        return ps !== "waived" && ps !== "uploaded";
       }).length;
 
       // --- Month-over-month comparison ---
@@ -218,10 +214,7 @@ export default function Dashboard() {
       const missingProofItems: MissingProofItem[] = confirmedRentObls
         .filter((o: any) => {
           const ps = o.payment_proofs?.proof_status;
-          if (ps === "waived" || ps === "approved_without_proof") return false;
-          const hasAttachment = (o.payments || []).some((p: any) => p.attachment_url);
-          const hasProofFile = o.payment_proofs?.files?.length > 0;
-          return ps !== "uploaded" && !hasProofFile && !hasAttachment;
+          return ps !== "waived" && ps !== "uploaded";
         })
         .slice(0, 8)
         .map((o: any) => ({
@@ -269,10 +262,8 @@ export default function Dashboard() {
 
       const confirmedRentObls = enriched.filter((o: any) => o.balanceDue <= 0);
       const missingProofsCount = confirmedRentObls.filter((o: any) => {
-        if (o.payment_proofs?.proof_status === "approved_without_proof") return false;
-        const hasAttachment = (o.payments || []).some((p: any) => p.attachment_url);
-        const hasProofFile = o.payment_proofs?.files?.length > 0;
-        return !hasAttachment && !hasProofFile;
+        const ps = o.payment_proofs?.proof_status;
+        return ps !== "waived" && ps !== "uploaded";
       }).length;
 
       const overdueItems: OverdueRentItem[] = overdueObls.map((o: any) => ({
@@ -302,10 +293,8 @@ export default function Dashboard() {
 
       const missingProofItems: MissingProofItem[] = confirmedRentObls
         .filter((o: any) => {
-          if (o.payment_proofs?.proof_status === "approved_without_proof") return false;
-          const hasAttachment = (o.payments || []).some((p: any) => p.attachment_url);
-          const hasProofFile = o.payment_proofs?.files?.length > 0;
-          return !hasAttachment && !hasProofFile;
+          const ps = o.payment_proofs?.proof_status;
+          return ps !== "waived" && ps !== "uploaded";
         })
         .slice(0, 8)
         .map((o: any) => ({
