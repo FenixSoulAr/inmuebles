@@ -191,12 +191,14 @@ export default function ContractNew() {
     control,
     watch,
     setValue,
-    formState: { errors },
+    trigger,
+    formState: { errors, isSubmitted },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
-    mode: "onSubmit",
+    mode: "onBlur",
+    reValidateMode: "onChange",
     defaultValues: {
-    tipo_contrato: "permanente",
+      tipo_contrato: "permanente",
       currency: "ARS",
       currency_deposit: "ARS",
       price_mode: "mensual",
@@ -469,7 +471,34 @@ export default function ContractNew() {
     );
   }
 
-  const canSubmit = !isSubmitting && !(watchPropertyId && !ownersLoading && propertyOwners.length === 0);
+  const missingOwners = !!(watchPropertyId && !ownersLoading && propertyOwners.length === 0);
+  const hasFormErrors = Object.keys(errors).length > 0;
+  const canSubmit = !isSubmitting && !missingOwners;
+
+  // Human-readable error labels
+  const errorLabels: Record<string, string> = {
+    property_id: "Propiedad",
+    tenant_id: "Inquilino",
+    start_date: "Fecha de inicio",
+    end_date: "Fecha de fin",
+    initial_rent: "Monto de alquiler",
+    price_mode: "Modalidad de precio",
+    currency: "Moneda",
+    rent_due_day: "Día de vencimiento",
+    tipo_contrato: "Tipo de contrato",
+    deposit_mode: "Modalidad de depósito",
+    adjustment_type: "Índice de actualización",
+    adjustment_frequency: "Frecuencia de ajuste",
+  };
+
+  const scrollToFirstError = () => {
+    setTimeout(() => {
+      const firstErrorEl = document.querySelector("[data-field-error='true']");
+      if (firstErrorEl) {
+        firstErrorEl.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }, 100);
+  };
 
   return (
     <div>
@@ -485,13 +514,13 @@ export default function ContractNew() {
 
       <form onSubmit={handleSubmit(onSubmit, (validationErrors) => {
         console.error("Form validation errors:", validationErrors);
-        const firstKey = Object.keys(validationErrors)[0] as keyof typeof validationErrors;
-        const firstError = validationErrors[firstKey];
+        const errorCount = Object.keys(validationErrors).length;
         toast({
-          title: "Formulario incompleto",
-          description: firstError?.message?.toString() || `Campo requerido: ${firstKey}`,
+          title: "Revisá los campos marcados",
+          description: `Hay ${errorCount} campo${errorCount > 1 ? "s" : ""} con errores que debés corregir.`,
           variant: "destructive",
         });
+        scrollToFirstError();
       })} className="space-y-4 max-w-3xl">
 
         {/* ── SECCIÓN 1: Tipo de contrato ── */}
@@ -532,14 +561,14 @@ export default function ContractNew() {
         {/* ── SECCIÓN 2: Partes ── */}
         <Section icon={User} title="Partes del contrato">
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
+            <div className="space-y-2" data-field-error={!!errors.property_id || undefined}>
               <Label>Propiedad *</Label>
               <Controller
                 name="property_id"
                 control={control}
                 render={({ field }) => (
-                  <Select onValueChange={field.onChange} value={field.value ?? ""}>
-                    <SelectTrigger>
+                  <Select onValueChange={(v) => { field.onChange(v); trigger("property_id"); }} value={field.value ?? ""}>
+                    <SelectTrigger className={errors.property_id ? "border-destructive" : ""}>
                       <SelectValue placeholder="Seleccionar propiedad…" />
                     </SelectTrigger>
                     <SelectContent>
@@ -555,16 +584,16 @@ export default function ContractNew() {
                   </Select>
                 )}
               />
-              {errors.property_id && <p className="text-xs text-destructive">{errors.property_id.message}</p>}
+              {errors.property_id && <p className="text-xs text-destructive">{errors.property_id.message || "Seleccioná una propiedad."}</p>}
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2" data-field-error={!!errors.tenant_id || undefined}>
               <Label>Inquilino *</Label>
               <Controller
                 name="tenant_id"
                 control={control}
                 render={({ field }) => (
-                  <Select onValueChange={field.onChange} value={field.value ?? ""}>
-                    <SelectTrigger>
+                  <Select onValueChange={(v) => { field.onChange(v); trigger("tenant_id"); }} value={field.value ?? ""}>
+                    <SelectTrigger className={errors.tenant_id ? "border-destructive" : ""}>
                       <SelectValue placeholder="Seleccionar inquilino…" />
                     </SelectTrigger>
                     <SelectContent>
@@ -578,7 +607,7 @@ export default function ContractNew() {
                   </Select>
                 )}
               />
-              {errors.tenant_id && <p className="text-xs text-destructive">{errors.tenant_id.message}</p>}
+              {errors.tenant_id && <p className="text-xs text-destructive">{errors.tenant_id.message || "Seleccioná un inquilino."}</p>}
             </div>
           </div>
 
@@ -635,17 +664,17 @@ export default function ContractNew() {
         {/* ── SECCIÓN 3: Fechas ── */}
         <Section icon={Calendar} title="Plazo del contrato">
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
+            <div className="space-y-2" data-field-error={!!errors.start_date || undefined}>
               <Label htmlFor="start_date">Fecha de inicio *</Label>
-              <Input type="date" id="start_date" {...register("start_date")} />
-              {errors.start_date && <p className="text-xs text-destructive">{errors.start_date.message}</p>}
+              <Input type="date" id="start_date" className={errors.start_date ? "border-destructive" : ""} {...register("start_date")} />
+              {errors.start_date && <p className="text-xs text-destructive">{errors.start_date.message || "Fecha de inicio requerida."}</p>}
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2" data-field-error={!!errors.end_date || undefined}>
               <Label htmlFor="end_date">
                 {isTemporario ? "Fecha de fin (check-out) *" : "Fecha de vencimiento *"}
               </Label>
-              <Input type="date" id="end_date" {...register("end_date")} />
-              {errors.end_date && <p className="text-xs text-destructive">{errors.end_date.message}</p>}
+              <Input type="date" id="end_date" className={errors.end_date ? "border-destructive" : ""} {...register("end_date")} />
+              {errors.end_date && <p className="text-xs text-destructive">{errors.end_date.message || "Fecha de fin requerida."}</p>}
             </div>
           </div>
         </Section>
@@ -714,7 +743,7 @@ export default function ContractNew() {
                 )}
               />
             </div>
-            <div className="space-y-2 sm:col-span-2">
+            <div className="space-y-2 sm:col-span-2" data-field-error={!!errors.initial_rent || undefined}>
               <Label htmlFor="initial_rent">{priceModeLabel} *</Label>
               <Input
                 type="number"
@@ -722,9 +751,10 @@ export default function ContractNew() {
                 step="0.01"
                 min="0"
                 placeholder="0,00"
+                className={errors.initial_rent ? "border-destructive" : ""}
                 {...register("initial_rent", { valueAsNumber: true })}
               />
-              {errors.initial_rent && <p className="text-xs text-destructive">{errors.initial_rent.message}</p>}
+              {errors.initial_rent && <p className="text-xs text-destructive">{errors.initial_rent.message || "Ingresá un monto válido mayor a 0."}</p>}
             </div>
           </div>
 
@@ -1089,41 +1119,67 @@ export default function ContractNew() {
         {/* ── SECCIÓN 10: Garantías ── */}
         <GuarantorsSection value={guarantors} onChange={setGuarantors} />
 
-        {/* ── Alerta propietario faltante ── */}
-        {watchPropertyId && propertyOwners.length === 0 && !ownersLoading && (
-          <Alert variant="destructive" className="py-2">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription className="text-sm flex items-center justify-between gap-2 flex-wrap">
-              <span>
-                La propiedad seleccionada no tiene propietarios asignados. Asigná al menos uno para poder crear el contrato.
-              </span>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="shrink-0"
-                onClick={() => navigate(`/properties/${watchPropertyId}`)}
-              >
-                Asignar propietario →
-              </Button>
-            </AlertDescription>
-          </Alert>
+        {/* ── Bloque de problemas a corregir ── */}
+        {(missingOwners || (isSubmitted && hasFormErrors)) && (
+          <Card className="border-destructive/50 bg-destructive/5">
+            <CardContent className="pt-4 pb-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-destructive" />
+                <span className="text-sm font-semibold text-destructive">
+                  Problemas a corregir
+                  {(isSubmitted && hasFormErrors) && (
+                    <span className="font-normal text-muted-foreground ml-1">
+                      ({Object.keys(errors).length + (missingOwners ? 1 : 0)})
+                    </span>
+                  )}
+                </span>
+              </div>
+              <ul className="space-y-1 text-sm text-destructive/90">
+                {missingOwners && (
+                  <li className="flex items-center justify-between gap-2">
+                    <span>• La propiedad seleccionada no tiene propietarios asignados.</span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0 text-xs h-7"
+                      onClick={() => navigate(`/properties/${watchPropertyId}`)}
+                    >
+                      Asignar propietario →
+                    </Button>
+                  </li>
+                )}
+                {isSubmitted && Object.entries(errors).map(([key, err]) => (
+                  <li key={key}>• {errorLabels[key] || key}: {err?.message || "campo inválido"}</li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
         )}
 
-        <div className="flex justify-end gap-3 pb-8">
-          <Button type="button" variant="outline" onClick={() => navigate("/contracts")}>
-            Cancelar
-          </Button>
-          <Button type="submit" disabled={!canSubmit}>
-            {isSubmitting ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Creando contrato…
-              </>
-            ) : (
-              "Crear contrato"
+        <div className="flex items-center justify-between gap-3 pb-8 flex-wrap">
+          <div className="text-sm text-muted-foreground">
+            {!canSubmit && !isSubmitting && (
+              <span className="text-destructive">
+                No podés crear el contrato: {missingOwners ? "falta asignar propietario a la propiedad." : "corregí los errores marcados."}
+              </span>
             )}
-          </Button>
+          </div>
+          <div className="flex gap-3">
+            <Button type="button" variant="outline" onClick={() => navigate("/contracts")}>
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={!canSubmit}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Creando contrato…
+                </>
+              ) : (
+                "Crear contrato"
+              )}
+            </Button>
+          </div>
         </div>
       </form>
     </div>
