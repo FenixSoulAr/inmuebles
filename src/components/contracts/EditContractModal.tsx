@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -22,11 +22,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Separator } from "@/components/ui/separator";
 
 const contractSchema = z.object({
-  end_date: z.string().min(1, "End date is required."),
+  end_date: z.string().min(1, "La fecha de fin es requerida."),
   clauses_text: z.string().optional(),
+  has_price_update: z.boolean().default(false),
   adjustment_type: z.string().min(1),
   adjustment_frequency: z.coerce.number().min(1).optional(),
   next_adjustment_date: z.string().optional(),
@@ -52,6 +55,8 @@ interface Contract {
   public_submission_token: string | null;
   token_status: string;
   submission_language?: string;
+  tipo_contrato?: string | null;
+  has_price_update?: boolean | null;
 }
 
 interface EditContractModalProps {
@@ -82,12 +87,15 @@ export function EditContractModal({
   });
 
   const selectedAdjustmentType = watch("adjustment_type");
+  const watchHasPriceUpdate = watch("has_price_update");
+  const isTemporario = contract?.tipo_contrato === "temporario";
 
   useEffect(() => {
     if (contract && open) {
       reset({
         end_date: contract.end_date,
         clauses_text: contract.clauses_text || "",
+        has_price_update: contract.has_price_update ?? false,
         adjustment_type: contract.adjustment_type,
         adjustment_frequency: contract.adjustment_frequency || 12,
         next_adjustment_date: contract.next_adjustment_date || "",
@@ -99,11 +107,10 @@ export function EditContractModal({
   const onSubmit = async (data: ContractFormData) => {
     if (!contract) return;
 
-    // Validate end_date >= start_date
     if (data.end_date < contract.start_date) {
       toast({
         title: "Error",
-        description: "End date cannot be before the start date.",
+        description: "La fecha de fin no puede ser anterior a la de inicio.",
         variant: "destructive",
       });
       return;
@@ -116,24 +123,26 @@ export function EditContractModal({
       const shouldBeActive = today <= newEndDate;
       const endDateReduced = newEndDate < contract.end_date;
 
+      const effectiveHasPriceUpdate = isTemporario ? false : data.has_price_update;
+
       const updateData: Record<string, unknown> = {
         end_date: newEndDate,
         clauses_text: data.clauses_text || null,
         is_active: shouldBeActive,
         submission_language: data.submission_language,
+        has_price_update: effectiveHasPriceUpdate,
       };
 
-      // Only allow changing adjustment settings if no rent dues exist
       if (!hasRentDues) {
-        updateData.adjustment_type = data.adjustment_type;
-        updateData.adjustment_frequency = data.adjustment_frequency;
+        updateData.adjustment_type = effectiveHasPriceUpdate ? data.adjustment_type : "manual";
+        updateData.adjustment_frequency = effectiveHasPriceUpdate ? data.adjustment_frequency : null;
       }
 
       if (data.next_adjustment_date) {
         updateData.next_adjustment_date = data.next_adjustment_date;
       }
 
-      // Handle token logic based on activation status
+      // Handle token logic
       if (shouldBeActive) {
         if (!contract.public_submission_token) {
           const newToken = Array.from(crypto.getRandomValues(new Uint8Array(32)))
@@ -156,7 +165,6 @@ export function EditContractModal({
 
       if (error) throw error;
 
-      // If endDate was reduced, clean up future obligations beyond new endDate
       if (endDateReduced) {
         const d = new Date(newEndDate);
         const cutoffPeriod = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
@@ -179,26 +187,16 @@ export function EditContractModal({
       }
 
       if (wasInactive && shouldBeActive) {
-        toast({
-          title: "Contract reactivated",
-          description: "The contract has been reactivated. Submission link enabled.",
-        });
+        toast({ title: "Contrato reactivado", description: "El contrato fue reactivado. Enlace de envío habilitado." });
       } else {
-        toast({
-          title: "Contract updated",
-          description: "The contract has been updated successfully.",
-        });
+        toast({ title: "Contrato actualizado", description: "Los cambios se guardaron correctamente." });
       }
 
       onOpenChange(false);
       onSuccess();
     } catch (error) {
       console.error("Error updating contract:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update contract. Please try again.",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: "No se pudo actualizar el contrato.", variant: "destructive" });
     }
   };
 
@@ -206,89 +204,109 @@ export function EditContractModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Edit Contract</DialogTitle>
+          <DialogTitle>Editar contrato</DialogTitle>
         </DialogHeader>
 
         {hasRentDues && (
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              Some fields are locked because this contract already has rent history.
+              Algunos campos están bloqueados porque este contrato ya tiene historial de alquiler.
             </AlertDescription>
           </Alert>
         )}
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 mt-2">
           <div className="space-y-2">
-            <Label htmlFor="end_date">End Date</Label>
-            <Input
-              id="end_date"
-              type="date"
-              {...register("end_date")}
-            />
+            <Label htmlFor="end_date">
+              {isTemporario ? "Fecha de fin (check-out)" : "Fecha de vencimiento"}
+            </Label>
+            <Input id="end_date" type="date" {...register("end_date")} />
             {errors.end_date && (
               <p className="text-sm text-destructive">{errors.end_date.message}</p>
             )}
           </div>
 
-          <div className="space-y-2">
-            <Label>Adjustment Type</Label>
-            <Select
-              value={selectedAdjustmentType}
-              onValueChange={(value) => setValue("adjustment_type", value)}
-              disabled={hasRentDues}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ipc">IPC (Consumer Price Index)</SelectItem>
-                <SelectItem value="icl">ICL (Construction Index)</SelectItem>
-                <SelectItem value="fixed">Fixed Percentage</SelectItem>
-                <SelectItem value="manual">Manual Adjustment</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {isTemporario ? (
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription className="text-sm">
+                Los contratos temporarios no contemplan actualización de precio.
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <>
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="text-sm font-medium">Actualización de precio</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">¿El contrato tiene actualizaciones periódicas?</p>
+                </div>
+                <Switch
+                  checked={!!watchHasPriceUpdate}
+                  onCheckedChange={(v) => setValue("has_price_update", v)}
+                  disabled={hasRentDues}
+                />
+              </div>
+
+              {watchHasPriceUpdate && (
+                <>
+                  <Separator />
+                  <div className="space-y-2">
+                    <Label>Índice de actualización</Label>
+                    <Select
+                      value={selectedAdjustmentType}
+                      onValueChange={(value) => setValue("adjustment_type", value)}
+                      disabled={hasRentDues}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar índice" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ipc">IPC — Índice de Precios al Consumidor</SelectItem>
+                        <SelectItem value="icl">ICL — Índice Casa Propia</SelectItem>
+                        <SelectItem value="fixed">Porcentaje fijo</SelectItem>
+                        <SelectItem value="manual">Ajuste manual</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="adjustment_frequency">Frecuencia (meses)</Label>
+                    <Input
+                      id="adjustment_frequency"
+                      type="number"
+                      min="1"
+                      {...register("adjustment_frequency")}
+                      disabled={hasRentDues}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="next_adjustment_date">Próxima fecha de ajuste</Label>
+                    <Input id="next_adjustment_date" type="date" {...register("next_adjustment_date")} />
+                  </div>
+                </>
+              )}
+            </>
+          )}
 
           <div className="space-y-2">
-            <Label htmlFor="adjustment_frequency">Adjustment Frequency (months)</Label>
-            <Input
-              id="adjustment_frequency"
-              type="number"
-              min="1"
-              {...register("adjustment_frequency")}
-              disabled={hasRentDues}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="next_adjustment_date">Next Adjustment Date</Label>
-            <Input
-              id="next_adjustment_date"
-              type="date"
-              {...register("next_adjustment_date")}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="clauses_text">Additional Clauses</Label>
+            <Label htmlFor="clauses_text">Cláusulas adicionales / notas</Label>
             <Textarea
               id="clauses_text"
-              placeholder="Any additional terms..."
+              placeholder="Condiciones especiales…"
               rows={4}
               {...register("clauses_text")}
             />
           </div>
 
           <div className="space-y-2">
-            <Label>Tenant Form Language</Label>
+            <Label>Idioma del formulario de pago (inquilino)</Label>
             <Select
               value={watch("submission_language")}
               onValueChange={(value) => setValue("submission_language", value)}
             >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
+              <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="es">Español</SelectItem>
                 <SelectItem value="en">English</SelectItem>
@@ -298,10 +316,10 @@ export function EditContractModal({
 
           <div className="flex justify-end gap-3 pt-4">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              Cancelar
             </Button>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Saving..." : "Save changes"}
+              {isSubmitting ? "Guardando..." : "Guardar cambios"}
             </Button>
           </div>
         </form>

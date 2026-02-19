@@ -1,6 +1,10 @@
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Loader2, Building2, User, Calendar, DollarSign, TrendingUp, Shield, CheckSquare, Home, AlertTriangle, UserCircle2 } from "lucide-react";
+import {
+  ArrowLeft, Loader2, Building2, User, Calendar, DollarSign,
+  TrendingUp, Shield, CheckSquare, Home, AlertTriangle,
+  UserCircle2, ChevronDown, ChevronRight, Package
+} from "lucide-react";
 import { GuarantorsSection, type GuarantorEntry } from "@/components/contracts/GuarantorsSection";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -11,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -21,6 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -52,35 +58,55 @@ interface PropertyOwner {
   };
 }
 
+const CONTRACT_TYPES = [
+  { value: "permanente", label: "🏠 Permanente / Habitacional", description: "Contrato de alquiler permanente" },
+  { value: "temporario", label: "⏱ Temporario / Turístico", description: "Contrato de alquiler temporario" },
+  { value: "comercial", label: "🏢 Comercial", description: "Contrato de alquiler comercial" },
+];
+
+const INCLUDED_SERVICES = [
+  { value: "luz", label: "Luz / Electricidad" },
+  { value: "gas", label: "Gas" },
+  { value: "agua", label: "Agua" },
+  { value: "internet", label: "Internet / WiFi" },
+  { value: "expensas", label: "Expensas" },
+  { value: "cable", label: "Cable / TV" },
+  { value: "limpieza", label: "Limpieza" },
+];
+
 const schema = z.object({
   property_id: z.string().min(1, "Propiedad requerida."),
   tenant_id: z.string().min(1, "Inquilino requerido."),
-  tipo_contrato: z.string().default("vivienda"),
+  tipo_contrato: z.string().default("permanente"),
   start_date: z.string().min(1, "Fecha de inicio requerida."),
   end_date: z.string().min(1, "Fecha de fin requerida."),
-  // Rent
+  // Precio
   currency: z.string().default("ARS"),
+  price_mode: z.string().default("mensual"),
   initial_rent: z.number({ invalid_type_error: "Monto requerido." }).min(0.01),
   rent_due_day: z.number().min(1).max(28).default(5),
-  // Deposit
+  // Depósito
   currency_deposit: z.string().default("ARS"),
   deposit: z.number().optional().nullable(),
-  // Indexation
+  deposit_type: z.string().default("monto_fijo"),
+  // Actualización de precio
+  has_price_update: z.boolean().default(false),
   adjustment_type: z.string().default("ipc"),
   adjustment_frequency: z.number().default(4),
+  update_percentage: z.number().optional().nullable(),
   index_notes: z.string().optional().nullable(),
-  // Insurance
+  // Seguro
   usa_seguro: z.boolean().default(true),
   seguro_tipo: z.string().default("caucion"),
   seguro_obligatorio: z.boolean().default(true),
   tenant_insurance_notes: z.string().optional().nullable(),
-  // Conditions
+  // Condiciones
   expensas_ordinarias: z.boolean().default(true),
   expensas_extraordinarias: z.boolean().default(false),
   impuestos_a_cargo_locatario: z.boolean().default(false),
   permite_subalquiler: z.boolean().default(false),
   permite_mascotas: z.boolean().default(false),
-  // Other
+  // Otros
   clauses_text: z.string().optional().nullable(),
   submission_language: z.string().default("es"),
 }).refine((d) => new Date(d.end_date) > new Date(d.start_date), {
@@ -90,12 +116,43 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
-function SectionTitle({ icon: Icon, children }: { icon: React.ElementType; children: React.ReactNode }) {
+// ── Section wrapper with collapse ──
+function Section({
+  icon: Icon,
+  title,
+  badge,
+  children,
+  defaultOpen = true,
+}: {
+  icon: React.ElementType;
+  title: string;
+  badge?: string;
+  children: React.ReactNode;
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="flex items-center gap-2 text-sm font-semibold text-foreground pt-2">
-      <Icon className="w-4 h-4 text-primary" />
-      {children}
-    </div>
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <Card>
+        <CollapsibleTrigger asChild>
+          <CardHeader className="pb-3 cursor-pointer select-none hover:bg-muted/30 transition-colors rounded-t-lg">
+            <CardTitle className="flex items-center justify-between text-base">
+              <span className="flex items-center gap-2">
+                <Icon className="w-4 h-4 text-primary" />
+                {title}
+                {badge && <Badge variant="secondary" className="text-xs">{badge}</Badge>}
+              </span>
+              {open ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+            </CardTitle>
+          </CardHeader>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <CardContent className="space-y-4 pt-0">
+            {children}
+          </CardContent>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
   );
 }
 
@@ -107,6 +164,7 @@ export default function ContractNew() {
   const [guarantors, setGuarantors] = useState<GuarantorEntry[]>([]);
   const [propertyOwners, setPropertyOwners] = useState<PropertyOwner[]>([]);
   const [ownersLoading, setOwnersLoading] = useState(false);
+  const [includedServices, setIncludedServices] = useState<string[]>([]);
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -116,13 +174,17 @@ export default function ContractNew() {
     handleSubmit,
     control,
     watch,
+    setValue,
     formState: { errors },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
-      tipo_contrato: "vivienda",
+      tipo_contrato: "permanente",
       currency: "ARS",
       currency_deposit: "ARS",
+      price_mode: "mensual",
+      deposit_type: "monto_fijo",
+      has_price_update: false,
       adjustment_type: "ipc",
       adjustment_frequency: 4,
       rent_due_day: 5,
@@ -138,15 +200,54 @@ export default function ContractNew() {
     },
   });
 
+  const watchTipoContrato = watch("tipo_contrato");
   const watchUsaSeguro = watch("usa_seguro");
   const watchPropertyId = watch("property_id");
+  const watchHasPriceUpdate = watch("has_price_update");
+  const watchAdjustmentType = watch("adjustment_type");
+  const watchDepositType = watch("deposit_type");
+  const watchPriceMode = watch("price_mode");
 
-  // Fetch property owners whenever selected property changes
-  const fetchPropertyOwners = useCallback(async (propertyId: string) => {
-    if (!propertyId) {
-      setPropertyOwners([]);
-      return;
+  const isTemporario = watchTipoContrato === "temporario";
+  const isPermanente = watchTipoContrato === "permanente";
+  const isComercial = watchTipoContrato === "comercial";
+
+  // Reset price_mode when contract type changes
+  useEffect(() => {
+    if (isTemporario) {
+      // temporario defaults to diario or semanal
+      setValue("has_price_update", false);
+      setValue("adjustment_type", "manual");
+    } else {
+      setValue("price_mode", "mensual");
     }
+  }, [watchTipoContrato, setValue, isTemporario]);
+
+  const contractTitle = isTemporario
+    ? "Contrato de alquiler temporario"
+    : isComercial
+    ? "Contrato de alquiler comercial"
+    : "Contrato de alquiler";
+
+  const priceModeOptions = isTemporario
+    ? [
+        { value: "diario", label: "Precio por día" },
+        { value: "semanal", label: "Precio por semana" },
+        { value: "mensual", label: "Precio mensual" },
+        { value: "total_estadia", label: "Precio total de estadía" },
+      ]
+    : [{ value: "mensual", label: "Precio mensual" }];
+
+  const priceModeLabel = {
+    diario: "Precio por día",
+    semanal: "Precio por semana",
+    mensual: "Monto mensual",
+    total_estadia: "Precio total de estadía",
+  }[watchPriceMode] ?? "Monto de alquiler";
+
+  // Fetch property owners
+  const fetchPropertyOwners = useCallback(async (propertyId: string) => {
+    if (!propertyId) { setPropertyOwners([]); return; }
     setOwnersLoading(true);
     try {
       const { data, error } = await supabase
@@ -164,9 +265,7 @@ export default function ContractNew() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchPropertyOwners(watchPropertyId || "");
-  }, [watchPropertyId, fetchPropertyOwners]);
+  useEffect(() => { fetchPropertyOwners(watchPropertyId || ""); }, [watchPropertyId, fetchPropertyOwners]);
 
   useEffect(() => {
     if (user) fetchData();
@@ -188,6 +287,11 @@ export default function ContractNew() {
     }
   };
 
+  const toggleService = (val: string) => {
+    setIncludedServices((prev) =>
+      prev.includes(val) ? prev.filter((s) => s !== val) : [...prev, val]
+    );
+  };
 
   const onSubmit = async (data: FormData) => {
     setIsSubmitting(true);
@@ -202,24 +306,23 @@ export default function ContractNew() {
       const newStart = new Date(data.start_date);
       const newEnd = new Date(data.end_date);
       const hasOverlap = (existing || []).some((c) => {
-        const s = new Date(c.start_date);
-        const e = new Date(c.end_date);
+        const s = new Date(c.start_date); const e = new Date(c.end_date);
         return newStart <= e && newEnd >= s;
       });
 
       if (hasOverlap) {
-        toast({
-          title: "Conflicto de fechas",
-          description: "La propiedad ya tiene un contrato activo para ese período.",
-          variant: "destructive",
-        });
+        toast({ title: "Conflicto de fechas", description: "La propiedad ya tiene un contrato activo para ese período.", variant: "destructive" });
         setIsSubmitting(false);
         return;
       }
 
       const token = Array.from(crypto.getRandomValues(new Uint8Array(32)))
-        .map((b) => b.toString(16).padStart(2, "0"))
-        .join("");
+        .map((b) => b.toString(16).padStart(2, "0")).join("");
+
+      // For temporario: no price updates
+      const effectiveHasPriceUpdate = isTemporario ? false : data.has_price_update;
+      const effectiveAdjustmentType = effectiveHasPriceUpdate ? data.adjustment_type : "manual";
+      const effectiveAdjustmentFrequency = effectiveHasPriceUpdate ? data.adjustment_frequency : null;
 
       const { data: created, error } = await supabase
         .from("contracts")
@@ -230,13 +333,17 @@ export default function ContractNew() {
           start_date: data.start_date,
           end_date: data.end_date,
           currency: data.currency,
+          price_mode: data.price_mode,
           initial_rent: data.initial_rent,
           current_rent: data.initial_rent,
           rent_due_day: data.rent_due_day,
           currency_deposit: data.currency_deposit,
           deposit: data.deposit ?? null,
-          adjustment_type: data.adjustment_type,
-          adjustment_frequency: data.adjustment_frequency,
+          deposit_type: data.deposit_type,
+          has_price_update: effectiveHasPriceUpdate,
+          adjustment_type: effectiveAdjustmentType,
+          adjustment_frequency: effectiveAdjustmentFrequency,
+          update_percentage: data.update_percentage ?? null,
           index_notes: data.index_notes ?? null,
           usa_seguro: data.usa_seguro,
           seguro_tipo: data.usa_seguro ? data.seguro_tipo : null,
@@ -282,6 +389,18 @@ export default function ContractNew() {
         await supabase.from("contract_guarantors" as any).insert(guarantorRows as any);
       }
 
+      // Save included services (for temporario)
+      if (isTemporario && includedServices.length > 0) {
+        const serviceRows = includedServices.map((svc) => ({
+          contract_id: created.id,
+          service_type: svc,
+          active: true,
+          due_day: null,
+          expected_amount: null,
+        }));
+        await supabase.from("contract_services").insert(serviceRows as any);
+      }
+
       // Fire-and-forget helpers
       await Promise.allSettled([
         supabase.functions.invoke("generate-rent-dues", { body: { contract_id: created.id } }),
@@ -312,6 +431,8 @@ export default function ContractNew() {
     );
   }
 
+  const canSubmit = !isSubmitting && !(watchPropertyId && !ownersLoading && propertyOwners.length === 0);
+
   return (
     <div>
       <Button variant="ghost" size="sm" className="mb-4" onClick={() => navigate("/contracts")}>
@@ -319,127 +440,177 @@ export default function ContractNew() {
         Volver a contratos
       </Button>
 
-      <PageHeader title="Nuevo contrato de locación" description="Complete los datos para generar el contrato" />
+      <PageHeader
+        title={contractTitle}
+        description="Complete los datos para registrar el contrato de locación"
+      />
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 max-w-3xl">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 max-w-3xl">
 
-        {/* ── SECCIÓN A: Partes ── */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <User className="w-4 h-4" /> Partes del contrato
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Propiedad *</Label>
-                <Controller
-                  name="property_id"
-                  control={control}
-                  render={({ field }) => (
-                    <Select onValueChange={field.onChange} value={field.value ?? ""}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleccionar propiedad…" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {properties.length === 0 && (
-                          <SelectItem value="_none" disabled>Sin propiedades activas</SelectItem>
-                        )}
-                        {properties.map((p) => (
-                          <SelectItem key={p.id} value={p.id}>
-                            {p.internal_identifier} — {p.full_address}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-                {errors.property_id && <p className="text-xs text-destructive">{errors.property_id.message}</p>}
-              </div>
-              <div className="space-y-2">
-                <Label>Inquilino *</Label>
-                <Controller
-                  name="tenant_id"
-                  control={control}
-                  render={({ field }) => (
-                    <Select onValueChange={field.onChange} value={field.value ?? ""}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleccionar inquilino…" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {tenants.length === 0 && (
-                          <SelectItem value="_none" disabled>Sin inquilinos activos</SelectItem>
-                        )}
-                        {tenants.map((t) => (
-                          <SelectItem key={t.id} value={t.id}>{t.full_name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-                {errors.tenant_id && <p className="text-xs text-destructive">{errors.tenant_id.message}</p>}
-              </div>
+        {/* ── SECCIÓN 1: Tipo de contrato ── */}
+        <Section icon={Building2} title="Tipo de contrato">
+          <div className="space-y-3">
+            <Label>Tipo de contrato *</Label>
+            <div className="grid gap-3 sm:grid-cols-3">
+              {CONTRACT_TYPES.map((ct) => (
+                <label
+                  key={ct.value}
+                  className={`flex flex-col gap-1 p-3 rounded-lg border-2 cursor-pointer transition-colors ${
+                    watchTipoContrato === ct.value
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:border-primary/40"
+                  }`}
+                >
+                  <Controller
+                    name="tipo_contrato"
+                    control={control}
+                    render={({ field }) => (
+                      <input
+                        type="radio"
+                        className="sr-only"
+                        value={ct.value}
+                        checked={field.value === ct.value}
+                        onChange={() => field.onChange(ct.value)}
+                      />
+                    )}
+                  />
+                  <span className="font-medium text-sm">{ct.label}</span>
+                  <span className="text-xs text-muted-foreground">{ct.description}</span>
+                </label>
+              ))}
             </div>
+          </div>
+        </Section>
 
-            {/* LOCADOR/ES — Auto-populated from property owners */}
-            {watchPropertyId && (
-              <>
-                <Separator />
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <UserCircle2 className="w-4 h-4 text-primary" />
-                    <Label className="text-sm font-semibold">
-                      {propertyOwners.length > 1 ? "LOS LOCADORES (Propietarios)" : "EL LOCADOR (Propietario)"}
-                    </Label>
-                    {ownersLoading && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />}
-                  </div>
-
-                  {!ownersLoading && propertyOwners.length === 0 && (
-                    <Alert variant="destructive" className="py-2">
-                      <AlertTriangle className="h-4 w-4" />
-                      <AlertDescription className="text-xs">
-                        Esta propiedad no tiene propietarios asignados. Asigná al menos 1 propietario en la ficha de la propiedad para poder generar el contrato.
-                      </AlertDescription>
-                    </Alert>
-                  )}
-
-                  {!ownersLoading && propertyOwners.length > 0 && (
-                    <div className="space-y-2">
-                      {propertyOwners.map((link, idx) => (
-                        <div key={link.id} className="flex items-start gap-3 p-3 rounded-lg bg-muted/40 border border-border/50">
-                          <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold shrink-0 mt-0.5">
-                            {idx + 1}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-medium text-sm">{link.owners?.full_name}</span>
-                              {link.role && (
-                                <Badge variant="outline" className="text-xs capitalize">{link.role}</Badge>
-                              )}
-                              {link.ownership_percent != null && (
-                                <Badge variant="secondary" className="text-xs">{link.ownership_percent}%</Badge>
-                              )}
-                            </div>
-                            {link.owners?.dni_cuit && (
-                              <p className="text-xs text-muted-foreground">DNI/CUIT: {link.owners.dni_cuit}</p>
-                            )}
-                            {link.owners?.address && (
-                              <p className="text-xs text-muted-foreground truncate">{link.owners.address}</p>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
-
+        {/* ── SECCIÓN 2: Partes ── */}
+        <Section icon={User} title="Partes del contrato">
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label>Tipo de contrato</Label>
+              <Label>Propiedad *</Label>
               <Controller
-                name="tipo_contrato"
+                name="property_id"
+                control={control}
+                render={({ field }) => (
+                  <Select onValueChange={field.onChange} value={field.value ?? ""}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar propiedad…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {properties.length === 0 && (
+                        <SelectItem value="_none" disabled>Sin propiedades activas</SelectItem>
+                      )}
+                      {properties.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.internal_identifier} — {p.full_address}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {errors.property_id && <p className="text-xs text-destructive">{errors.property_id.message}</p>}
+            </div>
+            <div className="space-y-2">
+              <Label>Inquilino *</Label>
+              <Controller
+                name="tenant_id"
+                control={control}
+                render={({ field }) => (
+                  <Select onValueChange={field.onChange} value={field.value ?? ""}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar inquilino…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {tenants.length === 0 && (
+                        <SelectItem value="_none" disabled>Sin inquilinos activos</SelectItem>
+                      )}
+                      {tenants.map((t) => (
+                        <SelectItem key={t.id} value={t.id}>{t.full_name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {errors.tenant_id && <p className="text-xs text-destructive">{errors.tenant_id.message}</p>}
+            </div>
+          </div>
+
+          {/* Propietarios auto-cargados */}
+          {watchPropertyId && (
+            <>
+              <Separator />
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <UserCircle2 className="w-4 h-4 text-primary" />
+                  <Label className="text-sm font-semibold">
+                    {propertyOwners.length > 1 ? "Propietarios (Locadores)" : "Propietario (Locador)"}
+                  </Label>
+                  {ownersLoading && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />}
+                </div>
+
+                {!ownersLoading && propertyOwners.length === 0 && (
+                  <Alert variant="destructive" className="py-2">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertDescription className="text-xs">
+                      Esta propiedad no tiene propietarios asignados. Asigná al menos 1 en la ficha de la propiedad → pestaña <strong>Propietarios</strong>.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {!ownersLoading && propertyOwners.length > 0 && (
+                  <div className="space-y-2">
+                    {propertyOwners.map((link, idx) => (
+                      <div key={link.id} className="flex items-start gap-3 p-3 rounded-lg bg-muted/40 border border-border/50">
+                        <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold shrink-0 mt-0.5">
+                          {idx + 1}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-medium text-sm">{link.owners?.full_name}</span>
+                            {link.role && <Badge variant="outline" className="text-xs capitalize">{link.role}</Badge>}
+                            {link.ownership_percent != null && (
+                              <Badge variant="secondary" className="text-xs">{link.ownership_percent}%</Badge>
+                            )}
+                          </div>
+                          {link.owners?.dni_cuit && (
+                            <p className="text-xs text-muted-foreground">DNI/CUIT: {link.owners.dni_cuit}</p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </Section>
+
+        {/* ── SECCIÓN 3: Fechas ── */}
+        <Section icon={Calendar} title="Plazo del contrato">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="start_date">Fecha de inicio *</Label>
+              <Input type="date" id="start_date" {...register("start_date")} />
+              {errors.start_date && <p className="text-xs text-destructive">{errors.start_date.message}</p>}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="end_date">
+                {isTemporario ? "Fecha de fin (check-out) *" : "Fecha de vencimiento *"}
+              </Label>
+              <Input type="date" id="end_date" {...register("end_date")} />
+              {errors.end_date && <p className="text-xs text-destructive">{errors.end_date.message}</p>}
+            </div>
+          </div>
+        </Section>
+
+        {/* ── SECCIÓN 4: Precio ── */}
+        <Section icon={DollarSign} title="Precio">
+          {/* Modalidad solo para temporario */}
+          {isTemporario && (
+            <div className="space-y-2">
+              <Label>Modalidad de precio</Label>
+              <Controller
+                name="price_mode"
                 control={control}
                 render={({ field }) => (
                   <Select onValueChange={field.onChange} value={field.value}>
@@ -447,80 +618,50 @@ export default function ContractNew() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="vivienda">🏠 Vivienda / Habitacional</SelectItem>
-                      <SelectItem value="comercial">🏢 Comercial</SelectItem>
-                      <SelectItem value="temporal">⏱ Temporal / Turístico</SelectItem>
+                      {priceModeOptions.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 )}
               />
             </div>
-          </CardContent>
-        </Card>
+          )}
 
-        {/* ── SECCIÓN B: Fechas ── */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Calendar className="w-4 h-4" /> Plazo del contrato
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="start_date">Fecha de inicio *</Label>
-                <Input type="date" id="start_date" {...register("start_date")} />
-                {errors.start_date && <p className="text-xs text-destructive">{errors.start_date.message}</p>}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="end_date">Fecha de vencimiento *</Label>
-                <Input type="date" id="end_date" {...register("end_date")} />
-                {errors.end_date && <p className="text-xs text-destructive">{errors.end_date.message}</p>}
-              </div>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="space-y-2">
+              <Label>Moneda</Label>
+              <Controller
+                name="currency"
+                control={control}
+                render={({ field }) => (
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ARS">🇦🇷 ARS — Peso argentino</SelectItem>
+                      <SelectItem value="USD">🇺🇸 USD — Dólar</SelectItem>
+                      <SelectItem value="EUR">🇪🇺 EUR — Euro</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
             </div>
-          </CardContent>
-        </Card>
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="initial_rent">{priceModeLabel} *</Label>
+              <Input
+                type="number"
+                id="initial_rent"
+                step="0.01"
+                min="0"
+                placeholder="0,00"
+                {...register("initial_rent", { valueAsNumber: true })}
+              />
+              {errors.initial_rent && <p className="text-xs text-destructive">{errors.initial_rent.message}</p>}
+            </div>
+          </div>
 
-        {/* ── SECCIÓN C: Alquiler ── */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <DollarSign className="w-4 h-4" /> Alquiler y depósito
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <SectionTitle icon={Home}>Alquiler mensual</SectionTitle>
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div className="space-y-2">
-                <Label>Moneda</Label>
-                <Controller
-                  name="currency"
-                  control={control}
-                  render={({ field }) => (
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="ARS">🇦🇷 ARS — Peso argentino</SelectItem>
-                        <SelectItem value="USD">🇺🇸 USD — Dólar</SelectItem>
-                        <SelectItem value="EUR">🇪🇺 EUR — Euro</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-              </div>
-              <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="initial_rent">Monto de alquiler *</Label>
-                <Input
-                  type="number"
-                  id="initial_rent"
-                  step="0.01"
-                  min="0"
-                  placeholder="0,00"
-                  {...register("initial_rent", { valueAsNumber: true })}
-                />
-                {errors.initial_rent && <p className="text-xs text-destructive">{errors.initial_rent.message}</p>}
-              </div>
-            </div>
+          {/* Día de vencimiento solo si es mensual */}
+          {watchPriceMode === "mensual" && (
             <div className="space-y-2 max-w-xs">
               <Label htmlFor="rent_due_day">Día de vencimiento del pago (1–28)</Label>
               <Input
@@ -531,13 +672,33 @@ export default function ContractNew() {
                 {...register("rent_due_day", { valueAsNumber: true })}
               />
             </div>
+          )}
 
-            <Separator />
+          <Separator />
 
-            <SectionTitle icon={DollarSign}>Depósito de garantía</SectionTitle>
+          {/* Depósito */}
+          <div className="space-y-3">
+            <Label className="text-sm font-semibold">Depósito de garantía</Label>
             <div className="grid gap-4 sm:grid-cols-3">
               <div className="space-y-2">
-                <Label>Moneda depósito</Label>
+                <Label className="text-xs text-muted-foreground">Tipo de depósito</Label>
+                <Controller
+                  name="deposit_type"
+                  control={control}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="monto_fijo">Monto fijo</SelectItem>
+                        <SelectItem value="equivalente_meses">Equivalente en meses</SelectItem>
+                        <SelectItem value="equivalente_dias">Equivalente en días</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Moneda</Label>
                 <Controller
                   name="currency_deposit"
                   control={control}
@@ -545,19 +706,24 @@ export default function ContractNew() {
                     <Select onValueChange={field.onChange} value={field.value}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="ARS">🇦🇷 ARS — Peso argentino</SelectItem>
-                        <SelectItem value="USD">🇺🇸 USD — Dólar</SelectItem>
-                        <SelectItem value="EUR">🇪🇺 EUR — Euro</SelectItem>
+                        <SelectItem value="ARS">🇦🇷 ARS</SelectItem>
+                        <SelectItem value="USD">🇺🇸 USD</SelectItem>
+                        <SelectItem value="EUR">🇪🇺 EUR</SelectItem>
                       </SelectContent>
                     </Select>
                   )}
                 />
               </div>
-              <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="deposit">Monto depósito</Label>
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">
+                  {watchDepositType === "monto_fijo"
+                    ? "Monto"
+                    : watchDepositType === "equivalente_meses"
+                    ? "Cantidad de meses"
+                    : "Cantidad de días"}
+                </Label>
                 <Input
                   type="number"
-                  id="deposit"
                   step="0.01"
                   min="0"
                   placeholder="0,00"
@@ -565,234 +731,274 @@ export default function ContractNew() {
                 />
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </Section>
 
-        {/* ── SECCIÓN D: Indexación ── */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <TrendingUp className="w-4 h-4" /> Actualización del precio
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Índice de actualización</Label>
-                <Controller
-                  name="adjustment_type"
-                  control={control}
-                  render={({ field }) => (
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="ipc">IPC — Índice de Precios al Consumidor</SelectItem>
-                        <SelectItem value="icl">ICL — Índice Casa Propia</SelectItem>
-                        <SelectItem value="fixed">Porcentaje fijo</SelectItem>
-                        <SelectItem value="manual">Ajuste manual</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
+        {/* ── SECCIÓN 5: Actualización de precio ── */}
+        {isTemporario ? (
+          <Card>
+            <CardContent className="pt-4 pb-4">
+              <div className="flex items-start gap-3 text-muted-foreground">
+                <TrendingUp className="w-4 h-4 mt-0.5 shrink-0" />
+                <p className="text-sm">
+                  Los contratos temporarios no contemplan actualización periódica de precio.
+                </p>
               </div>
-              <div className="space-y-2">
-                <Label>Frecuencia</Label>
-                <Controller
-                  name="adjustment_frequency"
-                  control={control}
-                  render={({ field }) => (
-                    <Select
-                      onValueChange={(v) => field.onChange(Number(v))}
-                      value={String(field.value)}
-                    >
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="1">Mensual</SelectItem>
-                        <SelectItem value="3">Trimestral</SelectItem>
-                        <SelectItem value="4">Cuatrimestral</SelectItem>
-                        <SelectItem value="6">Semestral</SelectItem>
-                        <SelectItem value="12">Anual</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
+            </CardContent>
+          </Card>
+        ) : (
+          <Section icon={TrendingUp} title="Actualización de precio" defaultOpen={false}>
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-sm font-medium">¿El contrato tiene actualización de precio?</Label>
+                <p className="text-xs text-muted-foreground mt-0.5">Activá si el alquiler se actualiza según un índice o porcentaje fijo.</p>
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="index_notes">Notas sobre actualización</Label>
-              <Input
-                id="index_notes"
-                placeholder="Ej: aplicar según publicación INDEC del mes anterior"
-                {...register("index_notes")}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* ── SECCIÓN E: Seguro ── */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Shield className="w-4 h-4" /> Seguro del inquilino
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center gap-3">
               <Controller
-                name="usa_seguro"
+                name="has_price_update"
                 control={control}
                 render={({ field }) => (
-                  <Checkbox
-                    id="usa_seguro"
+                  <Switch
                     checked={field.value}
                     onCheckedChange={field.onChange}
                   />
                 )}
               />
-              <Label htmlFor="usa_seguro" className="cursor-pointer">
-                El contrato requiere seguro por parte del inquilino
-              </Label>
             </div>
 
-            {watchUsaSeguro && (
+            {watchHasPriceUpdate && (
               <>
+                <Separator />
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <Label>Tipo de seguro</Label>
+                    <Label>Índice de actualización</Label>
                     <Controller
-                      name="seguro_tipo"
+                      name="adjustment_type"
                       control={control}
                       render={({ field }) => (
                         <Select onValueChange={field.onChange} value={field.value}>
                           <SelectTrigger><SelectValue /></SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="incendio">Seguro contra incendio</SelectItem>
-                            <SelectItem value="caucion">Seguro de caución</SelectItem>
-                            <SelectItem value="integral">Seguro integral de inquilinos</SelectItem>
+                            <SelectItem value="ipc">IPC — Índice de Precios al Consumidor</SelectItem>
+                            <SelectItem value="icl">ICL — Índice Casa Propia</SelectItem>
+                            <SelectItem value="fixed">Porcentaje fijo</SelectItem>
+                            <SelectItem value="manual">Ajuste manual</SelectItem>
                           </SelectContent>
                         </Select>
                       )}
                     />
                   </div>
-                  <div className="flex items-center gap-3 pt-7">
+                  <div className="space-y-2">
+                    <Label>Frecuencia</Label>
                     <Controller
-                      name="seguro_obligatorio"
+                      name="adjustment_frequency"
                       control={control}
                       render={({ field }) => (
-                        <Checkbox
-                          id="seguro_obligatorio"
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
+                        <Select
+                          onValueChange={(v) => field.onChange(Number(v))}
+                          value={String(field.value)}
+                        >
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="1">Mensual</SelectItem>
+                            <SelectItem value="3">Trimestral</SelectItem>
+                            <SelectItem value="4">Cuatrimestral</SelectItem>
+                            <SelectItem value="6">Semestral</SelectItem>
+                            <SelectItem value="12">Anual</SelectItem>
+                          </SelectContent>
+                        </Select>
                       )}
                     />
-                    <Label htmlFor="seguro_obligatorio" className="cursor-pointer">
-                      Seguro obligatorio (condición esencial)
-                    </Label>
                   </div>
                 </div>
+
+                {watchAdjustmentType === "fixed" && (
+                  <div className="space-y-2 max-w-xs">
+                    <Label htmlFor="update_percentage">Porcentaje de actualización (%)</Label>
+                    <Input
+                      type="number"
+                      id="update_percentage"
+                      step="0.01"
+                      min="0"
+                      placeholder="ej: 5.5"
+                      {...register("update_percentage", { valueAsNumber: true })}
+                    />
+                  </div>
+                )}
+
                 <div className="space-y-2">
-                  <Label htmlFor="tenant_insurance_notes">Observaciones del seguro</Label>
+                  <Label htmlFor="index_notes">Notas sobre actualización</Label>
                   <Input
-                    id="tenant_insurance_notes"
-                    placeholder="Ej: renovar anualmente, endosar a favor del propietario"
-                    {...register("tenant_insurance_notes")}
+                    id="index_notes"
+                    placeholder="Ej: aplicar según publicación INDEC del mes anterior"
+                    {...register("index_notes")}
                   />
                 </div>
               </>
             )}
-          </CardContent>
-        </Card>
+          </Section>
+        )}
 
-        {/* ── SECCIÓN F: Condiciones ── */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <CheckSquare className="w-4 h-4" /> Condiciones del contrato
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+        {/* ── SECCIÓN 6: Servicios incluidos (solo temporario) ── */}
+        {isTemporario && (
+          <Section icon={Package} title="Servicios incluidos" badge="Temporario" defaultOpen={true}>
+            <p className="text-xs text-muted-foreground">Seleccioná los servicios que están incluidos en el precio.</p>
             <div className="grid gap-3 sm:grid-cols-2">
-              {([
-                ["expensas_ordinarias", "Expensas ordinarias a cargo del inquilino"],
-                ["expensas_extraordinarias", "Expensas extraordinarias a cargo del inquilino"],
-                ["impuestos_a_cargo_locatario", "Impuestos del inmueble a cargo del inquilino"],
-                ["permite_subalquiler", "Permite subalquiler (con autorización escrita)"],
-                ["permite_mascotas", "Permite mascotas"],
-              ] as const).map(([name, label]) => (
-                <div key={name} className="flex items-center gap-3">
+              {INCLUDED_SERVICES.map((svc) => (
+                <div key={svc.value} className="flex items-center gap-3">
+                  <Checkbox
+                    id={`svc_${svc.value}`}
+                    checked={includedServices.includes(svc.value)}
+                    onCheckedChange={() => toggleService(svc.value)}
+                  />
+                  <Label htmlFor={`svc_${svc.value}`} className="cursor-pointer text-sm">{svc.label}</Label>
+                </div>
+              ))}
+            </div>
+          </Section>
+        )}
+
+        {/* ── SECCIÓN 7: Seguro ── */}
+        <Section icon={Shield} title="Seguro del inquilino" defaultOpen={false}>
+          <div className="flex items-center justify-between">
+            <div>
+              <Label className="text-sm font-medium">Requiere seguro por parte del inquilino</Label>
+              <p className="text-xs text-muted-foreground mt-0.5">Puede ser caución, incendio o integral.</p>
+            </div>
+            <Controller
+              name="usa_seguro"
+              control={control}
+              render={({ field }) => (
+                <Switch checked={field.value} onCheckedChange={field.onChange} />
+              )}
+            />
+          </div>
+
+          {watchUsaSeguro && (
+            <>
+              <Separator />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Tipo de seguro</Label>
                   <Controller
-                    name={name}
+                    name="seguro_tipo"
+                    control={control}
+                    render={({ field }) => (
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="incendio">Seguro contra incendio</SelectItem>
+                          <SelectItem value="caucion">Seguro de caución</SelectItem>
+                          <SelectItem value="integral">Seguro integral de inquilinos</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </div>
+                <div className="flex items-center gap-3 pt-6">
+                  <Controller
+                    name="seguro_obligatorio"
                     control={control}
                     render={({ field }) => (
                       <Checkbox
-                        id={name}
-                        checked={!!field.value}
+                        id="seguro_obligatorio"
+                        checked={field.value}
                         onCheckedChange={field.onChange}
                       />
                     )}
                   />
-                  <Label htmlFor={name} className="cursor-pointer text-sm">{label}</Label>
+                  <Label htmlFor="seguro_obligatorio" className="cursor-pointer">
+                    Seguro obligatorio (condición esencial)
+                  </Label>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="tenant_insurance_notes">Observaciones del seguro</Label>
+                <Input
+                  id="tenant_insurance_notes"
+                  placeholder="Ej: renovar anualmente, endosar a favor del propietario"
+                  {...register("tenant_insurance_notes")}
+                />
+              </div>
+            </>
+          )}
+        </Section>
 
-        {/* ── SECCIÓN G: Cláusulas adicionales ── */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Cláusulas adicionales</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="clauses_text">Condiciones especiales</Label>
-              <Textarea
-                id="clauses_text"
-                placeholder="Ingrese condiciones particulares no contempladas en las cláusulas estándar…"
-                rows={4}
-                {...register("clauses_text")}
-              />
-            </div>
-            <div className="space-y-2 max-w-xs">
-              <Label>Idioma del formulario de pago (inquilino)</Label>
-              <Controller
-                name="submission_language"
-                control={control}
-                render={({ field }) => (
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="es">Español</SelectItem>
-                      <SelectItem value="en">English</SelectItem>
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-            </div>
-          </CardContent>
-        </Card>
+        {/* ── SECCIÓN 8: Condiciones ── */}
+        <Section icon={CheckSquare} title="Condiciones del contrato" defaultOpen={false}>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {([
+              ["expensas_ordinarias", "Expensas ordinarias a cargo del inquilino"],
+              ["expensas_extraordinarias", "Expensas extraordinarias a cargo del inquilino"],
+              ["impuestos_a_cargo_locatario", "Impuestos del inmueble a cargo del inquilino"],
+              ["permite_subalquiler", "Permite subalquiler (con autorización escrita)"],
+              ["permite_mascotas", "Permite mascotas"],
+            ] as const).map(([name, label]) => (
+              <div key={name} className="flex items-center gap-3">
+                <Controller
+                  name={name}
+                  control={control}
+                  render={({ field }) => (
+                    <Checkbox
+                      id={name}
+                      checked={!!field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  )}
+                />
+                <Label htmlFor={name} className="cursor-pointer text-sm">{label}</Label>
+              </div>
+            ))}
+          </div>
+        </Section>
 
-        {/* ── SECCIÓN H: Garantías ── */}
+        {/* ── SECCIÓN 9: Cláusulas y configuración ── */}
+        <Section icon={Home} title="Cláusulas y configuración" defaultOpen={false}>
+          <div className="space-y-2">
+            <Label htmlFor="clauses_text">Condiciones especiales / notas</Label>
+            <Textarea
+              id="clauses_text"
+              placeholder="Ingrese condiciones particulares no contempladas en las cláusulas estándar…"
+              rows={4}
+              {...register("clauses_text")}
+            />
+          </div>
+          <div className="space-y-2 max-w-xs">
+            <Label>Idioma del formulario de pago (inquilino)</Label>
+            <Controller
+              name="submission_language"
+              control={control}
+              render={({ field }) => (
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="es">Español</SelectItem>
+                    <SelectItem value="en">English</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            />
+          </div>
+        </Section>
+
+        {/* ── SECCIÓN 10: Garantías ── */}
         <GuarantorsSection value={guarantors} onChange={setGuarantors} />
 
-        {/* ── Actions ── */}
+        {/* ── Alerta propietario faltante ── */}
         {watchPropertyId && propertyOwners.length === 0 && !ownersLoading && (
           <Alert variant="destructive" className="py-2">
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription className="text-sm">
-              No se puede crear el contrato: la propiedad seleccionada no tiene propietarios asignados. Ingresá a la ficha de la propiedad → pestaña <strong>Propietarios</strong> y asigná al menos uno.
+              No se puede crear el contrato: la propiedad seleccionada no tiene propietarios asignados.
+              Ingresá a la ficha de la propiedad → pestaña <strong>Propietarios</strong> y asigná al menos uno.
             </AlertDescription>
           </Alert>
         )}
+
         <div className="flex justify-end gap-3 pb-8">
           <Button type="button" variant="outline" onClick={() => navigate("/contracts")}>
             Cancelar
           </Button>
-          <Button
-            type="submit"
-            disabled={isSubmitting || (watchPropertyId !== undefined && watchPropertyId !== "" && !ownersLoading && propertyOwners.length === 0)}
-          >
+          <Button type="submit" disabled={!canSubmit}>
             {isSubmitting ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />

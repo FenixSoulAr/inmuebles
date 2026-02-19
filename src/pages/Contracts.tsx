@@ -34,6 +34,9 @@ interface Contract {
   public_submission_token: string | null;
   token_status: string;
   currency: string | null;
+  tipo_contrato: string | null;
+  price_mode: string | null;
+  has_price_update: boolean | null;
   properties: { internal_identifier: string; full_address: string } | null;
   tenants: { full_name: string } | null;
 }
@@ -254,15 +257,31 @@ export default function Contracts() {
                     <DollarSign className="w-4 h-4 text-success" />
                     <span className="font-semibold">
                       {formatCurrency(contract.current_rent, contract.currency)}
-                      {t("contracts.perMonth")}
+                      {contract.price_mode === "diario"
+                        ? " / día"
+                        : contract.price_mode === "semanal"
+                        ? " / semana"
+                        : contract.price_mode === "total_estadia"
+                        ? " total"
+                        : t("contracts.perMonth")}
                     </span>
                   </div>
                 </div>
 
-                <div className="mt-3 pt-3 border-t">
+                <div className="mt-3 pt-3 border-t flex items-center justify-between gap-2">
                   <span className="text-xs text-muted-foreground">
-                    {t("contracts.adjustmentType")}:{" "}
-                    {adjustmentLabels[contract.adjustment_type] ?? contract.adjustment_type ?? "—"}
+                    {contract.tipo_contrato === "temporario"
+                      ? "⏱ Temporario"
+                      : contract.tipo_contrato === "comercial"
+                      ? "🏢 Comercial"
+                      : "🏠 Permanente"}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {contract.has_price_update
+                      ? `${adjustmentLabels[contract.adjustment_type] ?? contract.adjustment_type}`
+                      : contract.tipo_contrato === "temporario"
+                      ? "Sin actualización"
+                      : "Sin actualización"}
                   </span>
                 </div>
               </CardContent>
