@@ -282,11 +282,15 @@ export default function ContractNew() {
     setOwnersLoading(true);
     try {
       const { data, error } = await supabase
-        .from("property_owners" as any)
+        .from("property_owners")
         .select("id, owner_id, ownership_percent, role, owners(id, full_name, dni_cuit, address, email, phone)")
         .eq("property_id", propertyId)
         .order("created_at");
-      if (error) throw error;
+      if (error) {
+        console.error("fetchPropertyOwners error for property", propertyId, error);
+        throw error;
+      }
+      console.log("fetchPropertyOwners result for", propertyId, "→", data?.length, "owners");
       setPropertyOwners((data as any[]) || []);
     } catch (err) {
       console.error("Error loading property owners:", err);
@@ -1079,9 +1083,19 @@ export default function ContractNew() {
         {watchPropertyId && propertyOwners.length === 0 && !ownersLoading && (
           <Alert variant="destructive" className="py-2">
             <AlertTriangle className="h-4 w-4" />
-            <AlertDescription className="text-sm">
-              No se puede crear el contrato: la propiedad seleccionada no tiene propietarios asignados.
-              Ingresá a la ficha de la propiedad → pestaña <strong>Propietarios</strong> y asigná al menos uno.
+            <AlertDescription className="text-sm flex items-center justify-between gap-2 flex-wrap">
+              <span>
+                La propiedad seleccionada no tiene propietarios asignados. Asigná al menos uno para poder crear el contrato.
+              </span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="shrink-0"
+                onClick={() => navigate(`/properties/${watchPropertyId}`)}
+              >
+                Asignar propietario →
+              </Button>
             </AlertDescription>
           </Alert>
         )}
