@@ -17,6 +17,7 @@ import {
   UserSquare,
   Shield,
   ChevronDown,
+  BookOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -40,6 +41,7 @@ interface AppSidebarProps {
 export function AppSidebar({ onNavigate, isMobileDrawer = false }: AppSidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [personasOpen, setPersonasOpen] = useState(false);
+  const [contractsOpen, setContractsOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut } = useAuth();
@@ -48,12 +50,16 @@ export function AppSidebar({ onNavigate, isMobileDrawer = false }: AppSidebarPro
   const mainNavItems = [
     { title: t("nav.dashboard"), url: "/dashboard", icon: LayoutDashboard },
     { title: t("nav.properties"), url: "/properties", icon: Building2 },
-    { title: t("nav.contracts"), url: "/contracts", icon: FileText },
     { title: t("nav.paymentProofs"), url: "/payment-proofs", icon: FileCheck },
     { title: t("nav.maintenance"), url: "/maintenance", icon: Wrench },
     { title: t("nav.taxes"), url: "/taxes", icon: Receipt },
     { title: t("nav.agenda"), url: "/agenda", icon: Calendar },
     { title: t("nav.documents"), url: "/documents", icon: FolderOpen },
+  ];
+
+  const contractsItems = [
+    { title: "Contratos", url: "/contracts", icon: FileText },
+    { title: "Cláusulas", url: "/contracts/clauses", icon: BookOpen },
   ];
 
   const personasItems = [
@@ -62,12 +68,14 @@ export function AppSidebar({ onNavigate, isMobileDrawer = false }: AppSidebarPro
     { title: "Garantes", url: "/guarantors", icon: Shield },
   ];
 
+  const isContractsActive = location.pathname.startsWith("/contracts");
   const isPersonasActive = personasItems.some((item) =>
     location.pathname.startsWith(item.url)
   );
 
   const isActive = (path: string) => {
     if (path === "/dashboard") return location.pathname === "/dashboard";
+    if (path === "/contracts") return location.pathname === "/contracts" || location.pathname.startsWith("/contracts/") && !location.pathname.startsWith("/contracts/clauses");
     return location.pathname.startsWith(path);
   };
 
@@ -85,8 +93,9 @@ export function AppSidebar({ onNavigate, isMobileDrawer = false }: AppSidebarPro
   // In mobile drawer: never collapse, always show full labels
   const effectiveCollapsed = isMobileDrawer ? false : collapsed;
 
-  // When sidebar collapses, auto-close the pessoas group
+  // When sidebar collapses, auto-close groups
   const showPersonasOpen = !effectiveCollapsed && (personasOpen || isPersonasActive);
+  const showContractsOpen = !effectiveCollapsed && (contractsOpen || isContractsActive);
 
   const renderNavButton = (item: { title: string; url: string; icon: React.ElementType }) => {
     const active = isActive(item.url);
@@ -145,6 +154,53 @@ export function AppSidebar({ onNavigate, isMobileDrawer = false }: AppSidebarPro
           {mainNavItems.map((item) => (
             <li key={item.url}>{renderNavButton(item)}</li>
           ))}
+
+          {/* ── Contratos group ── */}
+          <li className="pt-2">
+            {effectiveCollapsed ? (
+              <Tooltip delayDuration={0}>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => handleNavigate("/contracts")}
+                    className={cn(
+                      "flex items-center w-full gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
+                      isContractsActive
+                        ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-md"
+                        : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                    )}
+                  >
+                    <FileText className="w-5 h-5 shrink-0" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="font-medium">Contratos</TooltipContent>
+              </Tooltip>
+            ) : (
+              <>
+                <button
+                  onClick={() => setContractsOpen(!showContractsOpen)}
+                  className={cn(
+                    "flex items-center w-full gap-3 px-3 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider transition-colors",
+                    isContractsActive
+                      ? "text-sidebar-primary"
+                      : "text-sidebar-foreground/50 hover:text-sidebar-foreground/80"
+                  )}
+                >
+                  <FileText className="w-4 h-4 shrink-0" />
+                  <span className="flex-1 text-left">Contratos</span>
+                  <ChevronDown
+                    className={cn("w-3.5 h-3.5 transition-transform", showContractsOpen && "rotate-180")}
+                  />
+                </button>
+                {showContractsOpen && (
+                  <ul className="mt-1 ml-4 space-y-1 border-l border-sidebar-border pl-3">
+                    {contractsItems.map((item) => (
+                      <li key={item.url}>{renderNavButton(item)}</li>
+                    ))}
+                  </ul>
+                )}
+              </>
+            )}
+          </li>
 
           {/* ── Personas group ── */}
           <li className="pt-2">

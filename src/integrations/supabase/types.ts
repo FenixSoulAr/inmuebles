@@ -61,6 +61,54 @@ export type Database = {
           },
         ]
       }
+      clause_templates: {
+        Row: {
+          applies_to: string
+          created_at: string
+          default_enabled: boolean
+          id: string
+          is_active: boolean
+          is_optional: boolean
+          name: string
+          order_default: number
+          owner_user_id: string
+          tags: string | null
+          template_text: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          applies_to?: string
+          created_at?: string
+          default_enabled?: boolean
+          id?: string
+          is_active?: boolean
+          is_optional?: boolean
+          name: string
+          order_default?: number
+          owner_user_id: string
+          tags?: string | null
+          template_text?: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          applies_to?: string
+          created_at?: string
+          default_enabled?: boolean
+          id?: string
+          is_active?: boolean
+          is_optional?: boolean
+          name?: string
+          order_default?: number
+          owner_user_id?: string
+          tags?: string | null
+          template_text?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: []
+      }
       contract_adjustment_events: {
         Row: {
           contract_id: string
@@ -155,6 +203,60 @@ export type Database = {
           },
           {
             foreignKeyName: "contract_adjustments_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contract_clauses: {
+        Row: {
+          clause_template_id: string | null
+          contract_id: string
+          created_at: string
+          enabled: boolean
+          id: string
+          order_position: number
+          rendered_text: string
+          source_version: number | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          clause_template_id?: string | null
+          contract_id: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          order_position?: number
+          rendered_text?: string
+          source_version?: number | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          clause_template_id?: string | null
+          contract_id?: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          order_position?: number
+          rendered_text?: string
+          source_version?: number | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_clauses_clause_template_id_fkey"
+            columns: ["clause_template_id"]
+            isOneToOne: false
+            referencedRelation: "clause_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contract_clauses_contract_id_fkey"
             columns: ["contract_id"]
             isOneToOne: false
             referencedRelation: "contracts"
@@ -347,6 +449,9 @@ export type Database = {
           current_rent: number
           deposit: number | null
           deposit_type: string
+          draft_last_generated_at: string | null
+          draft_status: string
+          draft_text: string | null
           end_date: string
           expensas_extraordinarias: boolean | null
           expensas_ordinarias: boolean | null
@@ -396,6 +501,9 @@ export type Database = {
           current_rent: number
           deposit?: number | null
           deposit_type?: string
+          draft_last_generated_at?: string | null
+          draft_status?: string
+          draft_text?: string | null
           end_date: string
           expensas_extraordinarias?: boolean | null
           expensas_ordinarias?: boolean | null
@@ -445,6 +553,9 @@ export type Database = {
           current_rent?: number
           deposit?: number | null
           deposit_type?: string
+          draft_last_generated_at?: string | null
+          draft_status?: string
+          draft_text?: string | null
           end_date?: string
           expensas_extraordinarias?: boolean | null
           expensas_ordinarias?: boolean | null
