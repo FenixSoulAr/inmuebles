@@ -346,10 +346,12 @@ export type Database = {
           currency_deposit: string | null
           current_rent: number
           deposit: number | null
+          deposit_type: string
           end_date: string
           expensas_extraordinarias: boolean | null
           expensas_ordinarias: boolean | null
           grace_days: number | null
+          has_price_update: boolean
           id: string
           impuestos_a_cargo_locatario: boolean | null
           index_notes: string | null
@@ -361,6 +363,7 @@ export type Database = {
           penalty_value: number | null
           permite_mascotas: boolean | null
           permite_subalquiler: boolean | null
+          price_mode: string
           property_id: string
           public_submission_token: string | null
           rent_due_day: number | null
@@ -376,6 +379,7 @@ export type Database = {
           token_created_at: string | null
           token_rotated_at: string | null
           token_status: string
+          update_percentage: number | null
           updated_at: string
           usa_seguro: boolean | null
         }
@@ -391,10 +395,12 @@ export type Database = {
           currency_deposit?: string | null
           current_rent: number
           deposit?: number | null
+          deposit_type?: string
           end_date: string
           expensas_extraordinarias?: boolean | null
           expensas_ordinarias?: boolean | null
           grace_days?: number | null
+          has_price_update?: boolean
           id?: string
           impuestos_a_cargo_locatario?: boolean | null
           index_notes?: string | null
@@ -406,6 +412,7 @@ export type Database = {
           penalty_value?: number | null
           permite_mascotas?: boolean | null
           permite_subalquiler?: boolean | null
+          price_mode?: string
           property_id: string
           public_submission_token?: string | null
           rent_due_day?: number | null
@@ -421,6 +428,7 @@ export type Database = {
           token_created_at?: string | null
           token_rotated_at?: string | null
           token_status?: string
+          update_percentage?: number | null
           updated_at?: string
           usa_seguro?: boolean | null
         }
@@ -436,10 +444,12 @@ export type Database = {
           currency_deposit?: string | null
           current_rent?: number
           deposit?: number | null
+          deposit_type?: string
           end_date?: string
           expensas_extraordinarias?: boolean | null
           expensas_ordinarias?: boolean | null
           grace_days?: number | null
+          has_price_update?: boolean
           id?: string
           impuestos_a_cargo_locatario?: boolean | null
           index_notes?: string | null
@@ -451,6 +461,7 @@ export type Database = {
           penalty_value?: number | null
           permite_mascotas?: boolean | null
           permite_subalquiler?: boolean | null
+          price_mode?: string
           property_id?: string
           public_submission_token?: string | null
           rent_due_day?: number | null
@@ -466,6 +477,7 @@ export type Database = {
           token_created_at?: string | null
           token_rotated_at?: string | null
           token_status?: string
+          update_percentage?: number | null
           updated_at?: string
           usa_seguro?: boolean | null
         }
