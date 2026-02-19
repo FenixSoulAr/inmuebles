@@ -194,6 +194,7 @@ export default function ContractNew() {
     formState: { errors },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
+    mode: "onSubmit",
     defaultValues: {
     tipo_contrato: "permanente",
       currency: "ARS",
@@ -482,7 +483,16 @@ export default function ContractNew() {
         description="Complete los datos para registrar el contrato de locación"
       />
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 max-w-3xl">
+      <form onSubmit={handleSubmit(onSubmit, (validationErrors) => {
+        console.error("Form validation errors:", validationErrors);
+        const firstKey = Object.keys(validationErrors)[0] as keyof typeof validationErrors;
+        const firstError = validationErrors[firstKey];
+        toast({
+          title: "Formulario incompleto",
+          description: firstError?.message?.toString() || `Campo requerido: ${firstKey}`,
+          variant: "destructive",
+        });
+      })} className="space-y-4 max-w-3xl">
 
         {/* ── SECCIÓN 1: Tipo de contrato ── */}
         <Section icon={Building2} title="Tipo de contrato">
