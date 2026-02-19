@@ -132,8 +132,8 @@ export default function PublicSubmit() {
       const path = `${contractInfo!.contract_id}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
       const { error } = await supabase.storage.from("proof-files").upload(path, file);
       if (error) throw error;
-      const { data } = supabase.storage.from("proof-files").getPublicUrl(path);
-      urls.push(data.publicUrl);
+      // Store the storage path; owner views via authenticated proxy
+      urls.push(path);
     }
     return urls;
   };

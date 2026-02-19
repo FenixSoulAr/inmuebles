@@ -7,16 +7,19 @@ const corsHeaders = {
 };
 
 /**
- * Proxy endpoint to serve storage files from the app's own domain,
- * avoiding direct supabase.co URLs that get blocked by browser extensions (adblock, etc).
+ * Authenticated file proxy — serves storage files through the app domain.
+ * Avoids direct supabase.co URLs that get blocked by browser extensions.
+ *
+ * Security: requires a valid JWT. Verifies the user owns the resource before
+ * serving any file. Returns 401/403 on authentication or authorization failure.
  *
  * Query params:
  *   bucket: storage bucket name (e.g. "proof-files", "documents")
- *   path: file path within the bucket
+ *   path:   file path within the bucket
  *   download: if "1", forces Content-Disposition: attachment
  *
  * Or:
- *   url: full supabase storage public URL — the function extracts bucket/path automatically
+ *   url: full supabase storage URL — bucket/path extracted automatically
  */
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -24,15 +27,49 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // ── 1. Authentication ───────────────────────────────────────────────────
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(
+        JSON.stringify({ error: "unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Use anon client with the caller's JWT so RLS is enforced
+    const anonClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claimsData, error: claimsError } = await anonClient.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
+      return new Response(
+        JSON.stringify({ error: "unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const userId = claimsData.claims.sub;
+
+    // Service-role client for actual file download (only used after ownership check)
+    const adminClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+
+    // ── 2. Parse request params ────────────────────────────────────────────
     const url = new URL(req.url);
     let bucket = url.searchParams.get("bucket");
     let path = url.searchParams.get("path");
     const download = url.searchParams.get("download") === "1";
     const rawUrl = url.searchParams.get("url");
 
-    // If a full URL was provided, extract bucket and path
     if (rawUrl && (!bucket || !path)) {
-      const match = rawUrl.match(/\/storage\/v1\/object\/(?:public|sign)\/([^/]+)\/(.+?)(?:\?.*)?$/);
+      const match = rawUrl.match(
+        /\/storage\/v1\/object\/(?:public|sign)\/([^/]+)\/(.+?)(?:\?.*)?$/
+      );
       if (match) {
         bucket = match[1];
         path = decodeURIComponent(match[2]);
@@ -46,23 +83,26 @@ Deno.serve(async (req) => {
       );
     }
 
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
+    // ── 3. Ownership authorization ─────────────────────────────────────────
+    const allowed = await isAuthorized(anonClient, userId, bucket, path);
+    if (!allowed) {
+      console.warn("serve-file: access denied", { userId, bucket, path });
+      return new Response(
+        JSON.stringify({ error: "forbidden" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
-    // Download file from storage
-    const { data, error } = await supabase.storage.from(bucket).download(path);
-
-    if (error || !data) {
-      console.error("Storage download error:", error);
+    // ── 4. Serve the file ──────────────────────────────────────────────────
+    const { data, error: dlError } = await adminClient.storage.from(bucket).download(path);
+    if (dlError || !data) {
+      console.error("Storage download error:", dlError);
       return new Response(
         JSON.stringify({ error: "file_not_found" }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Determine content type from extension
     const ext = path.split(".").pop()?.toLowerCase() || "";
     const mimeMap: Record<string, string> = {
       pdf: "application/pdf",
@@ -74,8 +114,6 @@ Deno.serve(async (req) => {
       svg: "image/svg+xml",
     };
     const contentType = mimeMap[ext] || "application/octet-stream";
-
-    // Build filename for download
     const filename = path.split("/").pop() || "file";
     const disposition = download
       ? `attachment; filename="${filename}"`
@@ -98,3 +136,49 @@ Deno.serve(async (req) => {
     );
   }
 });
+
+/**
+ * Checks whether `userId` is allowed to access `path` in `bucket`.
+ * Uses path-based heuristics: the first path segment is typically the
+ * owner-id (documents bucket) or the contract-id (proof-files / contract-documents).
+ */
+async function isAuthorized(
+  client: ReturnType<typeof createClient>,
+  userId: string,
+  bucket: string,
+  path: string
+): Promise<boolean> {
+  // Segment[0] is the first path component
+  const segments = path.split("/");
+  const firstSegment = segments[0];
+
+  if (bucket === "documents") {
+    // Files are stored as  <owner_user_id>/<filename>
+    // OR as <property_id>/<filename> (older pattern, verified via property ownership)
+    if (firstSegment === userId) return true;
+
+    // Fallback: check if firstSegment is a property owned by the user
+    const { data } = await client
+      .from("properties")
+      .select("id")
+      .eq("id", firstSegment)
+      .eq("owner_user_id", userId)
+      .maybeSingle();
+    return !!data;
+  }
+
+  if (bucket === "proof-files" || bucket === "contract-documents") {
+    // Files stored as  <contract_id>/<filename>
+    const contractId = firstSegment;
+    const { data } = await client
+      .from("contracts")
+      .select("id, properties!inner(owner_user_id)")
+      .eq("id", contractId)
+      .eq("properties.owner_user_id", userId)
+      .maybeSingle();
+    return !!data;
+  }
+
+  // Unknown bucket — deny by default
+  return false;
+}

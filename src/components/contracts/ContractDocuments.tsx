@@ -6,6 +6,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { openFileViaProxy, downloadFileViaProxy } from "@/lib/fileProxy";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -139,17 +140,13 @@ export function ContractDocuments({ contractId }: ContractDocumentsProps) {
 
       if (storageError) throw storageError;
 
-      const { data: urlData } = supabase.storage
-        .from("contract-documents")
-        .getPublicUrl(path);
-
       const { error: dbError } = await supabase
         .from("contract_documents" as any)
         .insert({
           contract_id: contractId,
           title: form.title.trim(),
           doc_type: form.doc_type,
-          file_url: urlData.publicUrl,
+          file_url: path,
           file_name: form.file.name,
           file_size: form.file.size,
           mime_type: form.file.type,
@@ -288,7 +285,7 @@ export function ContractDocuments({ contractId }: ContractDocumentsProps) {
                             variant="ghost"
                             className="h-7 w-7"
                             title="Ver / Abrir"
-                            onClick={() => window.open(doc.file_url, "_blank")}
+                            onClick={() => openFileViaProxy("contract-documents", doc.file_url)}
                           >
                             <Eye className="w-3.5 h-3.5" />
                           </Button>
@@ -297,12 +294,7 @@ export function ContractDocuments({ contractId }: ContractDocumentsProps) {
                             variant="ghost"
                             className="h-7 w-7"
                             title="Descargar"
-                            onClick={() => {
-                              const a = document.createElement("a");
-                              a.href = doc.file_url;
-                              a.download = doc.file_name || doc.title;
-                              a.click();
-                            }}
+                            onClick={() => downloadFileViaProxy("contract-documents", doc.file_url, doc.file_name || doc.title)}
                           >
                             <Download className="w-3.5 h-3.5" />
                           </Button>

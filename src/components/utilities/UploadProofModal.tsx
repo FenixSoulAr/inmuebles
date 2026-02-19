@@ -98,10 +98,6 @@ export function UploadProofModal({
 
       if (uploadError) throw uploadError;
 
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from("documents").getPublicUrl(fileName);
-
       // Get the utility proof to find obligation details
       const { data: proofData, error: fetchError } = await supabase
         .from("utility_proofs")
@@ -111,11 +107,11 @@ export function UploadProofModal({
 
       if (fetchError) throw fetchError;
 
-      // Update the utility proof record
+      // Update the utility proof record — store storage path, not public URL
       const { error: updateError } = await supabase
         .from("utility_proofs")
         .update({
-          file_url: publicUrl,
+          file_url: fileName,
           status: "paid_with_proof",
           submitted_at: new Date().toISOString(),
         })

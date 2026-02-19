@@ -96,15 +96,11 @@ export function UploadTaxReceiptModal({
 
       if (uploadError) throw uploadError;
 
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from("documents").getPublicUrl(fileName);
-
-      // Update the tax obligation record
+      // Update the tax obligation record — store storage path, not public URL
       const { error: updateError } = await supabase
         .from("tax_obligations")
         .update({
-          receipt_file_url: publicUrl,
+          receipt_file_url: fileName,
           status: "ok",
         })
         .eq("id", taxId);
