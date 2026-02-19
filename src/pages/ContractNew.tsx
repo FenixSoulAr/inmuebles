@@ -74,6 +74,19 @@ const INCLUDED_SERVICES = [
   { value: "limpieza", label: "Limpieza" },
 ];
 
+const BOOKING_CHANNELS = [
+  { value: "directo", label: "Directo" },
+  { value: "airbnb", label: "Airbnb" },
+  { value: "booking", label: "Booking.com" },
+  { value: "otro", label: "Otro" },
+];
+
+const DEPOSIT_MODES = [
+  { value: "required", label: "Depósito en garantía" },
+  { value: "not_required", label: "No se requiere depósito" },
+  { value: "platform_covered", label: "Cubierto por plataforma" },
+];
+
 const schema = z.object({
   property_id: z.string().min(1, "Propiedad requerida."),
   tenant_id: z.string().min(1, "Inquilino requerido."),
@@ -85,7 +98,10 @@ const schema = z.object({
   price_mode: z.string().default("mensual"),
   initial_rent: z.number({ invalid_type_error: "Monto requerido." }).min(0.01),
   rent_due_day: z.number().min(1).max(28).default(5),
+  // Canal / plataforma (solo temporario)
+  booking_channel: z.string().default("directo"),
   // Depósito
+  deposit_mode: z.string().default("required"),
   currency_deposit: z.string().default("ARS"),
   deposit: z.number().optional().nullable(),
   deposit_type: z.string().default("monto_fijo"),
@@ -179,10 +195,12 @@ export default function ContractNew() {
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
-      tipo_contrato: "permanente",
+    tipo_contrato: "permanente",
       currency: "ARS",
       currency_deposit: "ARS",
       price_mode: "mensual",
+      booking_channel: "directo",
+      deposit_mode: "required",
       deposit_type: "monto_fijo",
       has_price_update: false,
       adjustment_type: "ipc",
@@ -207,21 +225,34 @@ export default function ContractNew() {
   const watchAdjustmentType = watch("adjustment_type");
   const watchDepositType = watch("deposit_type");
   const watchPriceMode = watch("price_mode");
+  const watchDepositMode = watch("deposit_mode");
+  const watchBookingChannel = watch("booking_channel");
 
   const isTemporario = watchTipoContrato === "temporario";
   const isPermanente = watchTipoContrato === "permanente";
   const isComercial = watchTipoContrato === "comercial";
 
-  // Reset price_mode when contract type changes
+  // Reset fields when contract type changes
   useEffect(() => {
     if (isTemporario) {
-      // temporario defaults to diario or semanal
       setValue("has_price_update", false);
       setValue("adjustment_type", "manual");
     } else {
       setValue("price_mode", "mensual");
+      setValue("booking_channel", "directo");
+      setValue("deposit_mode", "required");
     }
   }, [watchTipoContrato, setValue, isTemporario]);
+
+  // Auto-set deposit_mode when booking_channel = airbnb (for temporario)
+  useEffect(() => {
+    if (!isTemporario) return;
+    if (watchBookingChannel === "airbnb") {
+      setValue("deposit_mode", "platform_covered");
+    } else if (watchDepositMode === "platform_covered") {
+      setValue("deposit_mode", "required");
+    }
+  }, [watchBookingChannel, isTemporario, setValue, watchDepositMode]);
 
   const contractTitle = isTemporario
     ? "Contrato de alquiler temporario"
@@ -337,9 +368,11 @@ export default function ContractNew() {
           initial_rent: data.initial_rent,
           current_rent: data.initial_rent,
           rent_due_day: data.rent_due_day,
-          currency_deposit: data.currency_deposit,
-          deposit: data.deposit ?? null,
+          currency_deposit: data.deposit_mode === "required" ? data.currency_deposit : null,
+          deposit: data.deposit_mode === "required" ? (data.deposit ?? null) : null,
           deposit_type: data.deposit_type,
+          booking_channel: isTemporario ? data.booking_channel : null,
+          deposit_mode: data.deposit_mode,
           has_price_update: effectiveHasPriceUpdate,
           adjustment_type: effectiveAdjustmentType,
           adjustment_frequency: effectiveAdjustmentFrequency,
@@ -628,6 +661,27 @@ export default function ContractNew() {
             </div>
           )}
 
+          {/* Canal / Plataforma — solo temporario */}
+          {isTemporario && (
+            <div className="space-y-2">
+              <Label>Canal / Plataforma de reserva</Label>
+              <Controller
+                name="booking_channel"
+                control={control}
+                render={({ field }) => (
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {BOOKING_CHANNELS.map((ch) => (
+                        <SelectItem key={ch.value} value={ch.value}>{ch.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
+          )}
+
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="space-y-2">
               <Label>Moneda</Label>
@@ -678,59 +732,97 @@ export default function ContractNew() {
 
           {/* Depósito */}
           <div className="space-y-3">
-            <Label className="text-sm font-semibold">Depósito de garantía</Label>
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Tipo de depósito</Label>
-                <Controller
-                  name="deposit_type"
-                  control={control}
-                  render={({ field }) => (
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="monto_fijo">Monto fijo</SelectItem>
-                        <SelectItem value="equivalente_meses">Equivalente en meses</SelectItem>
-                        <SelectItem value="equivalente_dias">Equivalente en días</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Moneda</Label>
-                <Controller
-                  name="currency_deposit"
-                  control={control}
-                  render={({ field }) => (
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="ARS">🇦🇷 ARS</SelectItem>
-                        <SelectItem value="USD">🇺🇸 USD</SelectItem>
-                        <SelectItem value="EUR">🇪🇺 EUR</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">
-                  {watchDepositType === "monto_fijo"
-                    ? "Monto"
-                    : watchDepositType === "equivalente_meses"
-                    ? "Cantidad de meses"
-                    : "Cantidad de días"}
-                </Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0,00"
-                  {...register("deposit", { valueAsNumber: true })}
-                />
-              </div>
+            <Label className="text-sm font-semibold">Depósito / Garantía</Label>
+
+            {/* Selector deposit_mode */}
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">Modalidad</Label>
+              <Controller
+                name="deposit_mode"
+                control={control}
+                render={({ field }) => (
+                  <Select
+                    onValueChange={field.onChange}
+                    value={field.value}
+                    disabled={isTemporario && watchBookingChannel === "airbnb"}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {DEPOSIT_MODES.map((dm) => (
+                        <SelectItem key={dm.value} value={dm.value}>{dm.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
             </div>
+
+            {/* Mensaje informativo cuando está cubierto por plataforma */}
+            {watchDepositMode === "platform_covered" && (
+              <Alert>
+                <AlertDescription className="text-sm">
+                  La garantía está cubierta por la plataforma de reserva
+                  {watchBookingChannel === "airbnb" ? " (Airbnb)" : watchBookingChannel === "booking" ? " (Booking.com)" : ""}.
+                  No se requiere depósito en efectivo del inquilino.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* Campos de monto/moneda solo si deposit_mode = required */}
+            {watchDepositMode === "required" && (
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Tipo de depósito</Label>
+                  <Controller
+                    name="deposit_type"
+                    control={control}
+                    render={({ field }) => (
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="monto_fijo">Monto fijo</SelectItem>
+                          <SelectItem value="equivalente_meses">Equivalente en meses</SelectItem>
+                          <SelectItem value="equivalente_dias">Equivalente en días</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Moneda</Label>
+                  <Controller
+                    name="currency_deposit"
+                    control={control}
+                    render={({ field }) => (
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="ARS">🇦🇷 ARS</SelectItem>
+                          <SelectItem value="USD">🇺🇸 USD</SelectItem>
+                          <SelectItem value="EUR">🇪🇺 EUR</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">
+                    {watchDepositType === "monto_fijo"
+                      ? "Monto"
+                      : watchDepositType === "equivalente_meses"
+                      ? "Cantidad de meses"
+                      : "Cantidad de días"}
+                  </Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0,00"
+                    {...register("deposit", { valueAsNumber: true })}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </Section>
 

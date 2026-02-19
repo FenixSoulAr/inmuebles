@@ -1,46 +1,48 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useTranslation } from "react-i18next";
-import { ArrowLeft, FileText, DollarSign, RefreshCw, Loader2, Building2, User, Wrench } from "lucide-react";
+import { ArrowLeft, Building2, DollarSign, FileText, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
 import { PageHeader } from "@/components/ui/page-header";
-import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useToast } from "@/hooks/use-toast";
-import { ContractPublicLink } from "@/components/contracts/ContractPublicLink";
-import { ContractServices } from "@/components/contracts/ContractServices";
-import { ContractAdjustments } from "@/components/contracts/ContractAdjustments";
-import { CorrectCurrencyModal } from "@/components/contracts/CorrectCurrencyModal";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ContractSheet } from "@/components/contracts/ContractSheet";
+import { ContractPublicLink } from "@/components/contracts/ContractPublicLink";
+import { EditContractModal } from "@/components/contracts/EditContractModal";
+import { CorrectCurrencyModal } from "@/components/contracts/CorrectCurrencyModal";
+import { ContractActionMenu } from "@/components/contracts/ContractActionMenu";
 import { ContractDocuments } from "@/components/contracts/ContractDocuments";
 import { ContractTextPanel, type OwnerForContract, type GuarantorForContract } from "@/components/contracts/ContractTextPanel";
 import { ContractDraftPanel } from "@/components/contracts/ContractDraftPanel";
 import { DocumentsPanel } from "@/components/documents/DocumentsPanel";
-
+import { ContractAdjustments } from "@/components/contracts/ContractAdjustments";
+import { ContractServices } from "@/components/contracts/ContractServices";
 
 interface Contract {
   id: string;
+  property_id: string;
+  tenant_id: string;
   start_date: string;
   end_date: string;
-  current_rent: number;
   initial_rent: number;
+  current_rent: number;
   deposit: number | null;
   is_active: boolean;
   adjustment_type: string;
   adjustment_frequency: number | null;
   adjustment_base_date: string | null;
   clauses_text: string | null;
-  basic_terms: string | null;
+  next_adjustment_date: string | null;
   public_submission_token: string | null;
   token_status: string;
+  submission_language?: string;
   rent_due_day: number;
   currency: string | null;
   currency_deposit: string | null;
-  // Contract type fields
   tipo_contrato: string | null;
   price_mode: string | null;
   has_price_update: boolean;
@@ -52,152 +54,83 @@ interface Contract {
   impuestos_a_cargo_locatario: boolean | null;
   permite_subalquiler: boolean | null;
   permite_mascotas: boolean | null;
-  texto_contrato: string | null;
-  index_notes: string | null;
+  basic_terms: string | null;
   tenant_insurance_notes: string | null;
-  // Draft fields
   draft_text: string | null;
   draft_last_generated_at: string | null;
   draft_status: string | null;
-  properties: {
-    internal_identifier: string;
-    full_address: string;
-  };
-  tenants: {
-    full_name: string;
-    email: string | null;
-    phone: string | null;
-    doc_id: string | null;
-  };
+  booking_channel: string | null;
+  deposit_mode: string | null;
+  properties: { internal_identifier: string; full_address: string };
+  tenants: { full_name: string; email: string | null; phone: string | null; doc_id: string | null };
 }
 
 export default function ContractDetail() {
   const { id } = useParams<{ id: string }>();
-  const [contract, setContract] = useState<Contract | null>(null);
-  const [owners, setOwners] = useState<OwnerForContract[]>([]);
-  const [contractGuarantors, setContractGuarantors] = useState<GuarantorForContract[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [regenerating, setRegenerating] = useState(false);
-  const [currencyModalOpen, setCurrencyModalOpen] = useState(false);
-  const { user } = useAuth();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { toast } = useToast();
-  const { t, i18n } = useTranslation();
-  const isEs = i18n.language?.startsWith("es");
+  const { t } = useTranslation();
 
-  useEffect(() => {
-    if (user && id) fetchContract();
-  }, [user, id]);
+  const [contract, setContract] = useState<Contract | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [editOpen, setEditOpen] = useState(false);
+  const [correctCurrencyOpen, setCorrectCurrencyOpen] = useState(false);
+  const [hasRentDues, setHasRentDues] = useState(false);
+  const [owners, setOwners] = useState<OwnerForContract[]>([]);
+  const [guarantors, setGuarantors] = useState<GuarantorForContract[]>([]);
 
   const fetchContract = async () => {
+    if (!user || !id) return;
     try {
-      const [contractRes, guarantorsRes] = await Promise.all([
+      const [contractRes, rentDuesRes] = await Promise.all([
         supabase
           .from("contracts")
-          .select(`
-            *,
-            properties(internal_identifier, full_address),
-            tenants(full_name, email, phone, doc_id)
-          ` as any)
+          .select(`*, properties(internal_identifier, full_address), tenants(full_name, email, phone, doc_id)`)
           .eq("id", id)
-          .maybeSingle(),
-        supabase
-          .from("contract_guarantors" as any)
-          .select("guarantee_type, full_name, company_name, document_or_cuit, address, phone, email, insurance_policy_number, coverage_amount, insurance_valid_from, insurance_valid_to, notes, details")
-          .eq("contract_id", id)
-          .order("sort_order"),
+          .single(),
+        supabase.from("rent_dues").select("id").eq("contract_id", id).limit(1),
       ]);
 
       if (contractRes.error) throw contractRes.error;
-      
-      if (!contractRes.data) {
-        toast({ title: t("contracts.notFound"), description: t("contracts.contractNotFound"), variant: "destructive" });
-        navigate("/contracts");
-        return;
-      }
+      setContract(contractRes.data as any);
+      setHasRentDues((rentDuesRes.data?.length ?? 0) > 0);
 
-      const contractData = contractRes.data as unknown as Contract;
-      setContract(contractData);
+      const { data: ownerLinks } = await supabase
+        .from("property_owners" as any)
+        .select("ownership_percent, role, owners(full_name, dni_cuit, address, email, phone)")
+        .eq("property_id", (contractRes.data as any).property_id)
+        .order("created_at");
 
-      // Fetch property owners
-      if (contractData.properties) {
-        const { data: ownerLinks } = await supabase
-          .from("property_owners" as any)
-          .select("ownership_percent, role, owners(full_name, dni_cuit, address, email, phone)")
-          .eq("property_id", (contractRes.data as any).property_id)
-          .order("created_at");
-        const mapped: OwnerForContract[] = ((ownerLinks as any[]) || []).map((l: any) => ({
-          full_name: l.owners?.full_name ?? "",
-          dni_cuit: l.owners?.dni_cuit ?? null,
-          address: l.owners?.address ?? null,
-          email: l.owners?.email ?? null,
-          phone: l.owners?.phone ?? null,
-          role: l.role ?? null,
-          ownership_percent: l.ownership_percent ?? null,
-        }));
-        setOwners(mapped);
-      }
+      setOwners(
+        ((ownerLinks as any[]) || []).map((link: any) => ({
+          full_name: link.owners?.full_name || "",
+          dni_cuit: link.owners?.dni_cuit || null,
+          address: link.owners?.address || null,
+          email: link.owners?.email || null,
+          phone: link.owners?.phone || null,
+          ownership_percent: link.ownership_percent,
+          role: link.role,
+        }))
+      );
 
-      setContractGuarantors((guarantorsRes.data as any[]) || []);
-    } catch (error) {
-      console.error("Error fetching contract:", error);
-      toast({ title: t("common.error"), description: t("common.errorGeneric"), variant: "destructive" });
+      const { data: gData } = await supabase
+        .from("contract_guarantors" as any)
+        .select("guarantee_type, full_name, company_name, document_or_cuit, address, phone, email, insurance_policy_number, coverage_amount, insurance_valid_from, insurance_valid_to, notes, details")
+        .eq("contract_id", id)
+        .order("sort_order");
+
+      setGuarantors((gData as any[]) || []);
+    } catch (err) {
+      console.error("Error loading contract:", err);
+      toast({ title: "Error", description: "No se pudo cargar el contrato.", variant: "destructive" });
+      navigate("/contracts");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleRegenerateRentSchedule = async () => {
-    if (!contract) return;
-    setRegenerating(true);
-    try {
-      const response = await supabase.functions.invoke("generate-rent-dues", {
-        body: { contract_id: contract.id },
-      });
-      if (response.error) throw response.error;
-      const result = response.data;
-      toast({
-        title: t("contracts.rentScheduleUpdated"),
-        description: result.generated > 0 
-          ? t("contracts.generatedRecords", { count: result.generated })
-          : t("contracts.rentUpToDate"),
-      });
-    } catch (error) {
-      console.error("Error regenerating rent schedule:", error);
-      toast({ title: t("common.error"), description: t("common.errorGeneric"), variant: "destructive" });
-    } finally {
-      setRegenerating(false);
-    }
-  };
-
-  // Currency formatting — respects per-field currency
-  const formatCurrencyWith = (amount: number, currency: string) => {
-    const curr = currency || "ARS";
-    return new Intl.NumberFormat(isEs ? "es-AR" : "en-US", {
-      style: "currency",
-      currency: curr,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
-
-  const formatCurrency = (amount: number) => formatCurrencyWith(amount, contract?.currency || "ARS");
-
-  const currencyBadge = (currency: string) => (
-    <Badge variant="outline" className="text-xs font-mono ml-1">
-      {currency || "ARS"}
-    </Badge>
-  );
-
-  const formatDate = (dateString: string) =>
-    new Date(dateString).toLocaleDateString(isEs ? "es-AR" : "en-US", { weekday: "short", month: "long", day: "numeric", year: "numeric" });
-
-  const adjustmentLabels: Record<string, string> = {
-    ipc: t("contracts.ipc"),
-    icl: t("contracts.icl"),
-    fixed: t("contracts.fixed"),
-    manual: t("contracts.manual"),
-  };
+  useEffect(() => { fetchContract(); }, [user, id]);
 
   if (loading) {
     return (
@@ -207,243 +140,151 @@ export default function ContractDetail() {
     );
   }
 
-  if (!contract) return null;
+  if (!contract) {
+    return <div className="p-8 text-center text-muted-foreground">Contrato no encontrado.</div>;
+  }
+
+  const isExpired = !contract.is_active || new Date(contract.end_date) < new Date();
+  const tipoLabel =
+    contract.tipo_contrato === "temporario" ? "Temporario"
+    : contract.tipo_contrato === "comercial" ? "Comercial"
+    : "Permanente";
+
+  const ADJUSTMENT_TYPE_LABELS: Record<string, string> = {
+    ipc: t("contracts.ipc", "IPC"),
+    icl: t("contracts.icl", "ICL"),
+    fixed: t("contracts.fixed", "Porcentaje fijo"),
+    manual: t("contracts.manual", "Manual"),
+  };
 
   return (
     <div>
       <Button variant="ghost" size="sm" className="mb-4" onClick={() => navigate("/contracts")}>
         <ArrowLeft className="w-4 h-4 mr-2" />
-        {t("contracts.backToContracts")}
+        Volver a contratos
       </Button>
 
-      <PageHeader
-        title={t("contracts.contractDetails")}
-        description={`${contract.properties.internal_identifier} - ${contract.tenants.full_name}`}
-      >
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCurrencyModalOpen(true)}
-            title="Corrección administrativa de moneda"
-          >
-            <Wrench className="w-4 h-4 mr-2" />
-            Corregir moneda
-          </Button>
-          {contract.is_active && (
-            <Button onClick={handleRegenerateRentSchedule} disabled={regenerating}>
-              {regenerating ? (
-                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{t("contracts.regenerating")}</>
-              ) : (
-                <><RefreshCw className="w-4 h-4 mr-2" />{t("contracts.regenerateRent")}</>
-              )}
-            </Button>
-          )}
-        </div>
-      </PageHeader>
-
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Main Info — Tabbed */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Status overview strip */}
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="w-5 h-5" />
-                  {t("contracts.contractOverview")}
-                </CardTitle>
-                <StatusBadge variant={contract.is_active ? "active" : "ended"} />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 sm:grid-cols-3 text-sm">
-                <div className="space-y-0.5">
-                  <p className="text-muted-foreground">Inicio</p>
-                  <p className="font-medium">{formatDate(contract.start_date)}</p>
-                </div>
-                <div className="space-y-0.5">
-                  <p className="text-muted-foreground">Vencimiento</p>
-                  <p className="font-medium">{formatDate(contract.end_date)}</p>
-                </div>
-                <div className="space-y-0.5">
-                  <p className="text-muted-foreground">Alquiler actual</p>
-                  <div className="flex items-center gap-1 flex-wrap">
-                    <p className="font-semibold text-primary">
-                      {formatCurrencyWith(contract.current_rent, contract.currency || "ARS")}
-                    </p>
-                    {currencyBadge(contract.currency || "ARS")}
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Tabs */}
-          <Tabs defaultValue="info">
-            <TabsList className="w-full justify-start">
-              <TabsTrigger value="info">Ficha</TabsTrigger>
-              <TabsTrigger value="document">Documento</TabsTrigger>
-              <TabsTrigger value="history">Texto legal</TabsTrigger>
-              <TabsTrigger value="payments">Pagos y ajustes</TabsTrigger>
-              <TabsTrigger value="files">Archivos</TabsTrigger>
-            </TabsList>
-
-            {/* TAB: Ficha */}
-            <TabsContent value="info" className="space-y-6 pt-2">
-              <ContractSheet contract={contract} onUpdate={fetchContract} />
-              {contract.is_active && (
-                <ContractServices contractId={contract.id} rentDueDay={contract.rent_due_day || 5} />
-              )}
-            </TabsContent>
-
-            {/* TAB: Documento (borrador paramétrico) */}
-            <TabsContent value="document" className="pt-2">
-              <div className="rounded-xl border border-border bg-card p-6">
-                <ContractDraftPanel
-                  contract={{
-                    id: contract.id,
-                    tipo_contrato: contract.tipo_contrato,
-                    start_date: contract.start_date,
-                    end_date: contract.end_date,
-                    current_rent: contract.current_rent,
-                    currency: contract.currency,
-                    price_mode: contract.price_mode,
-                    deposit: contract.deposit,
-                    draft_text: contract.draft_text,
-                    draft_last_generated_at: contract.draft_last_generated_at,
-                    draft_status: contract.draft_status,
-                    has_price_update: contract.has_price_update,
-                    adjustment_type: contract.adjustment_type,
-                    adjustment_frequency: contract.adjustment_frequency,
-                    properties: contract.properties,
-                    tenants: contract.tenants,
-                    owners,
-                  }}
-                  onSaved={fetchContract}
-                />
-              </div>
-            </TabsContent>
-
-            {/* TAB: Texto legal (generador viejo) */}
-            <TabsContent value="history" className="pt-2">
-              <ContractTextPanel
-                contract={{ ...contract, owners, contractGuarantors }}
-                onSaved={fetchContract}
-              />
-            </TabsContent>
-
-            {/* TAB: Pagos y ajustes */}
-            <TabsContent value="payments" className="space-y-6 pt-2">
-              <ContractAdjustments
-                contractId={contract.id}
-                currentRent={contract.current_rent}
-                currency={contract.currency || "ARS"}
-                adjustmentType={contract.adjustment_type}
-                adjustmentFrequency={contract.adjustment_frequency}
-                adjustmentBaseDate={contract.adjustment_base_date}
-                startDate={contract.start_date}
-                isActive={contract.is_active}
-                onRentUpdated={fetchContract}
-              />
-            </TabsContent>
-
-            {/* TAB: Archivos */}
-            <TabsContent value="files" className="space-y-6 pt-2">
-              <ContractDocuments contractId={contract.id} />
-              <div className="rounded-xl border border-border bg-card">
-                <div className="px-6 py-4 border-b border-border">
-                  <h3 className="font-semibold text-base flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-primary" />
-                    Documentos del contrato
-                  </h3>
-                  <p className="text-sm text-muted-foreground mt-0.5">
-                    Contrato firmado, pólizas, DNI, inventarios y actas.
-                  </p>
-                </div>
-                <div className="p-6">
-                  <DocumentsPanel scope="contract" contractId={contract.id} />
-                </div>
-              </div>
-            </TabsContent>
-          </Tabs>
-        </div>
-
-        {/* Sidebar */}
-        <div className="space-y-6">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Building2 className="w-4 h-4" />
-                {t("contracts.property")}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="font-semibold">{contract.properties.internal_identifier}</p>
-              <p className="text-sm text-muted-foreground mt-1">{contract.properties.full_address}</p>
-              <Button variant="outline" size="sm" className="mt-3 w-full" onClick={() => navigate(`/properties/${id}`)}>
-                {t("contracts.viewProperty")}
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <User className="w-4 h-4" />
-                {t("contracts.tenant")}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="font-semibold">{contract.tenants.full_name}</p>
-              {contract.tenants.email && <p className="text-sm text-muted-foreground mt-1">{contract.tenants.email}</p>}
-              {contract.tenants.phone && <p className="text-sm text-muted-foreground">{contract.tenants.phone}</p>}
-            </CardContent>
-          </Card>
-
-          {contract.is_active && (
-            <ContractPublicLink
-              contractId={contract.id}
-              token={contract.public_submission_token}
-              tokenStatus={contract.token_status}
-              propertyName={contract.properties.internal_identifier}
-              tenantName={contract.tenants.full_name}
-              onUpdate={fetchContract}
-            />
-          )}
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">{t("contracts.quickActions")}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => navigate("/rent")}>
-                <DollarSign className="w-4 h-4 mr-2" />
-                {t("contracts.viewRentDues")}
-              </Button>
-              <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => navigate("/payment-proofs")}>
-                <FileText className="w-4 h-4 mr-2" />
-                {t("contracts.viewProofs")}
-              </Button>
-              <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => navigate("/documents")}>
-                <FileText className="w-4 h-4 mr-2" />
-                Documentos de la propiedad
-              </Button>
-            </CardContent>
-          </Card>
+      <div className="flex items-start justify-between gap-4 mb-4 flex-wrap">
+        <PageHeader
+          title={`${contract.properties?.internal_identifier} — ${contract.tenants?.full_name}`}
+          description={contract.properties?.full_address}
+        />
+        <div className="flex items-center gap-2 flex-wrap">
+          <Badge variant={contract.is_active ? "default" : "secondary"}>
+            {contract.is_active ? "Activo" : "Inactivo"}
+          </Badge>
+          <Badge variant="outline">{tipoLabel}</Badge>
+          <ContractActionMenu
+            contract={contract as any}
+            onEdit={() => setEditOpen(true)}
+            onRefresh={fetchContract}
+          />
         </div>
       </div>
 
-      {/* Currency correction modal */}
-      <CorrectCurrencyModal
-        open={currencyModalOpen}
-        onOpenChange={setCurrencyModalOpen}
-        contractId={contract.id}
-        currentCurrencyRent={contract.currency || "ARS"}
-        currentCurrencyDeposit={contract.currency_deposit || "ARS"}
-        currentRent={contract.current_rent}
-        currentDeposit={contract.deposit}
+      {isExpired && (
+        <Alert className="mb-4">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>Este contrato está vencido o inactivo.</AlertDescription>
+        </Alert>
+      )}
+
+      <Tabs defaultValue="ficha" className="space-y-4">
+        <TabsList className="flex-wrap h-auto">
+          <TabsTrigger value="ficha"><FileText className="w-3.5 h-3.5 mr-1.5" />Ficha</TabsTrigger>
+          <TabsTrigger value="document"><FileText className="w-3.5 h-3.5 mr-1.5" />Documento</TabsTrigger>
+          <TabsTrigger value="payments"><DollarSign className="w-3.5 h-3.5 mr-1.5" />Pagos</TabsTrigger>
+          <TabsTrigger value="services"><Building2 className="w-3.5 h-3.5 mr-1.5" />Servicios</TabsTrigger>
+          <TabsTrigger value="docs"><FileText className="w-3.5 h-3.5 mr-1.5" />Archivos</TabsTrigger>
+        </TabsList>
+
+        {/* TAB: Ficha */}
+        <TabsContent value="ficha" className="space-y-4 pt-2">
+          <ContractPublicLink
+            contractId={contract.id}
+            token={contract.public_submission_token}
+            tokenStatus={contract.token_status}
+            propertyName={contract.properties?.internal_identifier}
+            tenantName={contract.tenants?.full_name}
+            onUpdate={fetchContract}
+          />
+          <ContractSheet contract={contract as any} onUpdate={fetchContract} />
+          <ContractTextPanel contract={contract as any} onSaved={fetchContract} />
+        </TabsContent>
+
+        {/* TAB: Documento */}
+        <TabsContent value="document" className="pt-2">
+          <div className="rounded-xl border border-border bg-card p-6">
+            <ContractDraftPanel
+              contract={{
+                id: contract.id,
+                tipo_contrato: contract.tipo_contrato,
+                start_date: contract.start_date,
+                end_date: contract.end_date,
+                current_rent: contract.current_rent,
+                currency: contract.currency,
+                price_mode: contract.price_mode,
+                deposit: contract.deposit,
+                draft_text: contract.draft_text,
+                draft_last_generated_at: contract.draft_last_generated_at,
+                draft_status: contract.draft_status,
+                has_price_update: contract.has_price_update,
+                adjustment_type: contract.adjustment_type,
+                adjustment_frequency: contract.adjustment_frequency,
+                properties: contract.properties,
+                tenants: { full_name: contract.tenants?.full_name },
+                owners: owners.map((o) => ({ full_name: o.full_name })),
+              }}
+              onSaved={fetchContract}
+            />
+          </div>
+        </TabsContent>
+
+        {/* TAB: Pagos */}
+        <TabsContent value="payments" className="space-y-6 pt-2">
+          <ContractAdjustments
+            contractId={contract.id}
+            currentRent={contract.current_rent}
+            currency={contract.currency || "ARS"}
+            adjustmentType={contract.adjustment_type}
+            adjustmentFrequency={contract.adjustment_frequency}
+            adjustmentBaseDate={(contract as any).adjustment_base_date ?? null}
+            startDate={contract.start_date}
+            isActive={contract.is_active}
+            onRentUpdated={fetchContract}
+          />
+          <CorrectCurrencyModal
+            open={correctCurrencyOpen}
+            onOpenChange={setCorrectCurrencyOpen}
+            contractId={contract.id}
+            currentCurrencyRent={contract.currency || "ARS"}
+            currentCurrencyDeposit={contract.currency_deposit || "ARS"}
+            currentRent={contract.current_rent}
+            currentDeposit={contract.deposit}
+            onSuccess={fetchContract}
+          />
+        </TabsContent>
+
+        {/* TAB: Servicios */}
+        <TabsContent value="services" className="pt-2">
+          <ContractServices contractId={contract.id} rentDueDay={contract.rent_due_day || 5} />
+        </TabsContent>
+
+        {/* TAB: Archivos */}
+        <TabsContent value="docs" className="pt-2">
+          <div className="space-y-4">
+            <ContractDocuments contractId={contract.id} />
+            <DocumentsPanel contractId={contract.id} scope="contract" />
+          </div>
+        </TabsContent>
+      </Tabs>
+
+      <EditContractModal
+        contract={contract as any}
+        open={editOpen}
+        onOpenChange={setEditOpen}
         onSuccess={fetchContract}
+        hasRentDues={hasRentDues}
       />
     </div>
   );

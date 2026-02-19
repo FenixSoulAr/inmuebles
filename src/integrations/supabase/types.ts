@@ -441,6 +441,7 @@ export type Database = {
           adjustment_frequency: number | null
           adjustment_type: string
           basic_terms: string | null
+          booking_channel: string | null
           clause_flags: Json | null
           clauses_text: string | null
           created_at: string
@@ -448,6 +449,7 @@ export type Database = {
           currency_deposit: string | null
           current_rent: number
           deposit: number | null
+          deposit_mode: string
           deposit_type: string
           draft_last_generated_at: string | null
           draft_status: string
@@ -493,6 +495,7 @@ export type Database = {
           adjustment_frequency?: number | null
           adjustment_type?: string
           basic_terms?: string | null
+          booking_channel?: string | null
           clause_flags?: Json | null
           clauses_text?: string | null
           created_at?: string
@@ -500,6 +503,7 @@ export type Database = {
           currency_deposit?: string | null
           current_rent: number
           deposit?: number | null
+          deposit_mode?: string
           deposit_type?: string
           draft_last_generated_at?: string | null
           draft_status?: string
@@ -545,6 +549,7 @@ export type Database = {
           adjustment_frequency?: number | null
           adjustment_type?: string
           basic_terms?: string | null
+          booking_channel?: string | null
           clause_flags?: Json | null
           clauses_text?: string | null
           created_at?: string
@@ -552,6 +557,7 @@ export type Database = {
           currency_deposit?: string | null
           current_rent?: number
           deposit?: number | null
+          deposit_mode?: string
           deposit_type?: string
           draft_last_generated_at?: string | null
           draft_status?: string
