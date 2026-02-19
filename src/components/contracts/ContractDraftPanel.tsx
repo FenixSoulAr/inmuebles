@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   FileText, Wand2, RefreshCw, Save, Copy, ChevronUp, ChevronDown,
-  Loader2, CheckCheck, Info
+  Loader2, CheckCheck, Info, AlertTriangle
 } from "lucide-react";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -49,9 +51,21 @@ export interface ContractForDraft {
   draft_text?: string | null;
   draft_last_generated_at?: string | null;
   draft_status?: string | null;
+  has_price_update?: boolean | null;
+  adjustment_type?: string | null;
+  adjustment_frequency?: number | null;
   properties: { internal_identifier: string; full_address: string };
   tenants: { full_name: string };
   owners?: Array<{ full_name: string }>;
+}
+
+interface SelectedClause {
+  templateId: string;
+  title: string;
+  enabled: boolean;
+  order: number;
+  text: string;
+  version: number;
 }
 
 interface Props {
@@ -59,7 +73,7 @@ interface Props {
   onSaved?: () => void;
 }
 
-// ─── Variable renderer ───────────────────────────────────────────────────────
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const PRICE_MODE_LABELS: Record<string, string> = {
   mensual: "mensual",
@@ -68,20 +82,54 @@ const PRICE_MODE_LABELS: Record<string, string> = {
   total_estadia: "total de estadía",
 };
 
+const ADJUSTMENT_TYPE_LABELS: Record<string, string> = {
+  ipc: "IPC (Índice de Precios al Consumidor)",
+  icl: "ICL (Índice de Contratos de Locación)",
+  fixed: "Porcentaje fijo pactado",
+  manual: "Actualización acordada entre partes",
+};
+
+function fmtDate(d: string): string {
+  try {
+    return format(new Date(d + "T00:00:00"), "d 'de' MMMM 'de' yyyy", { locale: es });
+  } catch {
+    return d;
+  }
+}
+
+function fmtCurrency(n: number, currency: string): string {
+  return new Intl.NumberFormat("es-AR", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 0,
+  }).format(n);
+}
+
+// Clause names that relate to price updates — excluded for temporario
+const PRICE_UPDATE_CLAUSE_KEYWORDS = ["actualizaci", "indexaci", "ajuste de precio", "precio period"];
+
+function isPriceUpdateClause(name: string): boolean {
+  const lower = name.toLowerCase();
+  return PRICE_UPDATE_CLAUSE_KEYWORDS.some(kw => lower.includes(kw));
+}
+
 function renderTemplate(
   template: string,
   contract: ContractForDraft,
   servicesList: string
 ): string {
-  const locale = "es-AR";
-  const fmt = (n: number, curr: string) =>
-    new Intl.NumberFormat(locale, { style: "currency", currency: curr, minimumFractionDigits: 0 }).format(n);
-  const fmtDate = (d: string) =>
-    new Date(d + "T00:00:00").toLocaleDateString(locale, { day: "numeric", month: "long", year: "numeric" });
-
-  const ownerName = contract.owners?.map(o => o.full_name).join(" / ") || "__________";
   const currency = contract.currency || "ARS";
   const priceMode = PRICE_MODE_LABELS[contract.price_mode || "mensual"] || contract.price_mode || "mensual";
+  const ownerName = contract.owners?.map(o => o.full_name).join(" / ") || "__________";
+  const freqMonths = contract.adjustment_frequency ?? null;
+  const updateFrequency = freqMonths
+    ? freqMonths === 1 ? "mensual"
+    : freqMonths === 3 ? "trimestral"
+    : freqMonths === 6 ? "semestral"
+    : freqMonths === 12 ? "anual"
+    : `cada ${freqMonths} meses`
+    : "__________";
+  const updateIndex = ADJUSTMENT_TYPE_LABELS[contract.adjustment_type || ""] || "__________";
 
   const vars: Record<string, string> = {
     "{{owner_name}}": ownerName,
@@ -89,19 +137,20 @@ function renderTemplate(
     "{{property_address}}": contract.properties.full_address || "__________",
     "{{start_date}}": fmtDate(contract.start_date),
     "{{end_date}}": fmtDate(contract.end_date),
-    "{{base_price}}": contract.current_rent != null ? fmt(contract.current_rent, currency) : "__________",
+    "{{base_price}}": contract.current_rent != null ? fmtCurrency(contract.current_rent, currency) : "__________",
     "{{currency}}": currency,
     "{{price_mode}}": priceMode,
-    "{{deposit_value}}": contract.deposit != null ? fmt(contract.deposit, currency) : "__________",
+    "{{deposit_value}}": contract.deposit != null ? fmtCurrency(contract.deposit, currency) : "__________",
     "{{services_list}}": servicesList || "__________",
+    "{{update_frequency}}": updateFrequency,
+    "{{update_index}}": updateIndex,
   };
 
   let result = template;
   for (const [key, val] of Object.entries(vars)) {
-    // Use split+join instead of replaceAll for broader TS target compatibility
     result = result.split(key).join(val);
   }
-  // Replace any remaining {{...}} with __________
+  // Replace any remaining {{...}} with blanks
   result = result.replace(/\{\{[^}]+\}\}/g, "__________");
   return result;
 }
@@ -110,10 +159,7 @@ function renderTemplate(
 
 export function ContractDraftPanel({ contract, onSaved }: Props) {
   const [availableTemplates, setAvailableTemplates] = useState<ClauseTemplate[]>([]);
-  const [selectedClauses, setSelectedClauses] = useState<
-    Array<{ templateId: string; title: string; enabled: boolean; order: number; text: string; version: number }>
-  >([]);
-  const [savedClauses, setSavedClauses] = useState<ContractClause[]>([]);
+  const [selectedClauses, setSelectedClauses] = useState<SelectedClause[]>([]);
   const [draftText, setDraftText] = useState(contract.draft_text || "");
   const [draftStatus, setDraftStatus] = useState(contract.draft_status || "no_generado");
   const [draftGeneratedAt, setDraftGeneratedAt] = useState(contract.draft_last_generated_at || null);
@@ -126,11 +172,13 @@ export function ContractDraftPanel({ contract, onSaved }: Props) {
   const { toast } = useToast();
 
   const tipoContrato = contract.tipo_contrato || "permanente";
+  const isTemporario = tipoContrato === "temporario";
+  const hasPriceUpdate = contract.has_price_update === true;
 
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      // Load clause templates that apply to this contract type
+      // Load clause templates matching this contract type
       const { data: templates } = await (supabase as any)
         .from("clause_templates")
         .select("*")
@@ -139,30 +187,42 @@ export function ContractDraftPanel({ contract, onSaved }: Props) {
         .or(`applies_to.eq.todos,applies_to.eq.${tipoContrato}`)
         .order("order_default");
 
-      // Load existing contract_clauses (snapshot)
+      // Load existing contract_clauses snapshot
       const { data: clauses } = await (supabase as any)
         .from("contract_clauses")
         .select("*")
         .eq("contract_id", contract.id)
         .order("order_position");
 
-      // Load services included (for temporario)
+      // Load services for {{services_list}}
       const { data: services } = await (supabase as any)
         .from("contract_services")
         .select("service_type")
         .eq("contract_id", contract.id)
         .eq("active", true);
 
-      const serviceNames = (services || []).map((s: any) => s.service_type);
+      const serviceNames: string[] = (services || []).map((s: any) => s.service_type);
       setServicesIncluded(serviceNames);
-      setSavedClauses(clauses || []);
 
-      const tpls: ClauseTemplate[] = templates || [];
+      // Filter templates:
+      // - temporario: exclude price-update clauses
+      // - permanente without has_price_update: exclude price-update clauses
+      let tpls: ClauseTemplate[] = (templates || []).filter((t: ClauseTemplate) => {
+        if (isPriceUpdateClause(t.name)) {
+          if (isTemporario) return false;
+          if (!hasPriceUpdate) return false;
+        }
+        // temporario: only include services clause if services exist
+        if (isTemporario && t.name.toLowerCase().includes("servicio") && serviceNames.length === 0) {
+          return false;
+        }
+        return true;
+      });
       setAvailableTemplates(tpls);
 
-      // If we already have saved clauses, use them; else build from templates
+      // If we have saved clauses, restore from snapshot; else build from templates
       if (clauses && clauses.length > 0) {
-        const mapped = (clauses as ContractClause[]).map(c => ({
+        const mapped: SelectedClause[] = (clauses as ContractClause[]).map(c => ({
           templateId: c.clause_template_id || "",
           title: c.title,
           enabled: c.enabled,
@@ -172,7 +232,7 @@ export function ContractDraftPanel({ contract, onSaved }: Props) {
         }));
         setSelectedClauses(mapped);
       } else {
-        const mapped = tpls.map((t, idx) => ({
+        const mapped: SelectedClause[] = tpls.map((t, idx) => ({
           templateId: t.id,
           title: t.name,
           enabled: t.default_enabled,
@@ -187,13 +247,15 @@ export function ContractDraftPanel({ contract, onSaved }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [contract.id, tipoContrato, user]);
+  }, [contract.id, tipoContrato, user, hasPriceUpdate, isTemporario]);
 
   useEffect(() => {
     if (user) loadData();
   }, [loadData, user]);
 
   const toggleClause = (idx: number) => {
+    const tpl = availableTemplates.find(t => t.id === selectedClauses[idx]?.templateId);
+    if (tpl && !tpl.is_optional) return; // mandatory clauses can't be toggled
     setSelectedClauses(prev =>
       prev.map((c, i) => i === idx ? { ...c, enabled: !c.enabled } : c)
     );
@@ -211,22 +273,11 @@ export function ContractDraftPanel({ contract, onSaved }: Props) {
     setGenerating(true);
     try {
       const servicesList = servicesIncluded.join(", ");
-      const enabledClauses = selectedClauses
-        .filter(c => c.enabled)
-        .map((c, idx) => {
-          const tpl = availableTemplates.find(t => t.id === c.templateId);
-          const rendered = tpl
-            ? renderTemplate(tpl.template_text, contract, servicesList)
-            : c.text;
-          return { ...c, text: rendered, order: idx };
-        });
 
-      // Upsert contract_clauses (delete old ones and insert fresh snapshot)
-      await (supabase as any).from("contract_clauses").delete().eq("contract_id", contract.id);
-
+      // Build inserts with rendered snapshot
       const inserts = selectedClauses.map((c, idx) => {
         const tpl = availableTemplates.find(t => t.id === c.templateId);
-        const rendered = c.enabled && tpl
+        const rendered = tpl
           ? renderTemplate(tpl.template_text, contract, servicesList)
           : c.text;
         return {
@@ -240,21 +291,23 @@ export function ContractDraftPanel({ contract, onSaved }: Props) {
         };
       });
 
+      // Delete old snapshot and insert fresh one
+      await (supabase as any).from("contract_clauses").delete().eq("contract_id", contract.id);
       if (inserts.length > 0) {
-        await (supabase as any).from("contract_clauses").insert(inserts);
+        const { error: insertErr } = await (supabase as any).from("contract_clauses").insert(inserts);
+        if (insertErr) throw insertErr;
       }
 
-      // Build draft_text
-      const fullText = enabledClauses
-        .map((c, i) => {
-          const clauseNum = toRomanLike(i + 1);
-          return `CLÁUSULA ${clauseNum} — ${c.title.toUpperCase()}\n\n${c.text}`;
+      // Build full draft text from enabled clauses
+      const enabledInserts = inserts.filter(ins => ins.enabled);
+      const fullText = enabledInserts
+        .map((ins, i) => {
+          return `CLÁUSULA ${toRoman(i + 1)} — ${ins.title.toUpperCase()}\n\n${ins.rendered_text}`;
         })
         .join("\n\n" + "─".repeat(70) + "\n\n");
 
       const now = new Date().toISOString();
 
-      // Save draft
       const { error } = await (supabase as any)
         .from("contracts")
         .update({
@@ -266,21 +319,23 @@ export function ContractDraftPanel({ contract, onSaved }: Props) {
 
       if (error) throw error;
 
+      // Update local state with rendered texts
+      setSelectedClauses(prev => prev.map((c, idx) => {
+        const tpl = availableTemplates.find(t => t.id === c.templateId);
+        const rendered = tpl ? renderTemplate(tpl.template_text, contract, servicesList) : c.text;
+        return { ...c, text: rendered, order: idx };
+      }));
       setDraftText(fullText);
       setDraftStatus("borrador");
       setDraftGeneratedAt(now);
-      setSelectedClauses(prev => prev.map((c, idx) => {
-        const tpl = availableTemplates.find(t => t.id === c.templateId);
-        const rendered = c.enabled && tpl
-          ? renderTemplate(tpl.template_text, contract, servicesList)
-          : c.text;
-        return { ...c, text: rendered, order: idx };
-      }));
 
-      toast({ title: "✅ Borrador generado", description: `${enabledClauses.length} cláusulas incluidas.` });
+      toast({
+        title: "✅ Borrador generado",
+        description: `${enabledInserts.length} cláusula${enabledInserts.length !== 1 ? "s" : ""} incluida${enabledInserts.length !== 1 ? "s" : ""}.`,
+      });
       onSaved?.();
     } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      toast({ title: "Error al generar borrador", description: err.message, variant: "destructive" });
     } finally {
       setGenerating(false);
     }
@@ -329,7 +384,7 @@ export function ContractDraftPanel({ contract, onSaved }: Props) {
     );
   }
 
-  const statusColors: Record<string, string> = {
+  const statusColors: Record<string, "secondary" | "outline" | "default" | "destructive"> = {
     no_generado: "secondary",
     borrador: "outline",
     final: "default",
@@ -339,6 +394,8 @@ export function ContractDraftPanel({ contract, onSaved }: Props) {
     borrador: "Borrador",
     final: "Final",
   };
+
+  const enabledCount = selectedClauses.filter(c => c.enabled).length;
 
   return (
     <div className="space-y-6">
@@ -355,10 +412,18 @@ export function ContractDraftPanel({ contract, onSaved }: Props) {
             )}
           </div>
         </div>
-        <Badge variant={statusColors[draftStatus] as any || "secondary"}>
+        <Badge variant={statusColors[draftStatus] ?? "secondary"}>
           {statusLabels[draftStatus] || draftStatus}
         </Badge>
       </div>
+
+      {/* Temporario note */}
+      {isTemporario && (
+        <div className="flex items-start gap-2 rounded-lg bg-muted/50 border border-border p-3 text-sm text-muted-foreground">
+          <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0 text-amber-500" />
+          <span>Contrato temporario: cláusulas de actualización de precio excluidas automáticamente.</span>
+        </div>
+      )}
 
       {availableTemplates.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border p-8 text-center text-muted-foreground">
@@ -370,68 +435,93 @@ export function ContractDraftPanel({ contract, onSaved }: Props) {
         </div>
       ) : (
         <>
-          {/* Clause selector */}
+          {/* Clause list */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                Cláusulas a incluir ({selectedClauses.filter(c => c.enabled).length}/{selectedClauses.length})
+                Cláusulas a incluir ({enabledCount}/{selectedClauses.length})
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 p-4 pt-0">
               {selectedClauses.map((clause, idx) => {
                 const tpl = availableTemplates.find(t => t.id === clause.templateId);
+                const isOptional = tpl ? tpl.is_optional : true;
                 return (
                   <div
-                    key={clause.templateId + idx}
+                    key={clause.templateId + "-" + idx}
                     className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
-                      clause.enabled ? "bg-muted/30 border-border" : "bg-transparent border-dashed border-border/50 opacity-50"
+                      clause.enabled
+                        ? "bg-muted/30 border-border"
+                        : "bg-transparent border-dashed border-border/50 opacity-50"
                     }`}
                   >
-                    <div className="flex flex-col gap-0.5">
+                    {/* Order controls */}
+                    <div className="flex flex-col gap-0.5 shrink-0">
                       <button
                         onClick={() => moveClause(idx, "up")}
                         disabled={idx === 0}
-                        className="p-0.5 rounded hover:bg-muted disabled:opacity-20"
+                        className="p-0.5 rounded hover:bg-muted disabled:opacity-20 transition-colors"
+                        title="Subir"
                       >
                         <ChevronUp className="w-3 h-3" />
                       </button>
                       <button
                         onClick={() => moveClause(idx, "down")}
                         disabled={idx === selectedClauses.length - 1}
-                        className="p-0.5 rounded hover:bg-muted disabled:opacity-20"
+                        className="p-0.5 rounded hover:bg-muted disabled:opacity-20 transition-colors"
+                        title="Bajar"
                       >
                         <ChevronDown className="w-3 h-3" />
                       </button>
                     </div>
+
+                    {/* Toggle */}
                     <Switch
                       checked={clause.enabled}
                       onCheckedChange={() => toggleClause(idx)}
-                      disabled={tpl && !tpl.is_optional}
+                      disabled={!isOptional}
+                      title={!isOptional ? "Cláusula obligatoria" : undefined}
                     />
-                    <span className="flex-1 text-sm font-medium">{clause.title}</span>
-                    {tpl?.applies_to && tpl.applies_to !== "todos" && (
-                      <Badge variant="outline" className="text-xs">{tpl.applies_to}</Badge>
-                    )}
-                    {tpl && !tpl.is_optional && (
-                      <Badge variant="default" className="text-xs opacity-80">Obligatoria</Badge>
-                    )}
-                    <span className="text-xs text-muted-foreground font-mono">v{tpl?.version || clause.version}</span>
+
+                    {/* Name */}
+                    <span className="flex-1 text-sm font-medium min-w-0 truncate">{clause.title}</span>
+
+                    {/* Badges */}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {tpl?.applies_to && tpl.applies_to !== "todos" && (
+                        <Badge variant="outline" className="text-xs capitalize">{tpl.applies_to}</Badge>
+                      )}
+                      {!isOptional ? (
+                        <Badge variant="default" className="text-xs opacity-80">Obligatoria</Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-xs">Opcional</Badge>
+                      )}
+                      <span className="text-xs text-muted-foreground font-mono">
+                        v{tpl?.version ?? clause.version}
+                      </span>
+                    </div>
                   </div>
                 );
               })}
             </CardContent>
           </Card>
 
-          {/* Actions */}
+          {/* Generate button */}
           <div className="flex gap-2 flex-wrap">
-            <Button onClick={handleGenerate} disabled={generating} className="gap-2">
-              {generating
-                ? <><Loader2 className="w-4 h-4 animate-spin" /> Generando…</>
-                : draftStatus !== "no_generado"
-                ? <><RefreshCw className="w-4 h-4" /> Regenerar borrador</>
-                : <><Wand2 className="w-4 h-4" /> Generar borrador</>
-              }
+            <Button onClick={handleGenerate} disabled={generating || enabledCount === 0} className="gap-2">
+              {generating ? (
+                <><Loader2 className="w-4 h-4 animate-spin" />Generando…</>
+              ) : draftStatus !== "no_generado" ? (
+                <><RefreshCw className="w-4 h-4" />Regenerar borrador</>
+              ) : (
+                <><Wand2 className="w-4 h-4" />Generar borrador</>
+              )}
             </Button>
+            {enabledCount === 0 && (
+              <p className="text-sm text-muted-foreground self-center">
+                Activá al menos una cláusula para generar.
+              </p>
+            )}
           </div>
         </>
       )}
@@ -441,30 +531,48 @@ export function ContractDraftPanel({ contract, onSaved }: Props) {
         <>
           <Separator />
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <h4 className="font-medium text-sm">Texto del borrador</h4>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <Button variant="outline" size="sm" onClick={handleCopy} className="gap-1.5">
-                  {copied ? <CheckCheck className="w-4 h-4 text-primary" /> : <Copy className="w-4 h-4" />}
-                  {copied ? "Copiado" : "Copiar"}
+                  {copied
+                    ? <><CheckCheck className="w-4 h-4 text-primary" />Copiado</>
+                    : <><Copy className="w-4 h-4" />Copiar</>
+                  }
                 </Button>
-                <Button variant="outline" size="sm" onClick={handleSaveDraftText} disabled={saving} className="gap-1.5">
-                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                  Guardar
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSaveDraftText}
+                  disabled={saving}
+                  className="gap-1.5"
+                >
+                  {saving
+                    ? <Loader2 className="w-4 h-4 animate-spin" />
+                    : <Save className="w-4 h-4" />
+                  }
+                  Guardar edición
                 </Button>
                 {draftStatus === "borrador" && (
-                  <Button size="sm" onClick={markFinal} variant="default" className="gap-1.5">
+                  <Button size="sm" onClick={markFinal} className="gap-1.5">
                     <CheckCheck className="w-4 h-4" />
                     Marcar como final
                   </Button>
                 )}
               </div>
             </div>
+
             <Textarea
               value={draftText}
               onChange={e => setDraftText(e.target.value)}
-              className="min-h-[500px] font-mono text-xs leading-relaxed"
+              className="min-h-[500px] font-mono text-xs leading-relaxed resize-y"
+              placeholder="El borrador aparecerá aquí..."
             />
+
+            <p className="text-xs text-muted-foreground">
+              Podés editar el texto directamente antes de guardar o marcar como final.
+              Al regenerar, el texto se reemplazará con los datos actuales del contrato.
+            </p>
           </div>
         </>
       )}
@@ -472,11 +580,17 @@ export function ContractDraftPanel({ contract, onSaved }: Props) {
   );
 }
 
-// Small utility: 1 → "I", 2 → "II", etc (simplified ordinal labeling)
-function toRomanLike(n: number): string {
-  const ordinals = [
-    "1ª", "2ª", "3ª", "4ª", "5ª", "6ª", "7ª", "8ª", "9ª", "10ª",
-    "11ª", "12ª", "13ª", "14ª", "15ª", "16ª", "17ª", "18ª", "19ª", "20ª",
-  ];
-  return ordinals[n - 1] || String(n) + "ª";
+// ─── Roman numeral helper ─────────────────────────────────────────────────────
+
+function toRoman(n: number): string {
+  const values = [1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1];
+  const symbols = ["M", "CM", "D", "CD", "C", "XC", "L", "XL", "X", "IX", "V", "IV", "I"];
+  let result = "";
+  for (let i = 0; i < values.length; i++) {
+    while (n >= values[i]) {
+      result += symbols[i];
+      n -= values[i];
+    }
+  }
+  return result;
 }

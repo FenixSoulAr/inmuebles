@@ -43,6 +43,7 @@ interface Contract {
   // Contract type fields
   tipo_contrato: string | null;
   price_mode: string | null;
+  has_price_update: boolean;
   usa_seguro: boolean | null;
   seguro_tipo: string | null;
   seguro_obligatorio: boolean | null;
@@ -312,6 +313,9 @@ export default function ContractDetail() {
                     draft_text: contract.draft_text,
                     draft_last_generated_at: contract.draft_last_generated_at,
                     draft_status: contract.draft_status,
+                    has_price_update: contract.has_price_update,
+                    adjustment_type: contract.adjustment_type,
+                    adjustment_frequency: contract.adjustment_frequency,
                     properties: contract.properties,
                     tenants: contract.tenants,
                     owners,
