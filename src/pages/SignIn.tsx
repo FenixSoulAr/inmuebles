@@ -95,14 +95,17 @@ export default function SignIn() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-md animate-slide-up">
-        {/* Logo */}
-        <div className="flex items-center justify-center gap-3 mb-8">
-          <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-primary text-primary-foreground shadow-lg">
-            <Home className="w-6 h-6" />
+        {/* Logo + Claim */}
+        <div className="flex flex-col items-center text-center mb-8 gap-3">
+          <div className="flex items-center justify-center w-14 h-14 rounded-xl bg-primary text-primary-foreground shadow-lg">
+            <Home className="w-7 h-7" />
           </div>
           <div>
             <h1 className="text-2xl font-bold tracking-tight">MyRentaHub</h1>
-            <p className="text-sm text-muted-foreground">{t("auth.subtitle")}</p>
+            <p className="text-base font-semibold text-foreground mt-1">{t("auth.subtitle")}</p>
+            <p className="text-sm text-muted-foreground mt-1 leading-snug">
+              {t("auth.taglineL1")}<br />{t("auth.taglineL2")}
+            </p>
           </div>
         </div>
 
@@ -175,9 +178,6 @@ export default function SignIn() {
           </CardContent>
         </Card>
 
-        <p className="text-center text-sm text-muted-foreground mt-6">
-          {t("auth.tagline")}
-        </p>
       </div>
     </div>
   );

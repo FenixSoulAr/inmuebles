@@ -76,7 +76,9 @@
     "signUpFailed": "Error al registrarse",
     "accountCreated": "¡Cuenta creada!",
     "accountCreatedDesc": "Bienvenido a MyRentaHub. Empecemos.",
-    "tagline": "Gestión inteligente de propiedades, simple y segura.",
+    "tagline": "Administración estructurada y simple para propietarios y pequeños administradores.",
+    "taglineL1": "Administración estructurada y simple",
+    "taglineL2": "para propietarios y pequeños administradores.",
     "subtitle": "Gestión inteligente de propiedades"
   },
   "dashboard": {
