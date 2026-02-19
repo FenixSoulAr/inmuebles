@@ -56,21 +56,33 @@ Deno.serve(async (req) => {
     let contracts: Contract[] = [];
 
     if (contract_id) {
-      // Generate for a specific contract
+      // Generate for a specific contract — verify ownership via property
       console.log("Generating rent dues for contract:", contract_id);
-      
+
       const { data, error } = await supabase
         .from("contracts")
-        .select("id, property_id, tenant_id, start_date, end_date, current_rent, is_active")
+        .select(`
+          id, property_id, tenant_id, start_date, end_date, current_rent, is_active,
+          properties!inner(owner_user_id)
+        `)
         .eq("id", contract_id)
-        .eq("is_active", true);
+        .eq("is_active", true)
+        .eq("properties.owner_user_id", user.id);
 
       if (error) {
         console.error("Error fetching contract:", error);
         throw error;
       }
-      
-      contracts = data || [];
+
+      if (!data || data.length === 0) {
+        console.warn("Access denied or contract not found for user:", user.id, "contract:", contract_id);
+        return new Response(
+          JSON.stringify({ error: "Contract not found or access denied" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      contracts = data.map(({ properties: _p, ...c }) => c) as Contract[];
     } else {
       // Generate for all active contracts owned by user
       console.log("Generating rent dues for all active contracts");
