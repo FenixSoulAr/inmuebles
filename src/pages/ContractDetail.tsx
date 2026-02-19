@@ -9,6 +9,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { ContractPublicLink } from "@/components/contracts/ContractPublicLink";
 import { ContractServices } from "@/components/contracts/ContractServices";
@@ -17,6 +18,7 @@ import { CorrectCurrencyModal } from "@/components/contracts/CorrectCurrencyModa
 import { ContractSheet } from "@/components/contracts/ContractSheet";
 import { ContractDocuments } from "@/components/contracts/ContractDocuments";
 import { ContractTextPanel, type OwnerForContract, type GuarantorForContract } from "@/components/contracts/ContractTextPanel";
+import { ContractDraftPanel } from "@/components/contracts/ContractDraftPanel";
 import { DocumentsPanel } from "@/components/documents/DocumentsPanel";
 
 
@@ -38,8 +40,9 @@ interface Contract {
   rent_due_day: number;
   currency: string | null;
   currency_deposit: string | null;
-  // New condition fields
+  // Contract type fields
   tipo_contrato: string | null;
+  price_mode: string | null;
   usa_seguro: boolean | null;
   seguro_tipo: string | null;
   seguro_obligatorio: boolean | null;
@@ -51,6 +54,10 @@ interface Contract {
   texto_contrato: string | null;
   index_notes: string | null;
   tenant_insurance_notes: string | null;
+  // Draft fields
+  draft_text: string | null;
+  draft_last_generated_at: string | null;
+  draft_status: string | null;
   properties: {
     internal_identifier: string;
     full_address: string;
@@ -235,7 +242,7 @@ export default function ContractDetail() {
       </PageHeader>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Main Info */}
+        {/* Main Info — Tabbed */}
         <div className="lg:col-span-2 space-y-6">
           {/* Status overview strip */}
           <Card>
@@ -271,51 +278,91 @@ export default function ContractDetail() {
             </CardContent>
           </Card>
 
-          {/* Ficha estructurada del contrato */}
-          <ContractSheet contract={contract} onUpdate={fetchContract} />
+          {/* Tabs */}
+          <Tabs defaultValue="info">
+            <TabsList className="w-full justify-start">
+              <TabsTrigger value="info">Ficha</TabsTrigger>
+              <TabsTrigger value="document">Documento</TabsTrigger>
+              <TabsTrigger value="history">Texto legal</TabsTrigger>
+              <TabsTrigger value="payments">Pagos y ajustes</TabsTrigger>
+              <TabsTrigger value="files">Archivos</TabsTrigger>
+            </TabsList>
 
-          {/* Generador de texto legal */}
-          <ContractTextPanel
-            contract={{ ...contract, owners, contractGuarantors }}
-            onSaved={fetchContract}
-          />
+            {/* TAB: Ficha */}
+            <TabsContent value="info" className="space-y-6 pt-2">
+              <ContractSheet contract={contract} onUpdate={fetchContract} />
+              {contract.is_active && (
+                <ContractServices contractId={contract.id} rentDueDay={contract.rent_due_day || 5} />
+              )}
+            </TabsContent>
 
-          {/* Documentación del contrato */}
-          <ContractDocuments contractId={contract.id} />
+            {/* TAB: Documento (borrador paramétrico) */}
+            <TabsContent value="document" className="pt-2">
+              <div className="rounded-xl border border-border bg-card p-6">
+                <ContractDraftPanel
+                  contract={{
+                    id: contract.id,
+                    tipo_contrato: contract.tipo_contrato,
+                    start_date: contract.start_date,
+                    end_date: contract.end_date,
+                    current_rent: contract.current_rent,
+                    currency: contract.currency,
+                    price_mode: contract.price_mode,
+                    deposit: contract.deposit,
+                    draft_text: contract.draft_text,
+                    draft_last_generated_at: contract.draft_last_generated_at,
+                    draft_status: contract.draft_status,
+                    properties: contract.properties,
+                    tenants: contract.tenants,
+                    owners,
+                  }}
+                  onSaved={fetchContract}
+                />
+              </div>
+            </TabsContent>
 
-          {/* Nuevos documentos del contrato (sistema unificado) */}
-          <div className="rounded-xl border border-border bg-card">
-            <div className="px-6 py-4 border-b border-border">
-              <h3 className="font-semibold text-base flex items-center gap-2">
-                <FileText className="w-4 h-4 text-primary" />
-                Documentos del contrato
-              </h3>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                Contrato firmado, pólizas, DNI, inventarios y actas.
-              </p>
-            </div>
-            <div className="p-6">
-              <DocumentsPanel scope="contract" contractId={contract.id} />
-            </div>
-          </div>
+            {/* TAB: Texto legal (generador viejo) */}
+            <TabsContent value="history" className="pt-2">
+              <ContractTextPanel
+                contract={{ ...contract, owners, contractGuarantors }}
+                onSaved={fetchContract}
+              />
+            </TabsContent>
 
-          {/* Contract Services */}
-          {contract.is_active && (
-            <ContractServices contractId={contract.id} rentDueDay={contract.rent_due_day || 5} />
-          )}
+            {/* TAB: Pagos y ajustes */}
+            <TabsContent value="payments" className="space-y-6 pt-2">
+              <ContractAdjustments
+                contractId={contract.id}
+                currentRent={contract.current_rent}
+                currency={contract.currency || "ARS"}
+                adjustmentType={contract.adjustment_type}
+                adjustmentFrequency={contract.adjustment_frequency}
+                adjustmentBaseDate={contract.adjustment_base_date}
+                startDate={contract.start_date}
+                isActive={contract.is_active}
+                onRentUpdated={fetchContract}
+              />
+            </TabsContent>
 
-          {/* Adjustment history */}
-          <ContractAdjustments
-            contractId={contract.id}
-            currentRent={contract.current_rent}
-            currency={contract.currency || "ARS"}
-            adjustmentType={contract.adjustment_type}
-            adjustmentFrequency={contract.adjustment_frequency}
-            adjustmentBaseDate={contract.adjustment_base_date}
-            startDate={contract.start_date}
-            isActive={contract.is_active}
-            onRentUpdated={fetchContract}
-          />
+            {/* TAB: Archivos */}
+            <TabsContent value="files" className="space-y-6 pt-2">
+              <ContractDocuments contractId={contract.id} />
+              <div className="rounded-xl border border-border bg-card">
+                <div className="px-6 py-4 border-b border-border">
+                  <h3 className="font-semibold text-base flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-primary" />
+                    Documentos del contrato
+                  </h3>
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    Contrato firmado, pólizas, DNI, inventarios y actas.
+                  </p>
+                </div>
+                <div className="p-6">
+                  <DocumentsPanel scope="contract" contractId={contract.id} />
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
         </div>
 
         {/* Sidebar */}
