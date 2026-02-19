@@ -149,7 +149,7 @@ export function PortfolioHealth({
         />
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground leading-none mb-0.5">
-            Salud de cartera
+            Estado de la cartera
           </p>
           <p className={cn("text-base font-bold leading-tight", health.colorClass)}>
             {health.label}
