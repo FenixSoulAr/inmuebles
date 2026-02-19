@@ -231,6 +231,8 @@ export default function ContractDetail() {
                 has_price_update: contract.has_price_update,
                 adjustment_type: contract.adjustment_type,
                 adjustment_frequency: contract.adjustment_frequency,
+                booking_channel: contract.booking_channel,
+                deposit_mode: contract.deposit_mode,
                 properties: contract.properties,
                 tenants: { full_name: contract.tenants?.full_name },
                 owners: owners.map((o) => ({ full_name: o.full_name })),
