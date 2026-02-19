@@ -127,7 +127,7 @@ export default function Guarantors() {
     <div>
       <PageHeader
         title="Garantes"
-        description="Visualizá todos los garantes registrados en contratos activos e históricos."
+        description="Vista consolidada de todos los garantes registrados en contratos. Para agregar un garante, hacelo desde el detalle del contrato correspondiente."
       />
 
       {error && (
@@ -190,15 +190,15 @@ export default function Guarantors() {
       {filtered.length === 0 ? (
         <EmptyState
           icon={Shield}
-          title="No hay garantes"
+          title={search || typeFilter !== "all" ? "Sin resultados" : "No hay garantes registrados"}
           description={
             search || typeFilter !== "all"
-              ? "Ningún garante coincide con los filtros."
-              : "Los garantes se crean al agregar una garantía a un contrato."
+              ? "Ningún garante coincide con los filtros aplicados."
+              : "Los garantes se gestionan desde el detalle de cada contrato, en la sección 'Garantías'. Una vez creados, aparecen aquí consolidados."
           }
           action={
             !search && typeFilter === "all"
-              ? { label: "Ver contratos", onClick: () => navigate("/contracts") }
+              ? { label: "Ir a Contratos", onClick: () => navigate("/contracts") }
               : undefined
           }
         />
