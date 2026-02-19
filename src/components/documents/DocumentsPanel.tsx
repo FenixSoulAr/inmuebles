@@ -3,6 +3,7 @@ import { Upload, FileText, Download, Trash2, Loader2, FolderOpen, ExternalLink }
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { openFileViaProxy, downloadFileViaProxy } from "@/lib/fileProxy";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -190,14 +191,12 @@ export function DocumentsPanel({ scope, propertyId, contractId }: DocumentsPanel
         .upload(filePath, selectedFile, { upsert: false });
       if (storageErr) throw storageErr;
 
-      const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(filePath);
-
-      // Insert record
+      // Insert record — store storage path, not public URL
       const insertPayload: Record<string, unknown> = {
         scope,
         doc_type: docType,
         title: title.trim(),
-        file_url: urlData.publicUrl,
+        file_url: filePath,
         file_name: selectedFile.name,
         mime_type: selectedFile.type,
         file_size: selectedFile.size,
@@ -225,11 +224,16 @@ export function DocumentsPanel({ scope, propertyId, contractId }: DocumentsPanel
   const handleDelete = async (doc: Document) => {
     try {
       const bucket = scope === "property" ? STORAGE_BUCKET : CONTRACT_BUCKET;
-      // Extract path from public URL
-      const url = new URL(doc.file_url);
-      const pathParts = url.pathname.split(`/${bucket}/`);
-      if (pathParts.length > 1) {
-        await supabase.storage.from(bucket).remove([pathParts[1]]);
+      // file_url is stored as a plain storage path (not a full URL)
+      const storagePath = doc.file_url.startsWith("http")
+        ? (() => {
+            const u = new URL(doc.file_url);
+            const parts = u.pathname.split(`/${bucket}/`);
+            return parts.length > 1 ? parts[1] : null;
+          })()
+        : doc.file_url;
+      if (storagePath) {
+        await supabase.storage.from(bucket).remove([storagePath]);
       }
       const { error } = await supabase.from("documents" as any).delete().eq("id", doc.id);
       if (error) throw error;
@@ -386,15 +390,29 @@ export function DocumentsPanel({ scope, propertyId, contractId }: DocumentsPanel
                 )}
               </div>
               <div className="flex items-center gap-1 shrink-0">
-                <Button size="icon" variant="ghost" className="h-8 w-8" asChild>
-                  <a href={doc.file_url} target="_blank" rel="noopener noreferrer">
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-8 w-8"
+                  title="Ver / Abrir"
+                  onClick={() => {
+                    const bucket = scope === "property" ? "documents" : "contract-documents";
+                    openFileViaProxy(bucket, doc.file_url);
+                  }}
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
                 </Button>
-                <Button size="icon" variant="ghost" className="h-8 w-8" asChild>
-                  <a href={doc.file_url} download={doc.file_name ?? undefined}>
-                    <Download className="w-3.5 h-3.5" />
-                  </a>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-8 w-8"
+                  title="Descargar"
+                  onClick={() => {
+                    const bucket = scope === "property" ? "documents" : "contract-documents";
+                    downloadFileViaProxy(bucket, doc.file_url, doc.file_name ?? doc.title);
+                  }}
+                >
+                  <Download className="w-3.5 h-3.5" />
                 </Button>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>

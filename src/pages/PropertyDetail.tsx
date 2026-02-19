@@ -162,12 +162,10 @@ export default function PropertyDetail() {
       const { error: uploadError } = await supabase.storage.from("documents").upload(filePath, selectedFile);
       if (uploadError) throw uploadError;
 
-      const { data: urlData } = supabase.storage.from("documents").getPublicUrl(filePath);
-
       const { error: dbError } = await supabase.from("property_documents").insert({
         property_id: property.id,
         category: selectedCategory,
-        file_url: urlData.publicUrl,
+        file_url: filePath,
         original_file_name: selectedFile.name,
         generated_name: generatedName,
       });

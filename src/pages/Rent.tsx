@@ -305,11 +305,8 @@ export default function Rent() {
       throw uploadError;
     }
 
-    const { data: { publicUrl } } = supabase.storage
-      .from("documents")
-      .getPublicUrl(fileName);
-
-    return publicUrl;
+    // Return the storage path (not a public URL); the UI uses the proxy
+    return fileName;
   };
 
   const handlePayment = async () => {
