@@ -1,10 +1,10 @@
 import { useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Info } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -26,6 +26,19 @@ import { Switch } from "@/components/ui/switch";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 
+const BOOKING_CHANNELS = [
+  { value: "directo", label: "Directo" },
+  { value: "airbnb", label: "Airbnb" },
+  { value: "booking", label: "Booking.com" },
+  { value: "otro", label: "Otro" },
+];
+
+const DEPOSIT_MODES = [
+  { value: "required", label: "Depósito en garantía" },
+  { value: "not_required", label: "No se requiere depósito" },
+  { value: "platform_covered", label: "Cubierto por plataforma" },
+];
+
 const contractSchema = z.object({
   end_date: z.string().min(1, "La fecha de fin es requerida."),
   clauses_text: z.string().optional(),
@@ -34,6 +47,8 @@ const contractSchema = z.object({
   adjustment_frequency: z.coerce.number().min(1).optional(),
   next_adjustment_date: z.string().optional(),
   submission_language: z.string().min(1),
+  booking_channel: z.string().default("directo"),
+  deposit_mode: z.string().default("required"),
 });
 
 type ContractFormData = z.infer<typeof contractSchema>;
@@ -57,6 +72,8 @@ interface Contract {
   submission_language?: string;
   tipo_contrato?: string | null;
   has_price_update?: boolean | null;
+  booking_channel?: string | null;
+  deposit_mode?: string | null;
 }
 
 interface EditContractModalProps {
@@ -81,6 +98,7 @@ export function EditContractModal({
     reset,
     setValue,
     watch,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<ContractFormData>({
     resolver: zodResolver(contractSchema),
@@ -88,6 +106,8 @@ export function EditContractModal({
 
   const selectedAdjustmentType = watch("adjustment_type");
   const watchHasPriceUpdate = watch("has_price_update");
+  const watchBookingChannel = watch("booking_channel");
+  const watchDepositMode = watch("deposit_mode");
   const isTemporario = contract?.tipo_contrato === "temporario";
 
   useEffect(() => {
@@ -100,6 +120,8 @@ export function EditContractModal({
         adjustment_frequency: contract.adjustment_frequency || 12,
         next_adjustment_date: contract.next_adjustment_date || "",
         submission_language: contract.submission_language || "es",
+        booking_channel: contract.booking_channel || "directo",
+        deposit_mode: contract.deposit_mode || "required",
       });
     }
   }, [contract, open, reset]);
@@ -131,6 +153,12 @@ export function EditContractModal({
         is_active: shouldBeActive,
         submission_language: data.submission_language,
         has_price_update: effectiveHasPriceUpdate,
+        ...(isTemporario && {
+          booking_channel: data.booking_channel || "directo",
+          deposit_mode: data.deposit_mode || "required",
+          deposit: data.deposit_mode === "required" ? undefined : null,
+          currency_deposit: data.deposit_mode === "required" ? undefined : null,
+        }),
       };
 
       if (!hasRentDues) {
@@ -228,12 +256,66 @@ export function EditContractModal({
           </div>
 
           {isTemporario ? (
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription className="text-sm">
-                Los contratos temporarios no contemplan actualización de precio.
-              </AlertDescription>
-            </Alert>
+            <>
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="text-sm">
+                  Los contratos temporarios no contemplan actualización de precio.
+                </AlertDescription>
+              </Alert>
+
+              {/* Canal / Plataforma */}
+              <div className="space-y-2">
+                <Label>Canal / Plataforma de reserva</Label>
+                <Controller
+                  name="booking_channel"
+                  control={control}
+                  render={({ field }) => (
+                    <Select onValueChange={(v) => {
+                      field.onChange(v);
+                      if (v === "airbnb") setValue("deposit_mode", "platform_covered");
+                      else if (watch("deposit_mode") === "platform_covered") setValue("deposit_mode", "required");
+                    }} value={field.value}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {BOOKING_CHANNELS.map((ch) => (
+                          <SelectItem key={ch.value} value={ch.value}>{ch.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </div>
+
+              {/* Modalidad de depósito */}
+              <div className="space-y-2">
+                <Label>Depósito / Garantía</Label>
+                <Controller
+                  name="deposit_mode"
+                  control={control}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value} disabled={watchBookingChannel === "airbnb"}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {DEPOSIT_MODES.map((dm) => (
+                          <SelectItem key={dm.value} value={dm.value}>{dm.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                {watchDepositMode === "platform_covered" && (
+                  <Alert className="mt-2">
+                    <Info className="h-4 w-4" />
+                    <AlertDescription className="text-sm">
+                      Garantía gestionada por la plataforma
+                      {watchBookingChannel === "airbnb" ? " (Airbnb)" : watchBookingChannel === "booking" ? " (Booking.com)" : ""}.
+                      No se requiere depósito en efectivo del inquilino.
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </div>
+            </>
           ) : (
             <>
               <div className="flex items-center justify-between">

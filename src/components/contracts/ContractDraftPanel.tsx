@@ -54,6 +54,8 @@ export interface ContractForDraft {
   has_price_update?: boolean | null;
   adjustment_type?: string | null;
   adjustment_frequency?: number | null;
+  booking_channel?: string | null;
+  deposit_mode?: string | null;
   properties: { internal_identifier: string; full_address: string };
   tenants: { full_name: string };
   owners?: Array<{ full_name: string }>;
@@ -74,6 +76,13 @@ interface Props {
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
+
+const BOOKING_CHANNEL_LABELS: Record<string, string> = {
+  directo: "Directo",
+  airbnb: "Airbnb",
+  booking: "Booking.com",
+  otro: "Otra plataforma",
+};
 
 const PRICE_MODE_LABELS: Record<string, string> = {
   mensual: "mensual",
@@ -130,6 +139,7 @@ function renderTemplate(
     : `cada ${freqMonths} meses`
     : "__________";
   const updateIndex = ADJUSTMENT_TYPE_LABELS[contract.adjustment_type || ""] || "__________";
+  const bookingChannelLabel = BOOKING_CHANNEL_LABELS[contract.booking_channel || "directo"] || contract.booking_channel || "__________";
 
   const vars: Record<string, string> = {
     "{{owner_name}}": ownerName,
@@ -144,6 +154,7 @@ function renderTemplate(
     "{{services_list}}": servicesList || "__________",
     "{{update_frequency}}": updateFrequency,
     "{{update_index}}": updateIndex,
+    "{{booking_channel}}": bookingChannelLabel,
   };
 
   let result = template;
@@ -174,6 +185,9 @@ export function ContractDraftPanel({ contract, onSaved }: Props) {
   const tipoContrato = contract.tipo_contrato || "permanente";
   const isTemporario = tipoContrato === "temporario";
   const hasPriceUpdate = contract.has_price_update === true;
+  const depositMode = contract.deposit_mode || "required";
+  const depositRequired = depositMode === "required";
+  const isPlatformCovered = depositMode === "platform_covered";
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -207,11 +221,26 @@ export function ContractDraftPanel({ contract, onSaved }: Props) {
       // Filter templates:
       // - temporario: exclude price-update clauses
       // - permanente without has_price_update: exclude price-update clauses
+      // - deposit clause excluded if deposit_mode != required
+      // - platform_covered clause only if deposit_mode = platform_covered
+      const isDepositClause = (name: string) => {
+        const l = name.toLowerCase();
+        return l.includes("depósito") || l.includes("deposito") || l.includes("garantía") || l.includes("garantia");
+      };
+      const isPlatformClause = (name: string) => {
+        const l = name.toLowerCase();
+        return l.includes("plataforma") || l.includes("platform");
+      };
+
       let tpls: ClauseTemplate[] = (templates || []).filter((t: ClauseTemplate) => {
         if (isPriceUpdateClause(t.name)) {
           if (isTemporario) return false;
           if (!hasPriceUpdate) return false;
         }
+        // Exclude deposit clause if deposit not required
+        if (isDepositClause(t.name) && !depositRequired) return false;
+        // Platform clause: only include if platform_covered
+        if (isPlatformClause(t.name) && !isPlatformCovered) return false;
         // temporario: only include services clause if services exist
         if (isTemporario && t.name.toLowerCase().includes("servicio") && serviceNames.length === 0) {
           return false;
