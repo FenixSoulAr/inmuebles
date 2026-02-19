@@ -76,7 +76,9 @@
     "signUpFailed": "Sign up failed",
     "accountCreated": "Account created!",
     "accountCreatedDesc": "Welcome to MyRentaHub. Let's get started.",
-    "tagline": "Smart, simple, and secure property management.",
+    "tagline": "Structured and simple management for landlords and small property managers.",
+    "taglineL1": "Structured and simple management",
+    "taglineL2": "for landlords and small property managers.",
     "subtitle": "Smart Property Management"
   },
   "dashboard": {
