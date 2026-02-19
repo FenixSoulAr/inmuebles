@@ -464,6 +464,7 @@ export type Database = {
           index_notes: string | null
           initial_rent: number
           is_active: boolean
+          jurisdiction_region: string | null
           next_adjustment_date: string | null
           pdf_url: string | null
           penalty_type: string | null
@@ -518,6 +519,7 @@ export type Database = {
           index_notes?: string | null
           initial_rent: number
           is_active?: boolean
+          jurisdiction_region?: string | null
           next_adjustment_date?: string | null
           pdf_url?: string | null
           penalty_type?: string | null
@@ -572,6 +574,7 @@ export type Database = {
           index_notes?: string | null
           initial_rent?: number
           is_active?: boolean
+          jurisdiction_region?: string | null
           next_adjustment_date?: string | null
           pdf_url?: string | null
           penalty_type?: string | null
