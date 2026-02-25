@@ -20,7 +20,7 @@ export type Database = {
           description: string | null
           due_date: string | null
           id: string
-          owner_user_id: string
+          project_id: string
           related_entity_id: string | null
           related_entity_type: string | null
           status: string
@@ -32,7 +32,7 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
-          owner_user_id: string
+          project_id: string
           related_entity_id?: string | null
           related_entity_type?: string | null
           status?: string
@@ -44,7 +44,7 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
-          owner_user_id?: string
+          project_id?: string
           related_entity_id?: string | null
           related_entity_type?: string | null
           status?: string
@@ -53,10 +53,10 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "alerts_owner_user_id_fkey"
-            columns: ["owner_user_id"]
+            foreignKeyName: "alerts_project_id_fkey"
+            columns: ["project_id"]
             isOneToOne: false
-            referencedRelation: "profiles"
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
@@ -71,7 +71,7 @@ export type Database = {
           is_optional: boolean
           name: string
           order_default: number
-          owner_user_id: string
+          project_id: string
           tags: string | null
           template_text: string
           updated_at: string
@@ -86,7 +86,7 @@ export type Database = {
           is_optional?: boolean
           name: string
           order_default?: number
-          owner_user_id: string
+          project_id: string
           tags?: string | null
           template_text?: string
           updated_at?: string
@@ -101,13 +101,21 @@ export type Database = {
           is_optional?: boolean
           name?: string
           order_default?: number
-          owner_user_id?: string
+          project_id?: string
           tags?: string | null
           template_text?: string
           updated_at?: string
           version?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "clause_templates_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       contract_adjustment_events: {
         Row: {
@@ -119,6 +127,7 @@ export type Database = {
           new_rent: number
           note: string | null
           previous_rent: number
+          project_id: string
         }
         Insert: {
           contract_id: string
@@ -129,6 +138,7 @@ export type Database = {
           new_rent: number
           note?: string | null
           previous_rent: number
+          project_id: string
         }
         Update: {
           contract_id?: string
@@ -139,6 +149,7 @@ export type Database = {
           new_rent?: number
           note?: string | null
           previous_rent?: number
+          project_id?: string
         }
         Relationships: [
           {
@@ -146,6 +157,13 @@ export type Database = {
             columns: ["contract_id"]
             isOneToOne: false
             referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contract_adjustment_events_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
@@ -163,6 +181,7 @@ export type Database = {
           manual_percentage: number | null
           note: string | null
           previous_amount: number
+          project_id: string
           status: string
         }
         Insert: {
@@ -177,6 +196,7 @@ export type Database = {
           manual_percentage?: number | null
           note?: string | null
           previous_amount: number
+          project_id: string
           status?: string
         }
         Update: {
@@ -191,6 +211,7 @@ export type Database = {
           manual_percentage?: number | null
           note?: string | null
           previous_amount?: number
+          project_id?: string
           status?: string
         }
         Relationships: [
@@ -208,6 +229,13 @@ export type Database = {
             referencedRelation: "contracts"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "contract_adjustments_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
         ]
       }
       contract_clauses: {
@@ -218,6 +246,7 @@ export type Database = {
           enabled: boolean
           id: string
           order_position: number
+          project_id: string
           rendered_text: string
           source_version: number | null
           title: string
@@ -230,6 +259,7 @@ export type Database = {
           enabled?: boolean
           id?: string
           order_position?: number
+          project_id: string
           rendered_text?: string
           source_version?: number | null
           title: string
@@ -242,6 +272,7 @@ export type Database = {
           enabled?: boolean
           id?: string
           order_position?: number
+          project_id?: string
           rendered_text?: string
           source_version?: number | null
           title?: string
@@ -262,6 +293,13 @@ export type Database = {
             referencedRelation: "contracts"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "contract_clauses_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
         ]
       }
       contract_documents: {
@@ -275,6 +313,7 @@ export type Database = {
           is_primary: boolean | null
           mime_type: string | null
           notes: string | null
+          project_id: string
           status: string
           title: string
           uploaded_at: string
@@ -291,6 +330,7 @@ export type Database = {
           is_primary?: boolean | null
           mime_type?: string | null
           notes?: string | null
+          project_id: string
           status?: string
           title: string
           uploaded_at?: string
@@ -307,6 +347,7 @@ export type Database = {
           is_primary?: boolean | null
           mime_type?: string | null
           notes?: string | null
+          project_id?: string
           status?: string
           title?: string
           uploaded_at?: string
@@ -319,6 +360,13 @@ export type Database = {
             columns: ["contract_id"]
             isOneToOne: false
             referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contract_documents_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
@@ -342,6 +390,7 @@ export type Database = {
           insurance_valid_to: string | null
           notes: string | null
           phone: string | null
+          project_id: string
           sort_order: number | null
           updated_at: string
         }
@@ -363,6 +412,7 @@ export type Database = {
           insurance_valid_to?: string | null
           notes?: string | null
           phone?: string | null
+          project_id: string
           sort_order?: number | null
           updated_at?: string
         }
@@ -384,6 +434,7 @@ export type Database = {
           insurance_valid_to?: string | null
           notes?: string | null
           phone?: string | null
+          project_id?: string
           sort_order?: number | null
           updated_at?: string
         }
@@ -393,6 +444,13 @@ export type Database = {
             columns: ["contract_id"]
             isOneToOne: false
             referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contract_guarantors_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
@@ -405,6 +463,7 @@ export type Database = {
           due_day: number | null
           expected_amount: number | null
           id: string
+          project_id: string
           service_type: string
         }
         Insert: {
@@ -414,6 +473,7 @@ export type Database = {
           due_day?: number | null
           expected_amount?: number | null
           id?: string
+          project_id: string
           service_type: string
         }
         Update: {
@@ -423,6 +483,7 @@ export type Database = {
           due_day?: number | null
           expected_amount?: number | null
           id?: string
+          project_id?: string
           service_type?: string
         }
         Relationships: [
@@ -431,6 +492,13 @@ export type Database = {
             columns: ["contract_id"]
             isOneToOne: false
             referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contract_services_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
@@ -472,6 +540,7 @@ export type Database = {
           permite_mascotas: boolean | null
           permite_subalquiler: boolean | null
           price_mode: string
+          project_id: string
           property_id: string
           public_submission_token: string | null
           rent_due_day: number | null
@@ -527,6 +596,7 @@ export type Database = {
           permite_mascotas?: boolean | null
           permite_subalquiler?: boolean | null
           price_mode?: string
+          project_id: string
           property_id: string
           public_submission_token?: string | null
           rent_due_day?: number | null
@@ -582,6 +652,7 @@ export type Database = {
           permite_mascotas?: boolean | null
           permite_subalquiler?: boolean | null
           price_mode?: string
+          project_id?: string
           property_id?: string
           public_submission_token?: string | null
           rent_due_day?: number | null
@@ -602,6 +673,13 @@ export type Database = {
           usa_seguro?: boolean | null
         }
         Relationships: [
+          {
+            foreignKeyName: "contracts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "contracts_property_id_fkey"
             columns: ["property_id"]
@@ -630,6 +708,7 @@ export type Database = {
           id: string
           mime_type: string | null
           notes: string | null
+          project_id: string
           property_id: string | null
           scope: string
           title: string
@@ -645,6 +724,7 @@ export type Database = {
           id?: string
           mime_type?: string | null
           notes?: string | null
+          project_id: string
           property_id?: string | null
           scope: string
           title: string
@@ -660,6 +740,7 @@ export type Database = {
           id?: string
           mime_type?: string | null
           notes?: string | null
+          project_id?: string
           property_id?: string | null
           scope?: string
           title?: string
@@ -670,6 +751,13 @@ export type Database = {
             columns: ["contract_id"]
             isOneToOne: false
             referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
           {
@@ -688,6 +776,7 @@ export type Database = {
           full_name: string
           id: string
           notes: string | null
+          project_id: string
           tenant_id: string
         }
         Insert: {
@@ -696,6 +785,7 @@ export type Database = {
           full_name: string
           id?: string
           notes?: string | null
+          project_id: string
           tenant_id: string
         }
         Update: {
@@ -704,9 +794,17 @@ export type Database = {
           full_name?: string
           id?: string
           notes?: string | null
+          project_id?: string
           tenant_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "guarantors_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "guarantors_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -723,6 +821,7 @@ export type Database = {
           estimate_amount: number | null
           id: string
           payer: string
+          project_id: string
           property_id: string
           receipt_file_url: string | null
           reported_at: string
@@ -736,6 +835,7 @@ export type Database = {
           estimate_amount?: number | null
           id?: string
           payer: string
+          project_id: string
           property_id: string
           receipt_file_url?: string | null
           reported_at?: string
@@ -749,6 +849,7 @@ export type Database = {
           estimate_amount?: number | null
           id?: string
           payer?: string
+          project_id?: string
           property_id?: string
           receipt_file_url?: string | null
           reported_at?: string
@@ -757,6 +858,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "maintenance_issues_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "maintenance_issues_property_id_fkey"
             columns: ["property_id"]
@@ -777,6 +885,7 @@ export type Database = {
           kind: string
           payment_proof_id: string | null
           period: string
+          project_id: string
           property_id: string
           service_type: string | null
           status: string
@@ -792,6 +901,7 @@ export type Database = {
           kind: string
           payment_proof_id?: string | null
           period: string
+          project_id: string
           property_id: string
           service_type?: string | null
           status?: string
@@ -807,6 +917,7 @@ export type Database = {
           kind?: string
           payment_proof_id?: string | null
           period?: string
+          project_id?: string
           property_id?: string
           service_type?: string | null
           status?: string
@@ -825,6 +936,13 @@ export type Database = {
             columns: ["payment_proof_id"]
             isOneToOne: false
             referencedRelation: "payment_proofs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obligations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
           {
@@ -852,8 +970,8 @@ export type Database = {
           full_name: string
           id: string
           notes: string | null
-          owner_user_id: string
           phone: string | null
+          project_id: string
           updated_at: string
         }
         Insert: {
@@ -864,8 +982,8 @@ export type Database = {
           full_name: string
           id?: string
           notes?: string | null
-          owner_user_id: string
           phone?: string | null
+          project_id: string
           updated_at?: string
         }
         Update: {
@@ -876,11 +994,19 @@ export type Database = {
           full_name?: string
           id?: string
           notes?: string | null
-          owner_user_id?: string
           phone?: string | null
+          project_id?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "owners_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ownership_stakes: {
         Row: {
@@ -888,6 +1014,7 @@ export type Database = {
           holder_name: string
           holder_type: string
           id: string
+          project_id: string
           property_id: string
           share_percent: number
         }
@@ -896,6 +1023,7 @@ export type Database = {
           holder_name: string
           holder_type: string
           id?: string
+          project_id: string
           property_id: string
           share_percent: number
         }
@@ -904,10 +1032,18 @@ export type Database = {
           holder_name?: string
           holder_type?: string
           id?: string
+          project_id?: string
           property_id?: string
           share_percent?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "ownership_stakes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "ownership_stakes_property_id_fkey"
             columns: ["property_id"]
@@ -930,6 +1066,7 @@ export type Database = {
           obligation_id: string | null
           paid_at: string
           period: string
+          project_id: string
           proof_reviewed_at: string | null
           proof_reviewed_by: string | null
           proof_status: string
@@ -953,6 +1090,7 @@ export type Database = {
           obligation_id?: string | null
           paid_at?: string
           period: string
+          project_id: string
           proof_reviewed_at?: string | null
           proof_reviewed_by?: string | null
           proof_status?: string
@@ -976,6 +1114,7 @@ export type Database = {
           obligation_id?: string | null
           paid_at?: string
           period?: string
+          project_id?: string
           proof_reviewed_at?: string | null
           proof_reviewed_by?: string | null
           proof_status?: string
@@ -1003,6 +1142,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "payment_proofs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "payment_proofs_replaces_proof_id_fkey"
             columns: ["replaces_proof_id"]
             isOneToOne: false
@@ -1021,6 +1167,7 @@ export type Database = {
           notes: string | null
           obligation_id: string
           paid_at: string
+          project_id: string
         }
         Insert: {
           amount: number
@@ -1031,6 +1178,7 @@ export type Database = {
           notes?: string | null
           obligation_id: string
           paid_at?: string
+          project_id: string
         }
         Update: {
           amount?: number
@@ -1041,6 +1189,7 @@ export type Database = {
           notes?: string | null
           obligation_id?: string
           paid_at?: string
+          project_id?: string
         }
         Relationships: [
           {
@@ -1048,6 +1197,13 @@ export type Database = {
             columns: ["obligation_id"]
             isOneToOne: false
             referencedRelation: "obligations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
@@ -1076,6 +1232,109 @@ export type Database = {
         }
         Relationships: []
       }
+      project_invites: {
+        Row: {
+          accepted_at: string | null
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          invited_by: string
+          project_id: string
+          role: Database["public"]["Enums"]["project_role"]
+          status: string
+          token: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          created_at?: string
+          email: string
+          expires_at?: string
+          id?: string
+          invited_by: string
+          project_id: string
+          role?: Database["public"]["Enums"]["project_role"]
+          status?: string
+          token?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          invited_by?: string
+          project_id?: string
+          role?: Database["public"]["Enums"]["project_role"]
+          status?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_invites_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_members: {
+        Row: {
+          created_at: string
+          id: string
+          project_id: string
+          role: Database["public"]["Enums"]["project_role"]
+          status: Database["public"]["Enums"]["membership_status"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          project_id: string
+          role?: Database["public"]["Enums"]["project_role"]
+          status?: Database["public"]["Enums"]["membership_status"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          project_id?: string
+          role?: Database["public"]["Enums"]["project_role"]
+          status?: Database["public"]["Enums"]["membership_status"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_members_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projects: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       properties: {
         Row: {
           active: boolean
@@ -1083,7 +1342,7 @@ export type Database = {
           full_address: string
           id: string
           internal_identifier: string
-          owner_user_id: string
+          project_id: string
           status: string
           type: string
           updated_at: string
@@ -1094,7 +1353,7 @@ export type Database = {
           full_address: string
           id?: string
           internal_identifier: string
-          owner_user_id: string
+          project_id: string
           status?: string
           type?: string
           updated_at?: string
@@ -1105,17 +1364,17 @@ export type Database = {
           full_address?: string
           id?: string
           internal_identifier?: string
-          owner_user_id?: string
+          project_id?: string
           status?: string
           type?: string
           updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "properties_owner_user_id_fkey"
-            columns: ["owner_user_id"]
+            foreignKeyName: "properties_project_id_fkey"
+            columns: ["project_id"]
             isOneToOne: false
-            referencedRelation: "profiles"
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
@@ -1127,6 +1386,7 @@ export type Database = {
           generated_name: string
           id: string
           original_file_name: string
+          project_id: string
           property_id: string
           uploaded_at: string
         }
@@ -1136,6 +1396,7 @@ export type Database = {
           generated_name: string
           id?: string
           original_file_name: string
+          project_id: string
           property_id: string
           uploaded_at?: string
         }
@@ -1145,10 +1406,18 @@ export type Database = {
           generated_name?: string
           id?: string
           original_file_name?: string
+          project_id?: string
           property_id?: string
           uploaded_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "property_documents_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "property_documents_property_id_fkey"
             columns: ["property_id"]
@@ -1164,6 +1433,7 @@ export type Database = {
           id: string
           owner_id: string
           ownership_percent: number | null
+          project_id: string
           property_id: string
           role: string | null
         }
@@ -1172,6 +1442,7 @@ export type Database = {
           id?: string
           owner_id: string
           ownership_percent?: number | null
+          project_id: string
           property_id: string
           role?: string | null
         }
@@ -1180,6 +1451,7 @@ export type Database = {
           id?: string
           owner_id?: string
           ownership_percent?: number | null
+          project_id?: string
           property_id?: string
           role?: string | null
         }
@@ -1189,6 +1461,13 @@ export type Database = {
             columns: ["owner_id"]
             isOneToOne: false
             referencedRelation: "owners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_owners_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
           {
@@ -1205,6 +1484,7 @@ export type Database = {
           created_at: string
           id: string
           notes: string | null
+          project_id: string
           property_id: string
           valuation_amount: number
           valuation_date: string
@@ -1213,6 +1493,7 @@ export type Database = {
           created_at?: string
           id?: string
           notes?: string | null
+          project_id: string
           property_id: string
           valuation_amount: number
           valuation_date: string
@@ -1221,11 +1502,19 @@ export type Database = {
           created_at?: string
           id?: string
           notes?: string | null
+          project_id?: string
           property_id?: string
           valuation_amount?: number
           valuation_date?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "property_valuations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "property_valuations_property_id_fkey"
             columns: ["property_id"]
@@ -1244,6 +1533,7 @@ export type Database = {
           expected_amount: number
           id: string
           period_month: string
+          project_id: string
           property_id: string
           status: string
           tenant_id: string
@@ -1257,6 +1547,7 @@ export type Database = {
           expected_amount: number
           id?: string
           period_month: string
+          project_id: string
           property_id: string
           status?: string
           tenant_id: string
@@ -1270,6 +1561,7 @@ export type Database = {
           expected_amount?: number
           id?: string
           period_month?: string
+          project_id?: string
           property_id?: string
           status?: string
           tenant_id?: string
@@ -1281,6 +1573,13 @@ export type Database = {
             columns: ["contract_id"]
             isOneToOne: false
             referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rent_dues_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
           {
@@ -1307,6 +1606,7 @@ export type Database = {
           method: string
           notes: string | null
           payment_date: string
+          project_id: string
           receipt_file_url: string | null
           rent_due_id: string
         }
@@ -1317,6 +1617,7 @@ export type Database = {
           method?: string
           notes?: string | null
           payment_date: string
+          project_id: string
           receipt_file_url?: string | null
           rent_due_id: string
         }
@@ -1327,10 +1628,18 @@ export type Database = {
           method?: string
           notes?: string | null
           payment_date?: string
+          project_id?: string
           receipt_file_url?: string | null
           rent_due_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "rent_payments_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "rent_payments_rent_due_id_fkey"
             columns: ["rent_due_id"]
@@ -1349,6 +1658,7 @@ export type Database = {
           frequency: string
           id: string
           notes: string | null
+          project_id: string
           property_id: string
           receipt_file_url: string | null
           responsible: string
@@ -1364,6 +1674,7 @@ export type Database = {
           frequency?: string
           id?: string
           notes?: string | null
+          project_id: string
           property_id: string
           receipt_file_url?: string | null
           responsible: string
@@ -1379,6 +1690,7 @@ export type Database = {
           frequency?: string
           id?: string
           notes?: string | null
+          project_id?: string
           property_id?: string
           receipt_file_url?: string | null
           responsible?: string
@@ -1387,6 +1699,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "tax_obligations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "tax_obligations_property_id_fkey"
             columns: ["property_id"]
@@ -1402,6 +1721,7 @@ export type Database = {
           end_date: string | null
           id: string
           notes: string | null
+          project_id: string
           property_id: string
           start_date: string
           tenant_id: string
@@ -1411,6 +1731,7 @@ export type Database = {
           end_date?: string | null
           id?: string
           notes?: string | null
+          project_id: string
           property_id: string
           start_date: string
           tenant_id: string
@@ -1420,11 +1741,19 @@ export type Database = {
           end_date?: string | null
           id?: string
           notes?: string | null
+          project_id?: string
           property_id?: string
           start_date?: string
           tenant_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "tenancy_links_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "tenancy_links_property_id_fkey"
             columns: ["property_id"]
@@ -1448,9 +1777,9 @@ export type Database = {
           email: string | null
           full_name: string
           id: string
-          owner_user_id: string
           phone: string | null
           preferred_language: string
+          project_id: string
           status: string
           updated_at: string
         }
@@ -1460,9 +1789,9 @@ export type Database = {
           email?: string | null
           full_name: string
           id?: string
-          owner_user_id: string
           phone?: string | null
           preferred_language?: string
+          project_id: string
           status?: string
           updated_at?: string
         }
@@ -1472,18 +1801,18 @@ export type Database = {
           email?: string | null
           full_name?: string
           id?: string
-          owner_user_id?: string
           phone?: string | null
           preferred_language?: string
+          project_id?: string
           status?: string
           updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "tenants_owner_user_id_fkey"
-            columns: ["owner_user_id"]
+            foreignKeyName: "tenants_project_id_fkey"
+            columns: ["project_id"]
             isOneToOne: false
-            referencedRelation: "profiles"
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
@@ -1496,6 +1825,7 @@ export type Database = {
           frequency: string
           id: string
           payer: string
+          project_id: string
           property_id: string
           type: string
         }
@@ -1506,6 +1836,7 @@ export type Database = {
           frequency?: string
           id?: string
           payer: string
+          project_id: string
           property_id: string
           type: string
         }
@@ -1516,10 +1847,18 @@ export type Database = {
           frequency?: string
           id?: string
           payer?: string
+          project_id?: string
           property_id?: string
           type?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "utility_obligations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "utility_obligations_property_id_fkey"
             columns: ["property_id"]
@@ -1535,6 +1874,7 @@ export type Database = {
           file_url: string | null
           id: string
           period_month: string
+          project_id: string
           status: string
           submitted_at: string | null
           utility_obligation_id: string
@@ -1544,6 +1884,7 @@ export type Database = {
           file_url?: string | null
           id?: string
           period_month: string
+          project_id: string
           status?: string
           submitted_at?: string | null
           utility_obligation_id: string
@@ -1553,11 +1894,19 @@ export type Database = {
           file_url?: string | null
           id?: string
           period_month?: string
+          project_id?: string
           status?: string
           submitted_at?: string | null
           utility_obligation_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "utility_proofs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "utility_proofs_utility_obligation_id_fkey"
             columns: ["utility_obligation_id"]
@@ -1572,10 +1921,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      accept_invite: { Args: { _token: string }; Returns: Json }
+      get_project_role: {
+        Args: { _pid: string; _uid: string }
+        Returns: Database["public"]["Enums"]["project_role"]
+      }
+      has_admin_role: { Args: { _pid: string; _uid: string }; Returns: boolean }
+      has_write_role: { Args: { _pid: string; _uid: string }; Returns: boolean }
+      is_project_member: {
+        Args: { _pid: string; _uid: string }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      membership_status: "active" | "invited" | "removed"
+      project_role: "owner" | "admin" | "collaborator" | "viewer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1702,6 +2062,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      membership_status: ["active", "invited", "removed"],
+      project_role: ["owner", "admin", "collaborator", "viewer"],
+    },
   },
 } as const
