@@ -18,6 +18,7 @@ import {
   Shield,
   ChevronDown,
   BookOpen,
+  Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -277,6 +278,8 @@ export function AppSidebar({ onNavigate, isMobileDrawer = false }: AppSidebarPro
         <Separator className="mb-2 bg-sidebar-border" />
 
         <LanguageSelector collapsed={effectiveCollapsed} />
+
+        {renderNavButton({ title: "Configuración", url: "/settings", icon: Settings })}
 
         {effectiveCollapsed ? (
           <Tooltip delayDuration={0}>
