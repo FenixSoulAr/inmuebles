@@ -20,6 +20,7 @@ import ContractDetail from "./pages/ContractDetail";
 import ClauseTemplates from "./pages/ClauseTemplates";
 import PaymentProofs from "./pages/PaymentProofs";
 import PublicSubmit from "./pages/PublicSubmit";
+import AcceptInvite from "./pages/AcceptInvite";
 import Utilities from "./pages/Utilities";
 import UtilityObligations from "./pages/UtilityObligations";
 import Maintenance from "./pages/Maintenance";
@@ -54,6 +55,7 @@ const App: React.FC = () => {
             <Routes>
               <Route path="/signin" element={<SignIn />} />
               <Route path="/submit/:token" element={<PublicSubmit />} />
+              <Route path="/invite/:token" element={<AcceptInvite />} />
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route element={<AppLayout />}>
                 <Route path="/dashboard" element={<Dashboard />} />

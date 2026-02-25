@@ -218,7 +218,7 @@ export default function ProjectSettings() {
   };
 
   const copyInviteLink = (token: string) => {
-    const link = `${window.location.origin}/invite?token=${token}`;
+    const link = `https://inmuebles.fenixsoular.com.ar/invite/${token}`;
     navigator.clipboard.writeText(link);
     setCopiedToken(token);
     setTimeout(() => setCopiedToken(null), 2000);
