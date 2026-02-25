@@ -40,6 +40,10 @@ export default function SignIn() {
   });
 
   if (user) {
+    const pendingToken = sessionStorage.getItem("pending_invite_token");
+    if (pendingToken) {
+      return <Navigate to={`/invite/${pendingToken}`} replace />;
+    }
     return <Navigate to="/dashboard" replace />;
   }
 
