@@ -168,7 +168,7 @@ export default function PropertyDetail() {
         file_url: filePath,
         original_file_name: selectedFile.name,
         generated_name: generatedName,
-      });
+      } as any);
       if (dbError) throw dbError;
 
       toast({ title: t("propertyDetail.fileUploaded"), description: t("propertyDetail.fileUploadedDesc") });

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Plus, FileText, Pencil, Trash2, ToggleLeft, ToggleRight, ChevronUp, ChevronDown, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProject } from "@/contexts/ProjectContext";
 import { useToast } from "@/hooks/use-toast";
 import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
@@ -12,7 +13,7 @@ import { ClauseTemplateModal } from "@/components/contracts/ClauseTemplateModal"
 
 export interface ClauseTemplate {
   id: string;
-  owner_user_id: string;
+  project_id: string;
   name: string;
   applies_to: string;
   is_optional: boolean;
@@ -47,6 +48,7 @@ export default function ClauseTemplates() {
   const [editTarget, setEditTarget] = useState<ClauseTemplate | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ClauseTemplate | null>(null);
   const { user } = useAuth();
+  const { activeProjectId } = useProject();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -58,7 +60,7 @@ export default function ClauseTemplates() {
     const { data, error } = await (supabase as any)
       .from("clause_templates")
       .select("*")
-      .eq("owner_user_id", user!.id)
+      .eq("project_id", activeProjectId!)
       .order("order_default")
       .order("created_at");
 
@@ -146,7 +148,7 @@ export default function ClauseTemplates() {
     if (templates.length > 0) {
       if (!window.confirm("Ya tenés cláusulas creadas. ¿Querés agregar las cláusulas por defecto de todas formas?")) return;
     }
-    const inserts = DEFAULT_CLAUSES.map(c => ({ ...c, owner_user_id: user!.id, version: 1, is_active: true }));
+    const inserts = DEFAULT_CLAUSES.map(c => ({ ...c, project_id: activeProjectId!, version: 1, is_active: true }));
     const { error } = await (supabase as any).from("clause_templates").insert(inserts);
     if (error) {
       toast({ title: "Error", description: "No se pudieron crear las cláusulas.", variant: "destructive" });

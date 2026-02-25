@@ -126,10 +126,10 @@ export default function Rent() {
 
   const fetchRentDues = async () => {
     try {
+      // RLS now handles filtering by project_id; just query all properties the user has access to
       const { data: userProperties, error: propError } = await supabase
         .from("properties")
-        .select("id")
-        .eq("owner_user_id", user!.id);
+        .select("id");
 
       if (propError) throw propError;
 
@@ -349,7 +349,7 @@ export default function Rent() {
         method: paymentMethod,
         receipt_file_url: receiptUrl,
         notes: paymentNotes || null,
-      });
+      } as any);
 
       if (paymentError) throw paymentError;
 

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProject } from "@/contexts/ProjectContext";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,6 +40,7 @@ export function ClauseTemplateModal({ open, onOpenChange, template, onSaved }: P
   const [orderDefault, setOrderDefault] = useState(0);
   const [saving, setSaving] = useState(false);
   const { user } = useAuth();
+  const { activeProjectId } = useProject();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -86,7 +88,7 @@ export function ClauseTemplateModal({ open, onOpenChange, template, onSaved }: P
         const { error } = await (supabase as any)
           .from("clause_templates")
           .insert({
-            owner_user_id: user!.id,
+            project_id: activeProjectId!,
             name,
             applies_to: appliesTo,
             is_optional: isOptional,

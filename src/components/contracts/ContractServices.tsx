@@ -84,7 +84,7 @@ export function ContractServices({ contractId, rentDueDay }: ContractServicesPro
         due_day: parseInt(newDueDay) || rentDueDay,
         expected_amount: newAmount ? parseFloat(newAmount) : null,
         active: true,
-      });
+      } as any);
       if (error) throw error;
       toast({ title: t("contracts.serviceAdded") });
       setNewType("");

@@ -173,7 +173,7 @@ export function UploadProofModal({
                   utility_obligation_id: proofData.utility_obligation_id,
                   period_month: nextPeriod,
                   status: "not_submitted",
-                });
+                } as any);
             }
           }
         }

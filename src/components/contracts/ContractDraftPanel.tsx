@@ -7,6 +7,7 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProject } from "@/contexts/ProjectContext";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -180,6 +181,7 @@ export function ContractDraftPanel({ contract, onSaved }: Props) {
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
   const { user } = useAuth();
+  const { activeProjectId } = useProject();
   const { toast } = useToast();
 
   const tipoContrato = contract.tipo_contrato || "permanente";
@@ -196,7 +198,7 @@ export function ContractDraftPanel({ contract, onSaved }: Props) {
       const { data: templates } = await (supabase as any)
         .from("clause_templates")
         .select("*")
-        .eq("owner_user_id", user!.id)
+        .eq("project_id", activeProjectId!)
         .eq("is_active", true)
         .or(`applies_to.eq.todos,applies_to.eq.${tipoContrato}`)
         .order("order_default");

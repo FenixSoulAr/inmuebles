@@ -136,7 +136,7 @@ export default function TenantDetail() {
         full_name: data.full_name,
         contact_info: data.contact_info || null,
         notes: data.notes || null,
-      });
+      } as any);
 
       if (error) throw error;
 

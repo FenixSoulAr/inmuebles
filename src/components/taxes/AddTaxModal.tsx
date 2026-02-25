@@ -243,7 +243,7 @@ export function AddTaxModal({
 
       const { error } = await supabase
         .from("tax_obligations")
-        .insert(taxRecords);
+        .insert(taxRecords as any);
 
       if (error) throw error;
 

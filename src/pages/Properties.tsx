@@ -4,6 +4,7 @@ import { Plus, Building2, MapPin, Eye } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProject } from "@/contexts/ProjectContext";
 import { PageHeader } from "@/components/ui/page-header";
 import { SearchBar } from "@/components/ui/search-bar";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -58,6 +59,7 @@ export default function Properties() {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const { user } = useAuth();
+  const { activeProjectId } = useProject();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -91,7 +93,7 @@ export default function Properties() {
     setIsSubmitting(true);
     try {
       const { error } = await supabase.from("properties").insert({
-        owner_user_id: user.id, type: data.type, full_address: data.full_address,
+        project_id: activeProjectId!, type: data.type, full_address: data.full_address,
         internal_identifier: data.internal_identifier, status: data.status,
       });
       if (error) throw error;

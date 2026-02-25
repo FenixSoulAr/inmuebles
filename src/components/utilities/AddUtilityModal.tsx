@@ -182,7 +182,7 @@ export function AddUtilityModal({
           frequency: frequency,
           due_day_of_month: dueDayNum,
           active: true,
-        })
+        } as any)
         .select()
         .single();
 
@@ -201,7 +201,7 @@ export function AddUtilityModal({
 
         const { error: proofsError } = await supabase
           .from("utility_proofs")
-          .insert(proofs);
+          .insert(proofs as any);
 
         if (proofsError) throw proofsError;
       }
