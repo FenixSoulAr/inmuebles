@@ -3,6 +3,7 @@ import { Plus, Wrench, Building2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProject } from "@/contexts/ProjectContext";
 import { PageHeader } from "@/components/ui/page-header";
 import { SearchBar } from "@/components/ui/search-bar";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -46,6 +47,7 @@ export default function Maintenance() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { user } = useAuth();
+  const { activeProjectId } = useProject();
   const { toast } = useToast();
 
   const { register, handleSubmit, control, reset, formState: { errors } } = useForm<IssueFormData>({
@@ -74,6 +76,7 @@ export default function Maintenance() {
     setIsSubmitting(true);
     try {
       const { error } = await supabase.from("maintenance_issues").insert({
+        project_id: activeProjectId!,
         property_id: data.property_id, description: data.description,
         requested_by: data.requested_by, payer: data.payer,
         estimate_amount: data.estimate_amount || null, status: "pending",

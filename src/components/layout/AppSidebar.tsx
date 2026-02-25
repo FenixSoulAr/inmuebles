@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProject } from "@/contexts/ProjectContext";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -45,6 +46,7 @@ export function AppSidebar({ onNavigate, isMobileDrawer = false }: AppSidebarPro
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut } = useAuth();
+  const { projects, activeProjectId, activeProject, setActiveProjectId } = useProject();
   const { t } = useTranslation();
 
   const mainNavItems = [
@@ -146,6 +148,21 @@ export function AppSidebar({ onNavigate, isMobileDrawer = false }: AppSidebarPro
           )}
         </button>
       </div>
+
+      {/* Project Switcher */}
+      {!effectiveCollapsed && projects.length > 1 && (
+        <div className="shrink-0 px-3 py-2 border-b border-sidebar-border">
+          <select
+            value={activeProjectId || ""}
+            onChange={(e) => setActiveProjectId(e.target.value)}
+            className="w-full text-sm font-medium bg-sidebar-accent/50 border border-sidebar-border rounded-md px-2 py-1.5 text-sidebar-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          >
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-4 px-2">

@@ -8,6 +8,7 @@ import {
 import { GuarantorsSection, type GuarantorEntry } from "@/components/contracts/GuarantorsSection";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProject } from "@/contexts/ProjectContext";
 import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -182,6 +183,7 @@ export default function ContractNew() {
   const [ownersLoading, setOwnersLoading] = useState(false);
   const [includedServices, setIncludedServices] = useState<string[]>([]);
   const { user } = useAuth();
+  const { activeProjectId } = useProject();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -365,6 +367,7 @@ export default function ContractNew() {
       const { data: created, error } = await supabase
         .from("contracts")
         .insert({
+          project_id: activeProjectId!,
           property_id: data.property_id,
           tenant_id: data.tenant_id,
           tipo_contrato: data.tipo_contrato,
@@ -449,7 +452,7 @@ export default function ContractNew() {
           tenant_id: data.tenant_id,
           start_date: data.start_date,
           end_date: data.end_date,
-        }),
+        } as any),
         supabase.from("properties").update({ status: "occupied" }).eq("id", data.property_id),
       ]);
 

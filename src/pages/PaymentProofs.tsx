@@ -771,7 +771,7 @@ export default function PaymentProofs() {
       await supabase.from("payments").insert({
         obligation_id: confirmObl.id, amount, paid_at: confirmDate,
         method: confirmMethod, notes: confirmNotes || null, attachment_url: attachmentUrl,
-      });
+      } as any);
       if (confirmObl.kind === "service" && !confirmObl.expected_amount && confirmObl.payment_proofs?.amount) {
         await supabase.from("obligations")
           .update({ expected_amount: confirmObl.payment_proofs.amount }).eq("id", confirmObl.id);
@@ -836,7 +836,7 @@ export default function PaymentProofs() {
             proof_reviewed_at: nowIso,
             approved_at: nowIso,
             approved_by: user?.id || null,
-          })
+          } as any)
           .select("id")
           .single();
         if (insertError) throw insertError;
@@ -938,7 +938,7 @@ export default function PaymentProofs() {
       await supabase.from("payments").insert({
         obligation_id: payObl.id, amount, paid_at: payDate,
         method: payMethod, notes: payNotes || null, attachment_url: attachmentUrl,
-      });
+      } as any);
       await syncOblStatus(payObl.id);
       toast({ title: isEs ? "Pago registrado" : "Payment recorded" });
       setPayOpen(false);

@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { ProjectProvider } from "@/contexts/ProjectContext";
 import { AppLayout } from "@/components/layout/AppLayout";
 import SignIn from "./pages/SignIn";
 import Dashboard from "./pages/Dashboard";
@@ -48,6 +49,7 @@ const App: React.FC = () => {
         <Sonner />
         <BrowserRouter>
           <AuthProvider>
+            <ProjectProvider>
             <Routes>
               <Route path="/signin" element={<SignIn />} />
               <Route path="/submit/:token" element={<PublicSubmit />} />
@@ -81,6 +83,7 @@ const App: React.FC = () => {
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
+            </ProjectProvider>
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>

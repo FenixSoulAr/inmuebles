@@ -71,7 +71,7 @@ export function PropertyValuations({
         valuation_amount: numAmount,
         valuation_date: date,
         notes: notes || null,
-      });
+      } as any);
       if (error) throw error;
 
       toast({

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Plus, Building2, Mail, Phone, MapPin, Pencil, Trash2, AlertCircle, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProject } from "@/contexts/ProjectContext";
 import { PageHeader } from "@/components/ui/page-header";
 import { SearchBar } from "@/components/ui/search-bar";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -59,6 +60,7 @@ export default function Owners() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const { user } = useAuth();
+  const { activeProjectId } = useProject();
   const { toast } = useToast();
 
   const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm<OwnerFormData>({
@@ -128,7 +130,7 @@ export default function Owners() {
       } else {
         const { error } = await supabase
           .from("owners" as any)
-          .insert({ ...payload, owner_user_id: user.id });
+          .insert({ ...payload, project_id: activeProjectId! });
         if (error) throw error;
         toast({ title: "Propietario creado" });
       }

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Plus, Trash2, UserCircle2, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProject } from "@/contexts/ProjectContext";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -55,6 +56,7 @@ const ROLE_LABELS: Record<string, string> = {
 
 export function PropertyOwners({ propertyId }: PropertyOwnersProps) {
   const { user } = useAuth();
+  const { activeProjectId } = useProject();
   const { toast } = useToast();
   const [links, setLinks] = useState<PropertyOwnerLink[]>([]);
   const [allOwners, setAllOwners] = useState<Owner[]>([]);
@@ -107,7 +109,6 @@ export function PropertyOwners({ propertyId }: PropertyOwnersProps) {
       const { data } = await supabase
         .from("owners" as any)
         .select("id, full_name, dni_cuit, address, email, phone")
-        .eq("owner_user_id", user.id)
         .order("full_name");
       setAllOwners((data as any[]) || []);
     } catch (err) {
@@ -122,7 +123,7 @@ export function PropertyOwners({ propertyId }: PropertyOwnersProps) {
       const { data, error } = await supabase
         .from("owners" as any)
         .insert({
-          owner_user_id: user.id,
+          project_id: activeProjectId!,
           full_name: newOwner.full_name.trim(),
           dni_cuit: newOwner.dni_cuit || null,
           address: newOwner.address || null,
