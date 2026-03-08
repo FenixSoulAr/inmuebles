@@ -8,6 +8,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProjectProvider } from "@/contexts/ProjectContext";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 import SignIn from "./pages/SignIn";
 import Dashboard from "./pages/Dashboard";
 import Properties from "./pages/Properties";
@@ -57,7 +58,7 @@ const App: React.FC = () => {
               <Route path="/submit/:token" element={<PublicSubmit />} />
               <Route path="/invite/:token" element={<AcceptInvite />} />
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
-              <Route element={<AppLayout />}>
+              <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/properties" element={<Properties />} />
                 <Route path="/properties/:id" element={<PropertyDetail />} />
