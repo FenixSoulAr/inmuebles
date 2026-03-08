@@ -58,7 +58,7 @@ const App: React.FC = () => {
               <Route path="/submit/:token" element={<PublicSubmit />} />
               <Route path="/invite/:token" element={<AcceptInvite />} />
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
-              <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+              <Route element={<ProtectedRoute><ErrorBoundary><AppLayout /></ErrorBoundary></ProtectedRoute>}>
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/properties" element={<Properties />} />
                 <Route path="/properties/:id" element={<PropertyDetail />} />
