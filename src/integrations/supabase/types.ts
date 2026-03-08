@@ -1932,6 +1932,10 @@ export type Database = {
         Args: { _pid: string; _uid: string }
         Returns: boolean
       }
+      shares_project_with: {
+        Args: { _target_uid: string; _viewer_uid: string }
+        Returns: boolean
+      }
     }
     Enums: {
       membership_status: "active" | "invited" | "removed"
