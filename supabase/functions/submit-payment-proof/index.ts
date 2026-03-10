@@ -6,46 +6,123 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+// --- Input validation helpers ---
+function validateBody(body: unknown): { valid: true; data: ValidatedInput } | { valid: false; error: string } {
+  if (!body || typeof body !== "object") {
+    return { valid: false, error: "invalid_body" };
+  }
+
+  const b = body as Record<string, unknown>;
+
+  // token: required, 32-128 char hex string
+  if (typeof b.token !== "string" || !/^[0-9a-f]{32,128}$/i.test(b.token)) {
+    return { valid: false, error: "invalid_token_format" };
+  }
+
+  // type: required enum
+  if (!["rent", "service"].includes(b.type as string)) {
+    return { valid: false, error: "invalid_type" };
+  }
+
+  // service_type: required when type=service
+  if (b.type === "service") {
+    if (typeof b.service_type !== "string" || b.service_type.length === 0 || b.service_type.length > 100) {
+      return { valid: false, error: "missing_service_type" };
+    }
+  }
+
+  // period: required, YYYY-MM format
+  if (typeof b.period !== "string" || !/^\d{4}-(0[1-9]|1[0-2])$/.test(b.period)) {
+    return { valid: false, error: "invalid_period_format" };
+  }
+
+  // amount: required, positive number, reasonable max
+  const amount = Number(b.amount);
+  if (!Number.isFinite(amount) || amount <= 0 || amount > 999999999) {
+    return { valid: false, error: "invalid_amount" };
+  }
+
+  // paid_at: required, YYYY-MM-DD format
+  if (typeof b.paid_at !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(b.paid_at)) {
+    return { valid: false, error: "invalid_paid_at_format" };
+  }
+
+  // comment: optional, max 1000 chars
+  if (b.comment !== undefined && b.comment !== null) {
+    if (typeof b.comment !== "string" || b.comment.length > 1000) {
+      return { valid: false, error: "invalid_comment" };
+    }
+  }
+
+  // files: required array of strings, 1-10 items, each max 500 chars
+  if (!Array.isArray(b.files) || b.files.length === 0 || b.files.length > 10) {
+    return { valid: false, error: "invalid_files" };
+  }
+  for (const f of b.files) {
+    if (typeof f !== "string" || f.length === 0 || f.length > 500) {
+      return { valid: false, error: "invalid_file_entry" };
+    }
+  }
+
+  // action: optional enum
+  if (b.action !== undefined && b.action !== null && !["replace", "add"].includes(b.action as string)) {
+    return { valid: false, error: "invalid_action" };
+  }
+
+  // replaces_proof_id: optional uuid
+  if (b.replaces_proof_id !== undefined && b.replaces_proof_id !== null) {
+    if (typeof b.replaces_proof_id !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(b.replaces_proof_id)) {
+      return { valid: false, error: "invalid_replaces_proof_id" };
+    }
+  }
+
+  return {
+    valid: true,
+    data: {
+      token: b.token as string,
+      type: b.type as "rent" | "service",
+      service_type: b.type === "service" ? (b.service_type as string) : null,
+      period: b.period as string,
+      amount,
+      paid_at: b.paid_at as string,
+      comment: (b.comment as string) || null,
+      files: b.files as string[],
+      action: (b.action as string) || null,
+      replaces_proof_id: (b.replaces_proof_id as string) || null,
+    },
+  };
+}
+
+interface ValidatedInput {
+  token: string;
+  type: "rent" | "service";
+  service_type: string | null;
+  period: string;
+  amount: number;
+  paid_at: string;
+  comment: string | null;
+  files: string[];
+  action: string | null;
+  replaces_proof_id: string | null;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const body = await req.json();
-    const {
-      token,
-      type,
-      service_type,
-      period,
-      amount,
-      paid_at,
-      comment,
-      files,
-      action,
-      replaces_proof_id,
-    } = body;
+    const rawBody = await req.json();
+    const validation = validateBody(rawBody);
 
-    if (!token || !type || !period || !amount || !paid_at || !files?.length) {
+    if (!validation.valid) {
       return new Response(
-        JSON.stringify({ error: "missing_fields" }),
+        JSON.stringify({ error: validation.error }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    if (!["rent", "service"].includes(type)) {
-      return new Response(
-        JSON.stringify({ error: "invalid_type" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    if (type === "service" && !service_type) {
-      return new Response(
-        JSON.stringify({ error: "missing_service_type" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    const { token, type, service_type: svcType, period, amount, paid_at, comment, files, action, replaces_proof_id } = validation.data;
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -70,7 +147,6 @@ Deno.serve(async (req) => {
 
     // Resolve or create the obligation
     const kind = type;
-    const svcType = type === "service" ? service_type : null;
     const [year, month] = period.split("-").map(Number);
     const dueDay = contract.rent_due_day || 5;
     const dueDate = new Date(year, month - 1, Math.min(dueDay, 28));
@@ -118,7 +194,6 @@ Deno.serve(async (req) => {
 
     // Check for duplicates - obligation already has a proof linked
     if (obligation.payment_proof_id && !action) {
-      // Check the linked proof status
       const { data: linkedProof } = await supabase
         .from("payment_proofs")
         .select("id, status")
@@ -151,11 +226,11 @@ Deno.serve(async (req) => {
       .insert({
         contract_id: contract.id,
         type,
-        service_type: type === "service" ? service_type : null,
+        service_type: svcType,
         period,
-        amount: parseFloat(amount),
+        amount,
         paid_at,
-        comment: comment || null,
+        comment,
         files,
         status: "pending",
         replaces_proof_id: action === "replace" ? replaces_proof_id : null,
