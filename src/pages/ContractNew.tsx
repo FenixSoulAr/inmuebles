@@ -407,6 +407,9 @@ export default function ContractNew() {
 
       if (error) throw error;
 
+      // Generate submission token server-side
+      await supabase.rpc("generate_submission_token", { _contract_id: created.id });
+
       // Save guarantors
       if (guarantors.length > 0) {
         const guarantorRows = guarantors.map((g, idx) => ({
