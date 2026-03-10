@@ -173,12 +173,13 @@ export function EditContractModal({
       // Handle token logic
       if (shouldBeActive) {
         if (!contract.public_submission_token) {
-          const newToken = Array.from(crypto.getRandomValues(new Uint8Array(32)))
-            .map((b) => b.toString(16).padStart(2, "0"))
-            .join("");
-          updateData.public_submission_token = newToken;
-          updateData.token_status = "active";
-          updateData.token_created_at = new Date().toISOString();
+          // Generate token server-side
+          const { data: tokenResult, error: tokenError } = await supabase.rpc(
+            "generate_submission_token",
+            { _contract_id: contract.id }
+          );
+          if (tokenError) throw tokenError;
+          // Token fields are set by the DB function, no need to set them here
         } else if (contract.token_status === "disabled") {
           updateData.token_status = "active";
         }

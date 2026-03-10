@@ -356,8 +356,7 @@ export default function ContractNew() {
         return;
       }
 
-      const token = Array.from(crypto.getRandomValues(new Uint8Array(32)))
-        .map((b) => b.toString(16).padStart(2, "0")).join("");
+      // Token will be generated server-side after contract creation
 
       // For temporario: no price updates
       const effectiveHasPriceUpdate = isTemporario ? false : data.has_price_update;
@@ -400,14 +399,16 @@ export default function ContractNew() {
           clauses_text: data.clauses_text ?? null,
           is_active: true,
           submission_language: data.submission_language,
-          public_submission_token: token,
+          // Token generated server-side below
           token_status: "active",
-          token_created_at: new Date().toISOString(),
         } as any)
         .select("id")
         .single();
 
       if (error) throw error;
+
+      // Generate submission token server-side
+      await supabase.rpc("generate_submission_token", { _contract_id: created.id });
 
       // Save guarantors
       if (guarantors.length > 0) {

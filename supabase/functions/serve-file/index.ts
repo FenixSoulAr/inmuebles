@@ -83,6 +83,24 @@ Deno.serve(async (req) => {
       );
     }
 
+    // ── 2b. Bucket whitelist ───────────────────────────────────────────────
+    const ALLOWED_BUCKETS = ["documents", "proof-files", "contract-documents"];
+    if (!ALLOWED_BUCKETS.includes(bucket)) {
+      return new Response(
+        JSON.stringify({ error: "invalid_bucket" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // ── 2c. Path traversal sanitization ────────────────────────────────────
+    path = path.replace(/\.\.\//g, "").replace(/\.\.\\/g, "").replace(/\0/g, "").replace(/^\/+/, "");
+    if (path.includes("..") || path.startsWith("/") || !path) {
+      return new Response(
+        JSON.stringify({ error: "invalid_path" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // ── 3. Ownership authorization ─────────────────────────────────────────
     const allowed = await isAuthorized(anonClient, userId, bucket, path);
     if (!allowed) {

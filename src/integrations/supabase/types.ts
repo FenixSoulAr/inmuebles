@@ -1922,6 +1922,10 @@ export type Database = {
     }
     Functions: {
       accept_invite: { Args: { _token: string }; Returns: Json }
+      generate_submission_token: {
+        Args: { _contract_id: string }
+        Returns: string
+      }
       get_project_role: {
         Args: { _pid: string; _uid: string }
         Returns: Database["public"]["Enums"]["project_role"]

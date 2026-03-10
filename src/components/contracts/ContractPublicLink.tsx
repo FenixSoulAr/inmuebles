@@ -42,20 +42,12 @@ export function ContractPublicLink({ contractId, token, tokenStatus, propertyNam
   const rotateToken = async () => {
     setRotating(true);
     try {
-      const newToken = Array.from(crypto.getRandomValues(new Uint8Array(32)))
-        .map((b) => b.toString(16).padStart(2, "0"))
-        .join("");
+      const { data: newToken, error: rpcError } = await supabase.rpc(
+        "generate_submission_token",
+        { _contract_id: contractId }
+      );
+      if (rpcError) throw rpcError;
 
-      const { error } = await supabase
-        .from("contracts")
-        .update({
-          public_submission_token: newToken,
-          token_status: "active",
-          token_rotated_at: new Date().toISOString(),
-        })
-        .eq("id", contractId);
-
-      if (error) throw error;
       toast({ title: isEs ? "Link rotado" : "Link rotated", description: isEs ? "El link anterior ya no funciona." : "The previous link no longer works." });
       onUpdate();
     } catch {
@@ -82,22 +74,21 @@ export function ContractPublicLink({ contractId, token, tokenStatus, propertyNam
 
   const enableToken = async () => {
     try {
-      // If no token exists, generate one
-      const updates: Record<string, unknown> = { token_status: "active" };
       if (!token) {
-        const newToken = Array.from(crypto.getRandomValues(new Uint8Array(32)))
-          .map((b) => b.toString(16).padStart(2, "0"))
-          .join("");
-        updates.public_submission_token = newToken;
-        updates.token_created_at = new Date().toISOString();
+        // Generate token server-side
+        const { error: rpcError } = await supabase.rpc(
+          "generate_submission_token",
+          { _contract_id: contractId }
+        );
+        if (rpcError) throw rpcError;
+      } else {
+        const { error } = await supabase
+          .from("contracts")
+          .update({ token_status: "active" })
+          .eq("id", contractId);
+        if (error) throw error;
       }
 
-      const { error } = await supabase
-        .from("contracts")
-        .update(updates)
-        .eq("id", contractId);
-
-      if (error) throw error;
       toast({ title: isEs ? "Link activado" : "Link enabled" });
       onUpdate();
     } catch {

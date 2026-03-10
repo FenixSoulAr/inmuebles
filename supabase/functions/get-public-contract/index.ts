@@ -15,7 +15,7 @@ Deno.serve(async (req) => {
     const url = new URL(req.url);
     const token = url.searchParams.get("token");
 
-    if (!token || token.length < 32) {
+    if (!token || !/^[0-9a-f]{64}$/i.test(token)) {
       return new Response(
         JSON.stringify({ error: "invalid_token" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
