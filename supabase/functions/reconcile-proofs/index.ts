@@ -12,6 +12,31 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // --- Authentication: require a valid user session ---
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(
+        JSON.stringify({ error: "unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const anonClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claimsData, error: claimsError } = await anonClient.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
+      return new Response(
+        JSON.stringify({ error: "unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Service-role client for admin operations
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
@@ -135,7 +160,6 @@ Deno.serve(async (req) => {
     // --- Phase 2: Sync rent obligation statuses from actual payments ---
     let rentSynced = 0;
     try {
-      // Get all rent obligations that might need status sync
       const { data: rentObls } = await supabase
         .from("obligations")
         .select("id, status, expected_amount, due_date, payment_proof_id")
@@ -144,14 +168,13 @@ Deno.serve(async (req) => {
 
       if (rentObls && rentObls.length > 0) {
         for (const obl of rentObls) {
-          // Sum actual payments from the payments table
           const { data: payments } = await supabase
             .from("payments")
             .select("amount")
             .eq("obligation_id", obl.id);
 
           const totalPaid = (payments || []).reduce((s: number, p: any) => s + Number(p.amount), 0);
-          if (totalPaid <= 0) continue; // No payments recorded, skip
+          if (totalPaid <= 0) continue;
 
           const expected = obl.expected_amount ?? 0;
           const balanceDue = Math.max(expected - totalPaid, 0);
@@ -195,7 +218,7 @@ Deno.serve(async (req) => {
   } catch (err) {
     console.error("Reconciliation error:", err);
     return new Response(
-      JSON.stringify({ error: "server_error", detail: String(err) }),
+      JSON.stringify({ error: "server_error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
