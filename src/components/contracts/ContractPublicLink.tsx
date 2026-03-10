@@ -21,8 +21,7 @@ export function ContractPublicLink({ contractId, token, tokenStatus, propertyNam
   const { toast } = useToast();
   const [rotating, setRotating] = useState(false);
 
-  const publicDomain = "https://inmuebles.fenixsoular.com.ar";
-  const publicLink = token ? `${publicDomain}/submit/${token}` : null;
+  const publicLink = token ? `${window.location.origin}/submit/${token}` : null;
   const isActive = tokenStatus === "active" && !!token;
 
   const copyLink = () => {
