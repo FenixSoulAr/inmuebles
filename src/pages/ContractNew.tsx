@@ -356,8 +356,7 @@ export default function ContractNew() {
         return;
       }
 
-      const token = Array.from(crypto.getRandomValues(new Uint8Array(32)))
-        .map((b) => b.toString(16).padStart(2, "0")).join("");
+      // Token will be generated server-side after contract creation
 
       // For temporario: no price updates
       const effectiveHasPriceUpdate = isTemporario ? false : data.has_price_update;
