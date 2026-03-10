@@ -399,9 +399,8 @@ export default function ContractNew() {
           clauses_text: data.clauses_text ?? null,
           is_active: true,
           submission_language: data.submission_language,
-          public_submission_token: token,
+          // Token generated server-side below
           token_status: "active",
-          token_created_at: new Date().toISOString(),
         } as any)
         .select("id")
         .single();
