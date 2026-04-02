@@ -30,6 +30,7 @@ export function AppLayout() {
           <Outlet />
         </main>
       </div>
+      <footer className="text-xs text-center p-2">v0.2.0</footer>
     </div>
   )
 }
