@@ -1,4 +1,5 @@
 import { createBrowserRouter } from 'react-router-dom'
+import { RootLayout } from '@/components/layout/RootLayout'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import Dashboard from '@/pages/Dashboard'
@@ -13,24 +14,29 @@ import SignIn from '@/pages/auth/SignIn'
 import SignUp from '@/pages/auth/SignUp'
 
 export const router = createBrowserRouter([
-  { path: '/signin', element: <SignIn /> },
-  { path: '/signup', element: <SignUp /> },
   {
-    path: '/',
-    element: (
-      <ProtectedRoute>
-        <AppLayout />
-      </ProtectedRoute>
-    ),
+    element: <RootLayout />,
     children: [
-      { index: true, element: <Dashboard /> },
-      { path: 'propiedades', element: <Propiedades /> },
-      { path: 'inquilinos', element: <Inquilinos /> },
-      { path: 'cobranza', element: <Cobranza /> },
-      { path: 'reparaciones', element: <Reparaciones /> },
-      { path: 'impuestos', element: <Impuestos /> },
-      { path: 'documentos', element: <Documentos /> },
-      { path: 'reportes', element: <Reportes /> },
+      { path: '/signin', element: <SignIn /> },
+      { path: '/signup', element: <SignUp /> },
+      {
+        path: '/',
+        element: (
+          <ProtectedRoute>
+            <AppLayout />
+          </ProtectedRoute>
+        ),
+        children: [
+          { index: true, element: <Dashboard /> },
+          { path: 'propiedades', element: <Propiedades /> },
+          { path: 'inquilinos', element: <Inquilinos /> },
+          { path: 'cobranza', element: <Cobranza /> },
+          { path: 'reparaciones', element: <Reparaciones /> },
+          { path: 'impuestos', element: <Impuestos /> },
+          { path: 'documentos', element: <Documentos /> },
+          { path: 'reportes', element: <Reportes /> },
+        ],
+      },
     ],
   },
 ])
