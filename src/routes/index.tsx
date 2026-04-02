@@ -1,5 +1,6 @@
 import { createBrowserRouter } from 'react-router-dom'
 import { AppLayout } from '@/components/layout/AppLayout'
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import Dashboard from '@/pages/Dashboard'
 import Propiedades from '@/pages/propiedades/Propiedades'
 import Inquilinos from '@/pages/inquilinos/Inquilinos'
@@ -8,11 +9,19 @@ import Reparaciones from '@/pages/reparaciones/Reparaciones'
 import Impuestos from '@/pages/impuestos/Impuestos'
 import Documentos from '@/pages/documentos/Documentos'
 import Reportes from '@/pages/reportes/Reportes'
+import SignIn from '@/pages/auth/SignIn'
+import SignUp from '@/pages/auth/SignUp'
 
 export const router = createBrowserRouter([
+  { path: '/signin', element: <SignIn /> },
+  { path: '/signup', element: <SignUp /> },
   {
     path: '/',
-    element: <AppLayout />,
+    element: (
+      <ProtectedRoute>
+        <AppLayout />
+      </ProtectedRoute>
+    ),
     children: [
       { index: true, element: <Dashboard /> },
       { path: 'propiedades', element: <Propiedades /> },
