@@ -36,10 +36,7 @@ export default function SignIn() {
     <div className="flex min-h-screen items-center justify-center bg-muted/30 px-4">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-primary">
-            <Building2 className="h-6 w-6 text-primary-foreground" />
-          </div>
-          <CardTitle className="text-xl">MyRentaHub</CardTitle>
+          <img src={logoFull} alt="MyRentaHub" className="mx-auto mb-4 h-12 w-auto" />
           <CardDescription>Iniciá sesión para continuar</CardDescription>
         </CardHeader>
 
