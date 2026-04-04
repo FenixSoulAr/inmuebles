@@ -2,8 +2,9 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '@/integrations/supabase/client'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import { Building2, Loader2, Eye, EyeOff } from 'lucide-react'
+import { Card, CardContent, CardDescription, CardFooter, CardHeader } from '@/components/ui/card'
+import { Loader2, Eye, EyeOff } from 'lucide-react'
+import logoFull from '@/assets/logo-full.png'
 
 export default function SignIn() {
   const navigate = useNavigate()
@@ -35,10 +36,7 @@ export default function SignIn() {
     <div className="flex min-h-screen items-center justify-center bg-muted/30 px-4">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-primary">
-            <Building2 className="h-6 w-6 text-primary-foreground" />
-          </div>
-          <CardTitle className="text-xl">MyRentaHub</CardTitle>
+          <img src={logoFull} alt="MyRentaHub" className="mx-auto mb-4 h-12 w-auto" />
           <CardDescription>Iniciá sesión para continuar</CardDescription>
         </CardHeader>
 
