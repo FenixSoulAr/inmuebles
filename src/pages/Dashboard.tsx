@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Building2, Users, CreditCard, Wrench } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -6,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client'
 import { useProjectId } from '@/hooks/useProjectId'
 
 export default function Dashboard() {
+  const { t } = useTranslation()
   const { projectId, loading: loadingProject } = useProjectId()
   const [stats, setStats] = useState({ properties: 0, tenants: 0, pendingDues: 0, repairs: 0 })
   const [upcomingDues, setUpcomingDues] = useState<any[]>([])
@@ -42,21 +44,21 @@ export default function Dashboard() {
   }, [projectId])
 
   if (loadingProject || loading) {
-    return <div className="flex items-center justify-center py-20 text-muted-foreground">Cargando dashboard…</div>
+    return <div className="flex items-center justify-center py-20 text-muted-foreground">{t('dashboard.loading')}</div>
   }
 
   const estadisticas = [
-    { titulo: 'Propiedades', valor: stats.properties, descripcion: 'Total registradas', icon: Building2, color: 'text-blue-600', bg: 'bg-blue-50' },
-    { titulo: 'Inquilinos activos', valor: stats.tenants, descripcion: 'Con contrato vigente', icon: Users, color: 'text-green-600', bg: 'bg-green-50' },
-    { titulo: 'Cobros pendientes', valor: stats.pendingDues, descripcion: 'Este mes', icon: CreditCard, color: 'text-yellow-600', bg: 'bg-yellow-50' },
-    { titulo: 'Reparaciones', valor: stats.repairs, descripcion: 'En curso', icon: Wrench, color: 'text-red-600', bg: 'bg-red-50' },
+    { titulo: t('dashboard.stats.properties'), valor: stats.properties, descripcion: t('dashboard.stats.propertiesDesc'), icon: Building2, color: 'text-blue-600', bg: 'bg-blue-50' },
+    { titulo: t('dashboard.stats.tenants'), valor: stats.tenants, descripcion: t('dashboard.stats.tenantsDesc'), icon: Users, color: 'text-green-600', bg: 'bg-green-50' },
+    { titulo: t('dashboard.stats.pendingDues'), valor: stats.pendingDues, descripcion: t('dashboard.stats.pendingDuesDesc'), icon: CreditCard, color: 'text-yellow-600', bg: 'bg-yellow-50' },
+    { titulo: t('dashboard.stats.repairs'), valor: stats.repairs, descripcion: t('dashboard.stats.repairsDesc'), icon: Wrench, color: 'text-red-600', bg: 'bg-red-50' },
   ]
 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight">Bienvenido a MyRentaHub</h2>
-        <p className="text-muted-foreground">Resumen general de tu cartera de propiedades</p>
+        <h2 className="text-2xl font-bold tracking-tight">{t('dashboard.welcome')}</h2>
+        <p className="text-muted-foreground">{t('dashboard.summary')}</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -76,12 +78,12 @@ export default function Dashboard() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
-          <CardHeader><CardTitle className="text-base">Próximos vencimientos</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-base">{t('dashboard.upcomingDues')}</CardTitle></CardHeader>
           <CardContent>
             {upcomingDues.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-8 text-center">
                 <CreditCard className="h-10 w-10 text-muted-foreground/40 mb-3" />
-                <p className="text-sm text-muted-foreground">No hay vencimientos próximos</p>
+                <p className="text-sm text-muted-foreground">{t('dashboard.noUpcoming')}</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -103,12 +105,12 @@ export default function Dashboard() {
         </Card>
 
         <Card>
-          <CardHeader><CardTitle className="text-base">Reparaciones pendientes</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-base">{t('dashboard.pendingRepairs')}</CardTitle></CardHeader>
           <CardContent>
             {pendingRepairs.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-8 text-center">
                 <Wrench className="h-10 w-10 text-muted-foreground/40 mb-3" />
-                <p className="text-sm text-muted-foreground">Sin reparaciones pendientes</p>
+                <p className="text-sm text-muted-foreground">{t('dashboard.noPendingRepairs')}</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -118,7 +120,7 @@ export default function Dashboard() {
                       <p className="font-medium">{r.description}</p>
                       <p className="text-xs text-muted-foreground">{(r.properties as any)?.internal_identifier}</p>
                     </div>
-                    <Badge variant={r.status === 'pending' ? 'warning' : 'secondary'}>{r.status === 'pending' ? 'Pendiente' : 'En progreso'}</Badge>
+                    <Badge variant={r.status === 'pending' ? 'warning' : 'secondary'}>{t(`status.${r.status}`, r.status)}</Badge>
                   </div>
                 ))}
               </div>
@@ -128,26 +130,29 @@ export default function Dashboard() {
       </div>
 
       <Card>
-        <CardHeader><CardTitle className="text-base">Estado de propiedades</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base">{t('dashboard.propertyStatus')}</CardTitle></CardHeader>
         <CardContent>
           {properties.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <Building2 className="h-10 w-10 text-muted-foreground/40 mb-3" />
-              <p className="text-sm text-muted-foreground mb-3">Aún no cargaste propiedades</p>
+              <p className="text-sm text-muted-foreground mb-3">{t('dashboard.noProperties')}</p>
             </div>
           ) : (
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {properties.map((p: any) => (
-                <div key={p.id} className="flex items-center justify-between rounded-md border p-3">
-                  <div>
-                    <p className="font-medium text-sm">{p.internal_identifier}</p>
-                    <p className="text-xs text-muted-foreground truncate max-w-[200px]">{p.full_address}</p>
+              {properties.map((p: any) => {
+                const variant = p.status === 'rented' || p.status === 'occupied' ? 'success'
+                  : p.status === 'maintenance' ? 'warning'
+                  : 'default'
+                return (
+                  <div key={p.id} className="flex items-center justify-between rounded-md border p-3">
+                    <div>
+                      <p className="font-medium text-sm">{p.internal_identifier}</p>
+                      <p className="text-xs text-muted-foreground truncate max-w-[200px]">{p.full_address}</p>
+                    </div>
+                    <Badge variant={variant}>{t(`status.${p.status}`, p.status)}</Badge>
                   </div>
-                  <Badge variant={p.status === 'rented' ? 'success' : p.status === 'vacant' ? 'secondary' : 'warning'}>
-                    {p.status === 'rented' ? 'Alquilada' : p.status === 'vacant' ? 'Disponible' : 'En reparación'}
-                  </Badge>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </CardContent>

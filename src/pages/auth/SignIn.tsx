@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { supabase } from '@/integrations/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader } from '@/components/ui/card'
@@ -8,6 +9,7 @@ import logoFull from '@/assets/logo-full.png'
 
 export default function SignIn() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -23,7 +25,7 @@ export default function SignIn() {
 
     if (error) {
       setError(error.message === 'Invalid login credentials'
-        ? 'Credenciales inválidas. Verificá tu email y contraseña.'
+        ? t('auth.invalidCredentials')
         : error.message)
       setLoading(false)
       return
@@ -37,7 +39,7 @@ export default function SignIn() {
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
           <img src={logoFull} alt="MyRentaHub" className="mx-auto mb-4 h-12 w-auto" />
-          <CardDescription>Iniciá sesión para continuar</CardDescription>
+          <CardDescription>{t('auth.signInDesc')}</CardDescription>
         </CardHeader>
 
         <form onSubmit={handleSignIn}>
@@ -49,7 +51,7 @@ export default function SignIn() {
             )}
 
             <div className="space-y-1.5">
-              <label htmlFor="email" className="text-sm font-medium">Email</label>
+              <label htmlFor="email" className="text-sm font-medium">{t('auth.email')}</label>
               <input
                 id="email"
                 type="email"
@@ -57,12 +59,12 @@ export default function SignIn() {
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                placeholder="tu@email.com"
+                placeholder={t('auth.emailPlaceholder')}
               />
             </div>
 
             <div className="space-y-1.5">
-              <label htmlFor="password" className="text-sm font-medium">Contraseña</label>
+              <label htmlFor="password" className="text-sm font-medium">{t('auth.password')}</label>
               <div className="relative">
                 <input
                   id="password"
@@ -71,7 +73,7 @@ export default function SignIn() {
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring pr-9"
-                  placeholder="••••••••"
+                  placeholder={t('auth.passwordPlaceholder')}
                 />
                 <button
                   type="button"
@@ -88,12 +90,12 @@ export default function SignIn() {
           <CardFooter className="flex flex-col gap-3">
             <Button type="submit" className="w-full" disabled={loading}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Iniciar sesión
+              {t('auth.signIn')}
             </Button>
             <p className="text-sm text-muted-foreground">
-              ¿No tenés cuenta?{' '}
+              {t('auth.noAccount')}{' '}
               <Link to="/signup" className="text-primary hover:underline font-medium">
-                Registrate
+                {t('auth.register')}
               </Link>
             </p>
           </CardFooter>

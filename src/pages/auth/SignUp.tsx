@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { supabase } from '@/integrations/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Building2, Loader2, Eye, EyeOff, CheckCircle2 } from 'lucide-react'
 
 export default function SignUp() {
+  const { t } = useTranslation()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
@@ -20,7 +22,7 @@ export default function SignUp() {
     setLoading(true)
 
     if (password.length < 6) {
-      setError('La contraseña debe tener al menos 6 caracteres.')
+      setError(t('auth.passwordMinError'))
       setLoading(false)
       return
     }
@@ -52,15 +54,14 @@ export default function SignUp() {
             <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
               <CheckCircle2 className="h-6 w-6 text-green-600" />
             </div>
-            <CardTitle className="text-xl">¡Registro exitoso!</CardTitle>
+            <CardTitle className="text-xl">{t('auth.successTitle')}</CardTitle>
             <CardDescription>
-              Te enviamos un email de verificación a <strong>{email}</strong>. 
-              Revisá tu bandeja de entrada y hacé clic en el enlace para activar tu cuenta.
+              <span dangerouslySetInnerHTML={{ __html: t('auth.successDesc', { email }) }} />
             </CardDescription>
           </CardHeader>
           <CardFooter className="justify-center">
             <Link to="/signin">
-              <Button variant="outline">Ir a Iniciar sesión</Button>
+              <Button variant="outline">{t('auth.goToSignIn')}</Button>
             </Link>
           </CardFooter>
         </Card>
@@ -75,8 +76,8 @@ export default function SignUp() {
           <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-primary">
             <Building2 className="h-6 w-6 text-primary-foreground" />
           </div>
-          <CardTitle className="text-xl">Crear cuenta</CardTitle>
-          <CardDescription>Registrate para empezar a gestionar tus propiedades</CardDescription>
+          <CardTitle className="text-xl">{t('auth.signUp')}</CardTitle>
+          <CardDescription>{t('auth.signUpDesc')}</CardDescription>
         </CardHeader>
 
         <form onSubmit={handleSignUp}>
@@ -88,7 +89,7 @@ export default function SignUp() {
             )}
 
             <div className="space-y-1.5">
-              <label htmlFor="fullName" className="text-sm font-medium">Nombre completo</label>
+              <label htmlFor="fullName" className="text-sm font-medium">{t('auth.fullName')}</label>
               <input
                 id="fullName"
                 type="text"
@@ -96,12 +97,12 @@ export default function SignUp() {
                 value={fullName}
                 onChange={e => setFullName(e.target.value)}
                 className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                placeholder="Juan Pérez"
+                placeholder={t('auth.fullNamePlaceholder')}
               />
             </div>
 
             <div className="space-y-1.5">
-              <label htmlFor="email" className="text-sm font-medium">Email</label>
+              <label htmlFor="email" className="text-sm font-medium">{t('auth.email')}</label>
               <input
                 id="email"
                 type="email"
@@ -109,12 +110,12 @@ export default function SignUp() {
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                placeholder="tu@email.com"
+                placeholder={t('auth.emailPlaceholder')}
               />
             </div>
 
             <div className="space-y-1.5">
-              <label htmlFor="password" className="text-sm font-medium">Contraseña</label>
+              <label htmlFor="password" className="text-sm font-medium">{t('auth.password')}</label>
               <div className="relative">
                 <input
                   id="password"
@@ -124,7 +125,7 @@ export default function SignUp() {
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring pr-9"
-                  placeholder="Mínimo 6 caracteres"
+                  placeholder={t('auth.passwordMin')}
                 />
                 <button
                   type="button"
@@ -141,12 +142,12 @@ export default function SignUp() {
           <CardFooter className="flex flex-col gap-3">
             <Button type="submit" className="w-full" disabled={loading}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Crear cuenta
+              {t('auth.signUp')}
             </Button>
             <p className="text-sm text-muted-foreground">
-              ¿Ya tenés cuenta?{' '}
+              {t('auth.hasAccount')}{' '}
               <Link to="/signin" className="text-primary hover:underline font-medium">
-                Iniciá sesión
+                {t('auth.signInLink')}
               </Link>
             </p>
           </CardFooter>
