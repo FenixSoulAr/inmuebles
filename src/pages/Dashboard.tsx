@@ -120,7 +120,7 @@ export default function Dashboard() {
                       <p className="font-medium">{r.description}</p>
                       <p className="text-xs text-muted-foreground">{(r.properties as any)?.internal_identifier}</p>
                     </div>
-                    <Badge variant={r.status === 'pending' ? 'warning' : 'secondary'}>{t(`status.${r.status}`, r.status)}</Badge>
+                    <Badge variant={r.status === 'pending' ? 'warning' : 'secondary'}>{String(t(`status.${r.status}`, r.status))}</Badge>
                   </div>
                 ))}
               </div>
