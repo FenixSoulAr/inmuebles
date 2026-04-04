@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Plus, Building2, Search, Pencil, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -12,28 +13,21 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { usePropiedades, type Propiedad, type PropiedadInsert } from '@/hooks/usePropiedades'
 
-const TYPE_OPTIONS = [
-  { value: 'apartment', label: 'Departamento' },
-  { value: 'house', label: 'Casa' },
-  { value: 'ph', label: 'PH' },
-  { value: 'local', label: 'Local' },
-  { value: 'office', label: 'Oficina' },
-  { value: 'warehouse', label: 'Depósito' },
-] as const
+const TYPE_OPTIONS = ['apartment', 'house', 'ph', 'local', 'office', 'warehouse'] as const
+const STATUS_OPTIONS = ['available', 'rented', 'maintenance'] as const
 
-const STATUS_OPTIONS = [
-  { value: 'available', label: 'Disponible' },
-  { value: 'rented', label: 'Alquilada' },
-  { value: 'maintenance', label: 'En reparación' },
-] as const
-
-const statusLabel: Record<string, string> = { rented: 'Alquilada', available: 'Disponible', vacant: 'Disponible', maintenance: 'En reparación' }
-const statusVariant: Record<string, 'success' | 'default' | 'warning'> = { rented: 'success', available: 'default', vacant: 'default', maintenance: 'warning' }
-const typeLabel: Record<string, string> = { apartment: 'Departamento', house: 'Casa', ph: 'PH', local: 'Local', office: 'Oficina', warehouse: 'Depósito', commercial: 'Local' }
+const statusVariant: Record<string, 'success' | 'default' | 'warning' | 'secondary'> = {
+  rented: 'success',
+  occupied: 'success',
+  available: 'default',
+  vacant: 'default',
+  maintenance: 'warning',
+}
 
 const emptyForm = { full_address: '', internal_identifier: '', type: 'apartment', status: 'available' }
 
 export default function Propiedades() {
+  const { t } = useTranslation()
   const { propiedades, loading, crearPropiedad, editarPropiedad, eliminarPropiedad } = usePropiedades()
   const [search, setSearch] = useState('')
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -56,21 +50,21 @@ export default function Propiedades() {
 
   const handleSave = async () => {
     if (!form.full_address.trim() || !form.internal_identifier.trim()) {
-      toast.error('Completá todos los campos obligatorios')
+      toast.error(t('properties.toast.requiredFields'))
       return
     }
     setSaving(true)
     try {
       if (editingId) {
         await editarPropiedad(editingId, form)
-        toast.success('Propiedad actualizada')
+        toast.success(t('properties.toast.updated'))
       } else {
         await crearPropiedad(form as PropiedadInsert)
-        toast.success('Propiedad creada')
+        toast.success(t('properties.toast.created'))
       }
       setDialogOpen(false)
     } catch (e: any) {
-      toast.error(e.message ?? 'Error al guardar')
+      toast.error(e.message ?? t('properties.toast.saveError'))
     } finally {
       setSaving(false)
     }
@@ -80,62 +74,58 @@ export default function Propiedades() {
     if (!deleteTarget) return
     try {
       await eliminarPropiedad(deleteTarget.id)
-      toast.success('Propiedad eliminada')
+      toast.success(t('properties.toast.deleted'))
     } catch (e: any) {
-      toast.error(e.message ?? 'Error al eliminar')
+      toast.error(e.message ?? t('properties.toast.deleteError'))
     } finally {
       setDeleteTarget(null)
     }
   }
 
   const StatusBadge = ({ status }: { status: string }) => (
-    <Badge variant={statusVariant[status] ?? 'default'}>{statusLabel[status] ?? status}</Badge>
+    <Badge variant={statusVariant[status] ?? 'secondary'}>{t(`status.${status}`, status)}</Badge>
   )
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Propiedades</h2>
-          <p className="text-muted-foreground">Gestioná tu cartera de inmuebles</p>
+          <h2 className="text-2xl font-bold tracking-tight">{t('properties.title')}</h2>
+          <p className="text-muted-foreground">{t('properties.subtitle')}</p>
         </div>
-        <Button onClick={openCreate}><Plus className="h-4 w-4" />Nueva propiedad</Button>
+        <Button onClick={openCreate}><Plus className="h-4 w-4" />{t('properties.new')}</Button>
       </div>
 
-      {/* Search */}
       <div className="flex gap-3">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="Buscar propiedad..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+          <Input placeholder={t('properties.search')} value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
         </div>
       </div>
 
-      {/* Content */}
       {loading ? (
-        <div className="text-center py-16 text-muted-foreground">Cargando propiedades…</div>
+        <div className="text-center py-16 text-muted-foreground">{t('common.loading')}</div>
       ) : filtered.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
             <Building2 className="h-12 w-12 text-muted-foreground/40 mb-4" />
-            <h3 className="font-semibold mb-1">Sin propiedades registradas</h3>
-            <p className="text-sm text-muted-foreground mb-4">Comenzá agregando tu primera propiedad</p>
-            <Button onClick={openCreate}><Plus className="h-4 w-4" />Agregar propiedad</Button>
+            <h3 className="font-semibold mb-1">{t('properties.emptyTitle')}</h3>
+            <p className="text-sm text-muted-foreground mb-4">{t('properties.emptyDesc')}</p>
+            <Button onClick={openCreate}><Plus className="h-4 w-4" />{t('properties.add')}</Button>
           </CardContent>
         </Card>
       ) : (
         <>
-          {/* Desktop table */}
           <div className="hidden md:block">
             <Card>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Dirección</TableHead>
-                    <TableHead>ID interno</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead className="text-right">Acciones</TableHead>
+                    <TableHead>{t('properties.columns.address')}</TableHead>
+                    <TableHead>{t('properties.columns.identifier')}</TableHead>
+                    <TableHead>{t('properties.columns.type')}</TableHead>
+                    <TableHead>{t('properties.columns.status')}</TableHead>
+                    <TableHead className="text-right">{t('properties.columns.actions')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -143,7 +133,7 @@ export default function Propiedades() {
                     <TableRow key={p.id}>
                       <TableCell className="font-medium">{p.full_address}</TableCell>
                       <TableCell>{p.internal_identifier}</TableCell>
-                      <TableCell>{typeLabel[p.type] ?? p.type}</TableCell>
+                      <TableCell>{t(`propertyType.${p.type}`, p.type)}</TableCell>
                       <TableCell><StatusBadge status={p.status} /></TableCell>
                       <TableCell className="text-right space-x-1">
                         <Button variant="ghost" size="icon" onClick={() => openEdit(p)}><Pencil className="h-4 w-4" /></Button>
@@ -156,7 +146,6 @@ export default function Propiedades() {
             </Card>
           </div>
 
-          {/* Mobile cards */}
           <div className="grid gap-4 md:hidden">
             {filtered.map(p => (
               <Card key={p.id}>
@@ -164,14 +153,14 @@ export default function Propiedades() {
                   <div className="flex items-start justify-between">
                     <div>
                       <p className="font-semibold">{p.internal_identifier}</p>
-                      <p className="text-xs text-muted-foreground">{typeLabel[p.type] ?? p.type}</p>
+                      <p className="text-xs text-muted-foreground">{t(`propertyType.${p.type}`, p.type)}</p>
                     </div>
                     <StatusBadge status={p.status} />
                   </div>
                   <p className="text-sm text-muted-foreground truncate">{p.full_address}</p>
                   <div className="flex gap-2 pt-1">
-                    <Button variant="outline" size="sm" onClick={() => openEdit(p)}><Pencil className="h-3 w-3 mr-1" />Editar</Button>
-                    <Button variant="outline" size="sm" onClick={() => setDeleteTarget(p)}><Trash2 className="h-3 w-3 mr-1 text-destructive" />Eliminar</Button>
+                    <Button variant="outline" size="sm" onClick={() => openEdit(p)}><Pencil className="h-3 w-3 mr-1" />{t('properties.editBtn')}</Button>
+                    <Button variant="outline" size="sm" onClick={() => setDeleteTarget(p)}><Trash2 className="h-3 w-3 mr-1 text-destructive" />{t('properties.deleteBtn')}</Button>
                   </div>
                 </CardContent>
               </Card>
@@ -180,62 +169,60 @@ export default function Propiedades() {
         </>
       )}
 
-      {/* Form Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingId ? 'Editar propiedad' : 'Nueva propiedad'}</DialogTitle>
+            <DialogTitle>{editingId ? t('properties.form.editTitle') : t('properties.form.createTitle')}</DialogTitle>
             <DialogDescription>
-              {editingId ? 'Modificá los datos de la propiedad' : 'Completá los datos para registrar una nueva propiedad'}
+              {editingId ? t('properties.form.editDesc') : t('properties.form.createDesc')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="full_address">Dirección completa *</Label>
-              <Input id="full_address" value={form.full_address} onChange={e => setForm(f => ({ ...f, full_address: e.target.value }))} placeholder="Av. Corrientes 1234, CABA" />
+              <Label htmlFor="full_address">{t('properties.form.addressLabel')}</Label>
+              <Input id="full_address" value={form.full_address} onChange={e => setForm(f => ({ ...f, full_address: e.target.value }))} placeholder={t('properties.form.addressPlaceholder')} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="internal_identifier">Identificador interno *</Label>
-              <Input id="internal_identifier" value={form.internal_identifier} onChange={e => setForm(f => ({ ...f, internal_identifier: e.target.value }))} placeholder="PROP-001" />
+              <Label htmlFor="internal_identifier">{t('properties.form.identifierLabel')}</Label>
+              <Input id="internal_identifier" value={form.internal_identifier} onChange={e => setForm(f => ({ ...f, internal_identifier: e.target.value }))} placeholder={t('properties.form.identifierPlaceholder')} />
             </div>
             <div className="space-y-2">
-              <Label>Tipo</Label>
+              <Label>{t('properties.form.typeLabel')}</Label>
               <Select value={form.type} onValueChange={v => setForm(f => ({ ...f, type: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {TYPE_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                  {TYPE_OPTIONS.map(v => <SelectItem key={v} value={v}>{t(`propertyType.${v}`)}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Estado</Label>
+              <Label>{t('properties.form.statusLabel')}</Label>
               <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {STATUS_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                  {STATUS_OPTIONS.map(v => <SelectItem key={v} value={v}>{t(`status.${v}`)}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-            <Button onClick={handleSave} disabled={saving}>{saving ? 'Guardando…' : 'Guardar'}</Button>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>{t('common.cancel')}</Button>
+            <Button onClick={handleSave} disabled={saving}>{saving ? t('common.saving') : t('common.save')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Delete confirmation */}
       <AlertDialog open={!!deleteTarget} onOpenChange={open => !open && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar propiedad?</AlertDialogTitle>
+            <AlertDialogTitle>{t('properties.delete.title')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Se eliminará <strong>{deleteTarget?.internal_identifier}</strong>. Esta acción se puede revertir desde la base de datos.
+              <span dangerouslySetInnerHTML={{ __html: t('properties.delete.desc', { name: deleteTarget?.internal_identifier }) }} />
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Eliminar</AlertDialogAction>
+            <AlertDialogCancel>{t('properties.delete.cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">{t('properties.delete.confirm')}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

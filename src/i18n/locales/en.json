@@ -1,0 +1,130 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "propiedades": "Properties",
+    "inquilinos": "Tenants",
+    "cobranza": "Billing",
+    "reparaciones": "Repairs",
+    "impuestos": "Taxes",
+    "documentos": "Documents",
+    "reportes": "Reports"
+  },
+  "status": {
+    "available": "Available",
+    "rented": "Rented",
+    "occupied": "Rented",
+    "vacant": "Available",
+    "maintenance": "Under repair",
+    "pending": "Pending",
+    "in_progress": "In progress",
+    "active": "Active"
+  },
+  "propertyType": {
+    "apartment": "Apartment",
+    "house": "House",
+    "ph": "PH",
+    "local": "Commercial",
+    "office": "Office",
+    "warehouse": "Warehouse",
+    "commercial": "Commercial"
+  },
+  "properties": {
+    "title": "Properties",
+    "subtitle": "Manage your real estate portfolio",
+    "search": "Search property...",
+    "new": "New property",
+    "add": "Add property",
+    "edit": "Edit property",
+    "emptyTitle": "No properties registered",
+    "emptyDesc": "Start by adding your first property",
+    "columns": {
+      "address": "Address",
+      "identifier": "Internal ID",
+      "type": "Type",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "form": {
+      "addressLabel": "Full address *",
+      "addressPlaceholder": "123 Main St, City",
+      "identifierLabel": "Internal identifier *",
+      "identifierPlaceholder": "PROP-001",
+      "typeLabel": "Type",
+      "statusLabel": "Status",
+      "editTitle": "Edit property",
+      "editDesc": "Update property details",
+      "createTitle": "New property",
+      "createDesc": "Fill in the details to register a new property"
+    },
+    "toast": {
+      "created": "Property created",
+      "updated": "Property updated",
+      "deleted": "Property deleted",
+      "saveError": "Error saving",
+      "deleteError": "Error deleting",
+      "requiredFields": "Please fill in all required fields"
+    },
+    "delete": {
+      "title": "Delete property?",
+      "desc": "<strong>{{name}}</strong> will be deleted. This can be reverted from the database.",
+      "confirm": "Delete",
+      "cancel": "Cancel"
+    },
+    "editBtn": "Edit",
+    "deleteBtn": "Delete"
+  },
+  "common": {
+    "save": "Save",
+    "saving": "Saving…",
+    "cancel": "Cancel",
+    "loading": "Loading…",
+    "logout": "Log out"
+  },
+  "auth": {
+    "signIn": "Sign in",
+    "signInDesc": "Sign in to continue",
+    "email": "Email",
+    "emailPlaceholder": "you@email.com",
+    "password": "Password",
+    "passwordPlaceholder": "••••••••",
+    "noAccount": "Don't have an account?",
+    "register": "Sign up",
+    "invalidCredentials": "Invalid credentials. Check your email and password.",
+    "signUp": "Create account",
+    "signUpDesc": "Sign up to start managing your properties",
+    "fullName": "Full name",
+    "fullNamePlaceholder": "John Doe",
+    "passwordMin": "At least 6 characters",
+    "passwordMinError": "Password must be at least 6 characters.",
+    "hasAccount": "Already have an account?",
+    "signInLink": "Sign in",
+    "successTitle": "Registration successful!",
+    "successDesc": "We sent a verification email to <strong>{{email}}</strong>. Check your inbox and click the link to activate your account.",
+    "goToSignIn": "Go to Sign in"
+  },
+  "dashboard": {
+    "welcome": "Welcome to MyRentaHub",
+    "summary": "Overview of your property portfolio",
+    "loading": "Loading dashboard…",
+    "stats": {
+      "properties": "Properties",
+      "propertiesDesc": "Total registered",
+      "tenants": "Active tenants",
+      "tenantsDesc": "With active contract",
+      "pendingDues": "Pending payments",
+      "pendingDuesDesc": "This month",
+      "repairs": "Repairs",
+      "repairsDesc": "In progress"
+    },
+    "upcomingDues": "Upcoming dues",
+    "noUpcoming": "No upcoming dues",
+    "pendingRepairs": "Pending repairs",
+    "noPendingRepairs": "No pending repairs",
+    "propertyStatus": "Property status",
+    "noProperties": "No properties loaded yet"
+  },
+  "lang": {
+    "es": "ES",
+    "en": "EN"
+  }
+}
