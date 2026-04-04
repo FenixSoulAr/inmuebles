@@ -10,6 +10,14 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    include: ['react', 'react-dom', 'sonner'],
+    include: [
+      'react',
+      'react-dom',
+      'react/jsx-runtime',
+      'sonner',
+      'i18next',
+      'react-i18next',
+      'i18next-browser-languagedetector',
+    ],
   },
 })
