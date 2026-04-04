@@ -11,6 +11,7 @@ import {
   X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import logoSrc from '@/assets/logo-lockup-transparent.png'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
 
