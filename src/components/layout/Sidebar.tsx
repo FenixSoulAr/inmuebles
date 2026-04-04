@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import {
   Building2,
   Users,
@@ -16,14 +17,14 @@ import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
 
 const navItems = [
-  { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
-  { to: '/propiedades', label: 'Propiedades', icon: Building2 },
-  { to: '/inquilinos', label: 'Inquilinos', icon: Users },
-  { to: '/cobranza', label: 'Cobranza', icon: CreditCard },
-  { to: '/reparaciones', label: 'Reparaciones', icon: Wrench },
-  { to: '/impuestos', label: 'Impuestos', icon: FileText },
-  { to: '/documentos', label: 'Documentos', icon: FolderOpen },
-  { to: '/reportes', label: 'Reportes', icon: BarChart3 },
+  { to: '/', labelKey: 'nav.dashboard', icon: LayoutDashboard, end: true },
+  { to: '/propiedades', labelKey: 'nav.propiedades', icon: Building2 },
+  { to: '/inquilinos', labelKey: 'nav.inquilinos', icon: Users },
+  { to: '/cobranza', labelKey: 'nav.cobranza', icon: CreditCard },
+  { to: '/reparaciones', labelKey: 'nav.reparaciones', icon: Wrench },
+  { to: '/impuestos', labelKey: 'nav.impuestos', icon: FileText },
+  { to: '/documentos', labelKey: 'nav.documentos', icon: FolderOpen },
+  { to: '/reportes', labelKey: 'nav.reportes', icon: BarChart3 },
 ]
 
 interface SidebarProps {
@@ -32,9 +33,10 @@ interface SidebarProps {
 }
 
 export function Sidebar({ open, onClose }: SidebarProps) {
+  const { t } = useTranslation()
+
   return (
     <>
-      {/* Overlay mobile */}
       {open && (
         <div
           className="fixed inset-0 z-20 bg-black/50 lg:hidden"
@@ -42,14 +44,12 @@ export function Sidebar({ open, onClose }: SidebarProps) {
         />
       )}
 
-      {/* Sidebar */}
       <aside
         className={cn(
           'fixed inset-y-0 left-0 z-30 flex w-64 flex-col bg-sidebar text-sidebar-foreground transition-transform duration-300 ease-in-out lg:static lg:translate-x-0',
           open ? 'translate-x-0' : '-translate-x-full'
         )}
       >
-        {/* Logo */}
         <div className="flex h-16 items-center justify-between px-6">
           <img src={logoSrc} alt="MyRentaHub" className="h-8 w-auto" />
           <Button
@@ -64,10 +64,9 @@ export function Sidebar({ open, onClose }: SidebarProps) {
 
         <Separator className="bg-sidebar-border" />
 
-        {/* Navegacion */}
         <nav className="flex-1 overflow-y-auto px-3 py-4">
           <ul className="space-y-1">
-            {navItems.map(({ to, label, icon: Icon, end }) => (
+            {navItems.map(({ to, labelKey, icon: Icon, end }) => (
               <li key={to}>
                 <NavLink
                   to={to}
@@ -83,14 +82,13 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                   }
                 >
                   <Icon className="h-4 w-4 shrink-0" />
-                  {label}
+                  {t(labelKey)}
                 </NavLink>
               </li>
             ))}
           </ul>
         </nav>
 
-        {/* Version */}
         <div className="px-6 py-4">
           <p className="text-xs text-sidebar-foreground/40">v0.1.0</p>
         </div>

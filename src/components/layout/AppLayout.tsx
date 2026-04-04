@@ -1,24 +1,27 @@
 import { useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Sidebar } from './Sidebar'
 import { Header } from './Header'
 
-const routeTitles: Record<string, string> = {
-  '/': 'Dashboard',
-  '/propiedades': 'Propiedades',
-  '/inquilinos': 'Inquilinos',
-  '/cobranza': 'Cobranza',
-  '/reparaciones': 'Reparaciones',
-  '/impuestos': 'Impuestos',
-  '/documentos': 'Documentos',
-  '/reportes': 'Reportes',
+const routeTitleKeys: Record<string, string> = {
+  '/': 'nav.dashboard',
+  '/propiedades': 'nav.propiedades',
+  '/inquilinos': 'nav.inquilinos',
+  '/cobranza': 'nav.cobranza',
+  '/reparaciones': 'nav.reparaciones',
+  '/impuestos': 'nav.impuestos',
+  '/documentos': 'nav.documentos',
+  '/reportes': 'nav.reportes',
 }
 
 export function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const location = useLocation()
+  const { t } = useTranslation()
 
-  const title = routeTitles[location.pathname] ?? 'MyRentaHub'
+  const titleKey = routeTitleKeys[location.pathname] ?? ''
+  const title = titleKey ? t(titleKey) : 'MyRentaHub'
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
