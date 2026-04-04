@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Upload, FolderOpen, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+
 import { supabase } from '@/integrations/supabase/client'
 import { useProjectId } from '@/hooks/useProjectId'
 
