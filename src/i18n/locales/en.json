@@ -100,7 +100,19 @@
     "signInLink": "Sign in",
     "successTitle": "Registration successful!",
     "successDesc": "We sent a verification email to <strong>{{email}}</strong>. Check your inbox and click the link to activate your account.",
-    "goToSignIn": "Go to Sign in"
+    "goToSignIn": "Go to Sign in",
+    "forgotPassword": "Forgot your password?",
+    "forgotDesc": "Enter your email and we'll send you instructions to reset your password",
+    "sendInstructions": "Send instructions",
+    "resetEmailSent": "Check your email to reset your password",
+    "backToSignIn": "Back to sign in",
+    "resetDesc": "Enter your new password",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm password",
+    "confirmPasswordPlaceholder": "Repeat password",
+    "passwordMismatch": "Passwords don't match",
+    "passwordUpdated": "Password updated successfully",
+    "resetPassword": "Reset password"
   },
   "dashboard": {
     "welcome": "Welcome to MyRentaHub",

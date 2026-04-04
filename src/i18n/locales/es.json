@@ -100,7 +100,19 @@
     "signInLink": "Iniciá sesión",
     "successTitle": "¡Registro exitoso!",
     "successDesc": "Te enviamos un email de verificación a <strong>{{email}}</strong>. Revisá tu bandeja de entrada y hacé clic en el enlace para activar tu cuenta.",
-    "goToSignIn": "Ir a Iniciar sesión"
+    "goToSignIn": "Ir a Iniciar sesión",
+    "forgotPassword": "¿Olvidaste tu contraseña?",
+    "forgotDesc": "Ingresá tu email y te enviaremos instrucciones para restablecer tu contraseña",
+    "sendInstructions": "Enviar instrucciones",
+    "resetEmailSent": "Revisá tu correo para restablecer tu contraseña",
+    "backToSignIn": "Volver al inicio de sesión",
+    "resetDesc": "Ingresá tu nueva contraseña",
+    "newPassword": "Nueva contraseña",
+    "confirmPassword": "Confirmar contraseña",
+    "confirmPasswordPlaceholder": "Repetí la contraseña",
+    "passwordMismatch": "Las contraseñas no coinciden",
+    "passwordUpdated": "Contraseña actualizada correctamente",
+    "resetPassword": "Restablecer contraseña"
   },
   "dashboard": {
     "welcome": "Bienvenido a MyRentaHub",
