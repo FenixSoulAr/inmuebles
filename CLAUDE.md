@@ -1,68 +1,43 @@
-# MyRentaHub — Property Management Simplified
-
-App web de gestión de propiedades en alquiler, construida en español.
-
-## Stack
-
-| Capa | Tecnología |
-|---|---|
-| Frontend | React 19 + Vite 6 + TypeScript |
-| UI | shadcn/ui + Tailwind CSS 3 |
-| Backend / DB | Supabase (PostgreSQL + RLS) |
-| Estado global | Zustand |
-| Routing | React Router v7 |
-| Íconos | lucide-react |
-
-## Estructura de carpetas
-
-```
-src/
-├── components/
-│   ├── layout/        # AppLayout, Sidebar, Header
-│   └── ui/            # Componentes shadcn/ui
-├── hooks/             # Custom hooks (usePropiedad, usePagos, etc.)
-├── lib/
-│   ├── supabase.ts    # Cliente Supabase
-│   └── utils.ts       # cn(), formatCurrency(), formatDate()
-├── pages/
-│   ├── Dashboard.tsx
-│   ├── propiedades/
-│   ├── inquilinos/
-│   ├── cobranza/
-│   ├── reparaciones/
-│   ├── impuestos/
-│   ├── documentos/
-│   └── reportes/
-├── routes/            # Router de react-router-dom
-└── types/
-    ├── database.ts    # Tipos generados de Supabase
-    └── index.ts       # Re-exports y tipos derivados
-```
-
 ## Módulos del sistema
 
-1. **Propiedades** — CRUD de inmuebles (casa, dpto, local, oficina)
+1. **Propiedades** — CRUD completo de inmuebles (casa, dpto, PH, local, oficina, depósito)
 2. **Inquilinos** — Datos personales + contratos asociados
-3. **Cobranza** — Registro y seguimiento de pagos mensuales
-4. **Reparaciones** — Incidencias de mantenimiento con prioridad y estado
-5. **Impuestos** — ABL, Ingresos Brutos y otros gravámenes por propiedad
-6. **Documentos** — Archivos adjuntos almacenados en Supabase Storage
-7. **Reportes** — Exportables en PDF y Excel (Cobranza, Rentabilidad, Ocupación, Reparaciones)
+3. **Contratos** — Núcleo normativo: canon, ajustes IPC/ICL, servicios, cláusulas
+4. **Cobranza** — Registro y seguimiento de pagos mensuales (rent_dues)
+5. **Reparaciones** — Incidencias de mantenimiento con prioridad y estado
+6. **Impuestos** — ABL, Inmobiliario, Rentas y otros gravámenes por propiedad
+7. **Servicios** — Luz, Gas, Agua, Expensas con rendición de comprobantes
+8. **Documentos** — Archivos adjuntos almacenados en Supabase Storage
+9. **Reportes** — Exportables en PDF y Excel
 
 ## Convenciones
 
-- **Idioma**: Toda la UI y código en español (variables, tipos, rutas)
+- **Idioma**: Toda la UI en español usando `t('key')` de react-i18next
 - **Moneda**: ARS por defecto, soporte USD. Usar `formatCurrency()` de `lib/utils.ts`
 - **Fechas**: Formato `dd/mm/yyyy` argentino. Usar `formatDate()` de `lib/utils.ts`
 - **Alias**: Usar `@/` en lugar de rutas relativas largas
 - **Componentes UI**: Siempre usar shadcn/ui. No instalar otras librerías de UI sin discutir primero
-- **Supabase RLS**: Toda tabla lleva `usuario_id` y políticas RLS para aislar datos por usuario
+- **Supabase cliente**: Siempre importar desde `@/integrations/supabase/client`
+- **Supabase RLS**: Toda tabla lleva `project_id` para aislamiento multi-tenant. NO usar `usuario_id`
+- **Estado**: Usar Zustand para estado global. NO usar TanStack React Query (no está instalado)
+- **Formularios**: React Hook Form + Zod para validación
+
+## Supabase — Proyecto de producción
+
+- **Project ID**: rckpejobuhbupmxlxnit
+- **Region**: South America (Sao Paulo) — sa-east-1
+- **Tablas**: 32 tablas con RLS activo en todas
+- **Multi-tenant**: todas las tablas tienen `project_id`
+- **Roles**: owner, admin, collaborator, viewer
+- **Storage buckets**: documents, proof-files, contract-documents
+- **Edge Functions**: 7 funciones activas (generate-rent-dues, ensure-obligations,
+  reconcile-proofs, get-public-contract, submit-payment-proof, serve-file, prepare-proof-upload)
 
 ## Variables de entorno
 
 ```bash
-VITE_SUPABASE_URL=https://tu-proyecto.supabase.co
-VITE_SUPABASE_ANON_KEY=tu-anon-key
+VITE_SUPABASE_URL=https://rckpejobuhbupmxlxnit.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=tu-publishable-key
 ```
 
 ## Comandos
@@ -73,18 +48,23 @@ npm run build    # Build de producción
 npm run preview  # Preview del build
 ```
 
-## Estado del proyecto
+## Estado del proyecto — al 4 de abril de 2026
 
 - [x] Estructura base con Vite + React + TypeScript
 - [x] Tailwind CSS + shadcn/ui configurados
 - [x] Layout con sidebar y header responsive
-- [x] Páginas stub de los 7 módulos + Dashboard
-- [x] Tipos base de base de datos definidos
-- [ ] Autenticación con Supabase Auth
-- [ ] CRUD de Propiedades
-- [ ] CRUD de Inquilinos + Contratos
-- [ ] Módulo de Cobranza con estados de pago
-- [ ] Módulo de Reparaciones
-- [ ] Módulo de Impuestos
-- [ ] Módulo de Documentos (Supabase Storage)
-- [ ] Reportes exportables
+- [x] Autenticación completa (login, registro, recuperación de contraseña)
+- [x] i18n ES/EN con detección automática y switch manual
+- [x] CRUD de Propiedades
+- [x] 7 Edge Functions desplegadas en Supabase
+- [x] Datos reales de producción migrados
+- [ ] CRUD de Inquilinos
+- [ ] Módulo de Contratos en menú + CRUD
+- [ ] Módulo de Cobranza completo (mora + intereses automáticos)
+- [ ] Módulo de Reparaciones completo (presupuesto + responsable)
+- [ ] Módulo de Impuestos completo (vista anual)
+- [ ] Módulo de Documentos (subida funcional + naming automático)
+- [ ] Portal de Inquilino autenticado
+- [ ] Reportes exportables (PDF y Excel)
+- [ ] Comunicación propietario-inquilino
+- [ ] Integración Mercado Pago
