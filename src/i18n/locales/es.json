@@ -1,0 +1,130 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "propiedades": "Propiedades",
+    "inquilinos": "Inquilinos",
+    "cobranza": "Cobranza",
+    "reparaciones": "Reparaciones",
+    "impuestos": "Impuestos",
+    "documentos": "Documentos",
+    "reportes": "Reportes"
+  },
+  "status": {
+    "available": "Disponible",
+    "rented": "Alquilada",
+    "occupied": "Alquilada",
+    "vacant": "Disponible",
+    "maintenance": "En reparación",
+    "pending": "Pendiente",
+    "in_progress": "En progreso",
+    "active": "Activo"
+  },
+  "propertyType": {
+    "apartment": "Departamento",
+    "house": "Casa",
+    "ph": "PH",
+    "local": "Local",
+    "office": "Oficina",
+    "warehouse": "Depósito",
+    "commercial": "Local"
+  },
+  "properties": {
+    "title": "Propiedades",
+    "subtitle": "Gestioná tu cartera de inmuebles",
+    "search": "Buscar propiedad...",
+    "new": "Nueva propiedad",
+    "add": "Agregar propiedad",
+    "edit": "Editar propiedad",
+    "emptyTitle": "Sin propiedades registradas",
+    "emptyDesc": "Comenzá agregando tu primera propiedad",
+    "columns": {
+      "address": "Dirección",
+      "identifier": "ID interno",
+      "type": "Tipo",
+      "status": "Estado",
+      "actions": "Acciones"
+    },
+    "form": {
+      "addressLabel": "Dirección completa *",
+      "addressPlaceholder": "Av. Corrientes 1234, CABA",
+      "identifierLabel": "Identificador interno *",
+      "identifierPlaceholder": "PROP-001",
+      "typeLabel": "Tipo",
+      "statusLabel": "Estado",
+      "editTitle": "Editar propiedad",
+      "editDesc": "Modificá los datos de la propiedad",
+      "createTitle": "Nueva propiedad",
+      "createDesc": "Completá los datos para registrar una nueva propiedad"
+    },
+    "toast": {
+      "created": "Propiedad creada",
+      "updated": "Propiedad actualizada",
+      "deleted": "Propiedad eliminada",
+      "saveError": "Error al guardar",
+      "deleteError": "Error al eliminar",
+      "requiredFields": "Completá todos los campos obligatorios"
+    },
+    "delete": {
+      "title": "¿Eliminar propiedad?",
+      "desc": "Se eliminará <strong>{{name}}</strong>. Esta acción se puede revertir desde la base de datos.",
+      "confirm": "Eliminar",
+      "cancel": "Cancelar"
+    },
+    "editBtn": "Editar",
+    "deleteBtn": "Eliminar"
+  },
+  "common": {
+    "save": "Guardar",
+    "saving": "Guardando…",
+    "cancel": "Cancelar",
+    "loading": "Cargando…",
+    "logout": "Cerrar sesión"
+  },
+  "auth": {
+    "signIn": "Iniciar sesión",
+    "signInDesc": "Iniciá sesión para continuar",
+    "email": "Email",
+    "emailPlaceholder": "tu@email.com",
+    "password": "Contraseña",
+    "passwordPlaceholder": "••••••••",
+    "noAccount": "¿No tenés cuenta?",
+    "register": "Registrate",
+    "invalidCredentials": "Credenciales inválidas. Verificá tu email y contraseña.",
+    "signUp": "Crear cuenta",
+    "signUpDesc": "Registrate para empezar a gestionar tus propiedades",
+    "fullName": "Nombre completo",
+    "fullNamePlaceholder": "Juan Pérez",
+    "passwordMin": "Mínimo 6 caracteres",
+    "passwordMinError": "La contraseña debe tener al menos 6 caracteres.",
+    "hasAccount": "¿Ya tenés cuenta?",
+    "signInLink": "Iniciá sesión",
+    "successTitle": "¡Registro exitoso!",
+    "successDesc": "Te enviamos un email de verificación a <strong>{{email}}</strong>. Revisá tu bandeja de entrada y hacé clic en el enlace para activar tu cuenta.",
+    "goToSignIn": "Ir a Iniciar sesión"
+  },
+  "dashboard": {
+    "welcome": "Bienvenido a MyRentaHub",
+    "summary": "Resumen general de tu cartera de propiedades",
+    "loading": "Cargando dashboard…",
+    "stats": {
+      "properties": "Propiedades",
+      "propertiesDesc": "Total registradas",
+      "tenants": "Inquilinos activos",
+      "tenantsDesc": "Con contrato vigente",
+      "pendingDues": "Cobros pendientes",
+      "pendingDuesDesc": "Este mes",
+      "repairs": "Reparaciones",
+      "repairsDesc": "En curso"
+    },
+    "upcomingDues": "Próximos vencimientos",
+    "noUpcoming": "No hay vencimientos próximos",
+    "pendingRepairs": "Reparaciones pendientes",
+    "noPendingRepairs": "Sin reparaciones pendientes",
+    "propertyStatus": "Estado de propiedades",
+    "noProperties": "Aún no cargaste propiedades"
+  },
+  "lang": {
+    "es": "ES",
+    "en": "EN"
+  }
+}
