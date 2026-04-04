@@ -51,10 +51,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
       >
         {/* Logo */}
         <div className="flex h-16 items-center justify-between px-6">
-          <div className="flex items-center gap-2">
-            <Building2 className="h-7 w-7 text-sidebar-primary" />
-            <span className="text-lg font-bold tracking-tight">MyRentaHub</span>
-          </div>
+          <img src={logoSrc} alt="MyRentaHub" className="h-8 w-auto" />
           <Button
             variant="ghost"
             size="icon"
