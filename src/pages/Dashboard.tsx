@@ -149,7 +149,7 @@ export default function Dashboard() {
                       <p className="font-medium text-sm">{p.internal_identifier}</p>
                       <p className="text-xs text-muted-foreground truncate max-w-[200px]">{p.full_address}</p>
                     </div>
-                    <Badge variant={variant}>{t(`status.${p.status}`, p.status)}</Badge>
+                    <Badge variant={variant}>{String(t(`status.${p.status}`, p.status))}</Badge>
                   </div>
                 )
               })}
