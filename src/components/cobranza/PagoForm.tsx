@@ -32,7 +32,7 @@ export default function PagoForm({ open, onOpenChange, due, onSave }: Props) {
 
   const handleSubmit = async () => {
     const amount = parseFloat(form.amount)
-    if (!amount || amount <= 0 || amount > due.total_due) return
+    if (!amount || amount <= 0) return
     setSaving(true)
     try {
       await onSave(due.id, { amount, method: form.method, payment_date: form.payment_date, notes: form.notes })
