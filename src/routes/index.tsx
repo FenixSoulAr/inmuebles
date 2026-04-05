@@ -35,6 +35,7 @@ export const router = createBrowserRouter([
           { index: true, element: <Dashboard /> },
           { path: 'propiedades', element: <Propiedades /> },
           { path: 'inquilinos', element: <Inquilinos /> },
+          { path: 'contratos', element: <Contratos /> },
           { path: 'cobranza', element: <Cobranza /> },
           { path: 'reparaciones', element: <Reparaciones /> },
           { path: 'impuestos', element: <Impuestos /> },
