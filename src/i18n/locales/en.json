@@ -139,7 +139,7 @@
       "confirm": "Delete",
       "cancel": "Cancel",
       "blockedTitle": "Cannot delete",
-      "blockedDesc": "{{name}} has an active contract. End the contract before deleting the tenant."
+      "blockedDesc": "{{name}} has registered contracts (active or historical). A tenant with contract history cannot be deleted."
     }
   },
   "contracts": {
