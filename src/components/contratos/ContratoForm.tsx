@@ -29,7 +29,7 @@ const defaultForm = () => ({
   tenant_id: '',
   start_date: '',
   end_date: '',
-  tipo_contrato: 'permanente',
+  tipo_contrato: 'vivienda',
   initial_rent: '',
   current_rent: '',
   currency: 'ARS',
