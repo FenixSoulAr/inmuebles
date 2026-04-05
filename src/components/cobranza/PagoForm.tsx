@@ -92,7 +92,7 @@ export default function PagoForm({ open, onOpenChange, due, onSave }: Props) {
 
         <SheetFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>{t('common.cancel')}</Button>
-          <Button onClick={handleSubmit} disabled={saving || !parseFloat(form.amount) || parseFloat(form.amount) <= 0 || parseFloat(form.amount) > due.total_due}>
+          <Button onClick={handleSubmit} disabled={saving || !parseFloat(form.amount) || parseFloat(form.amount) <= 0}>
             {saving ? t('common.saving') : t('billing.payForm.submit')}
           </Button>
         </SheetFooter>

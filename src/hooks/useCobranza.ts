@@ -47,9 +47,22 @@ export function useCobranza() {
     const today = new Date()
     const enriched: EnrichedRentDue[] = (duesRes.data ?? []).map(d => {
       const contract = contractMap.get(d.contract_id) ?? { interest_rate: null, grace_days: 0, currency: 'ARS' }
+      const dueDate = new Date(d.due_date)
+
+      // Compute display_status based on real state
+      let display_status: DisplayStatus
+      if (Number(d.balance_due) <= 0) {
+        display_status = 'paid'
+      } else if (dueDate > today) {
+        display_status = 'upcoming'
+      } else if (Number(d.balance_due) < Number(d.expected_amount)) {
+        display_status = 'partial'
+      } else {
+        display_status = 'overdue'
+      }
+
       let days_overdue = 0
-      if (d.status === 'overdue') {
-        const dueDate = new Date(d.due_date)
+      if (display_status === 'overdue') {
         const diffDays = Math.floor((today.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24))
         days_overdue = Math.max(0, diffDays - contract.grace_days)
       }
@@ -67,6 +80,7 @@ export function useCobranza() {
         days_overdue,
         interest_amount,
         total_due: Number(d.balance_due) + interest_amount,
+        display_status,
       }
     })
 
