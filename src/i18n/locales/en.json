@@ -214,7 +214,9 @@
     },
     "depositTypes": {
       "fixed": "Fixed amount",
+      "monto_fijo": "Fixed amount",
       "months": "Months of rent",
+      "meses": "Months of rent",
       "cash": "Cash"
     },
     "depositModes": {
