@@ -67,7 +67,7 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight">{t('dashboard.welcome')}</h2>
+        <h2 className="text-2xl font-bold tracking-tight">{greeting}</h2>
         <p className="text-muted-foreground">{t('dashboard.summary')}</p>
       </div>
 
