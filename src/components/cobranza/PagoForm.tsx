@@ -63,7 +63,7 @@ export default function PagoForm({ open, onOpenChange, due, onSave }: Props) {
 
           <div className="space-y-2">
             <Label>{t('billing.payForm.amount')} *</Label>
-            <Input type="number" step="0.01" min="0.01" max={due.total_due} value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} />
+            <Input type="number" step="0.01" min="0.01" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} />
           </div>
 
           <div className="space-y-2">
