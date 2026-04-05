@@ -118,13 +118,13 @@ export default function Dashboard() {
             ) : (
               <div className="space-y-3">
                 {pendingRepairs.map((r: any) => (
-                  <div key={r.id} className="flex items-center justify-between text-sm border-b pb-2 last:border-0">
+                  <Link key={r.id} to="/reparaciones" className="flex items-center justify-between text-sm border-b pb-2 last:border-0 cursor-pointer hover:bg-muted/50 rounded-md px-2 -mx-2 transition-colors">
                     <div>
                       <p className="font-medium">{r.description}</p>
                       <p className="text-xs text-muted-foreground">{(r.properties as any)?.internal_identifier}</p>
                     </div>
                     <Badge variant={r.status === 'pending' ? 'warning' : 'secondary'}>{String(t(`status.${r.status}`, r.status))}</Badge>
-                  </div>
+                  </Link>
                 ))}
               </div>
             )}
