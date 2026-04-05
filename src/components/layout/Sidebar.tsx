@@ -51,12 +51,12 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           open ? 'translate-x-0' : '-translate-x-full'
         )}
       >
-        <div className="flex items-center justify-between bg-primary px-4 py-4">
-          <img src={logoSrc} alt="MyRentaHub" className="h-10 w-auto brightness-0 invert" />
+        <div className="flex items-center justify-between px-4 py-4">
+          <img src={logoSrc} alt="MyRentaHub" className="h-8 w-auto" />
           <Button
             variant="ghost"
             size="icon"
-            className="lg:hidden text-primary-foreground hover:bg-primary-foreground/20"
+            className="lg:hidden text-sidebar-foreground hover:bg-sidebar-accent"
             onClick={onClose}
           >
             <X className="h-5 w-5" />
