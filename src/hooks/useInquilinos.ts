@@ -71,7 +71,7 @@ export function useInquilinos() {
     }
   }, [projectId, projectLoading, fetchInquilinos])
 
-  const crearInquilino = async (data: TenantInsert, guarantors: GuarantorForm[]) => {
+  const crearInquilino = async (data: TenantInsert, guarantors: GuarantorForm[]): Promise<string> => {
     if (!projectId) throw new Error('Sin proyecto activo')
     const { data: created, error } = await supabase
       .from('tenants')
@@ -92,6 +92,7 @@ export function useInquilinos() {
       if (gError) throw gError
     }
     await fetchInquilinos()
+    return created.id
   }
 
   const editarInquilino = async (id: string, data: Partial<TenantInsert>, guarantors: GuarantorForm[]) => {
