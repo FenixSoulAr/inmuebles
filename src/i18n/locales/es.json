@@ -349,6 +349,75 @@
     "propertyStatus": "Estado de propiedades",
     "noProperties": "Aún no cargaste propiedades"
   },
+  "billing": {
+    "title": "Cobranza",
+    "subtitle": "Seguimiento de pagos y alquileres",
+    "search": "Buscar por inquilino o dirección…",
+    "emptyTitle": "Sin movimientos registrados",
+    "emptyDesc": "Los pagos aparecerán aquí una vez que tengas contratos activos",
+    "summary": {
+      "overdue": "En mora",
+      "partial": "Parciales",
+      "collected": "Cobrado este mes",
+      "thisMonth": "Este mes"
+    },
+    "filters": {
+      "all": "Todos",
+      "overdue": "En mora",
+      "partial": "Parcial",
+      "paid": "Pagado"
+    },
+    "status": {
+      "overdue": "En mora",
+      "partial": "Parcial",
+      "paid": "Pagado"
+    },
+    "columns": {
+      "tenant": "Inquilino",
+      "property": "Propiedad",
+      "period": "Período",
+      "expected": "Monto esperado",
+      "balance": "Saldo pendiente",
+      "daysOverdue": "Días mora",
+      "interest": "Interés",
+      "totalDue": "Total a cobrar",
+      "status": "Estado",
+      "actions": "Acciones"
+    },
+    "overdueHeader": {
+      "count": "cuotas en mora",
+      "total": "Total"
+    },
+    "detail": {
+      "dueDate": "Fecha vencimiento",
+      "expected": "Monto original",
+      "days": "días",
+      "gracePeriod": "En período de gracia",
+      "paymentHistory": "Historial de pagos",
+      "noPayments": "Sin pagos registrados",
+      "payDate": "Fecha",
+      "payAmount": "Monto"
+    },
+    "payForm": {
+      "title": "Registrar pago",
+      "amount": "Monto recibido",
+      "method": "Método de pago",
+      "date": "Fecha de pago",
+      "notes": "Notas",
+      "notesPlaceholder": "Observaciones opcionales",
+      "submit": "Registrar pago"
+    },
+    "methods": {
+      "transfer": "Transferencia",
+      "cash": "Efectivo",
+      "check": "Cheque",
+      "other": "Otro"
+    },
+    "toast": {
+      "paymentRegistered": "Pago registrado correctamente",
+      "paymentError": "Error al registrar el pago"
+    }
+  },
   "lang": {
     "es": "ES",
     "en": "EN"

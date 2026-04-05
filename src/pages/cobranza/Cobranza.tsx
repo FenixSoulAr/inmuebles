@@ -1,118 +1,258 @@
-import { useEffect, useState } from 'react'
-import { Plus, CreditCard } from 'lucide-react'
+import { useState, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import { CreditCard, Eye, DollarSign, Search } from 'lucide-react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { supabase } from '@/integrations/supabase/client'
-import { useProjectId } from '@/hooks/useProjectId'
+import { Input } from '@/components/ui/input'
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
+import { formatCurrency } from '@/lib/utils'
+import { useCobranza, type EnrichedRentDue } from '@/hooks/useCobranza'
+import PagoForm from '@/components/cobranza/PagoForm'
+import CobranzaDetail from '@/components/cobranza/CobranzaDetail'
+
+const statusVariant: Record<string, 'destructive' | 'warning' | 'success' | 'secondary'> = {
+  overdue: 'destructive', partial: 'warning', paid: 'success',
+}
 
 export default function Cobranza() {
-  const { projectId } = useProjectId()
-  const [dues, setDues] = useState<any[]>([])
-  const [summary, setSummary] = useState({ cobrado: 0, pendiente: 0, atrasado: 0 })
-  const [loading, setLoading] = useState(true)
+  const { t } = useTranslation()
+  const { dues, loading, registrarPago, fetchPagos } = useCobranza()
+  const [filter, setFilter] = useState('all')
+  const [search, setSearch] = useState('')
+  const [detailDue, setDetailDue] = useState<EnrichedRentDue | null>(null)
+  const [payDue, setPayDue] = useState<EnrichedRentDue | null>(null)
 
-  useEffect(() => {
-    if (!projectId) return
-    const load = async () => {
-      const { data } = await supabase
-        .from('rent_dues')
-        .select('*, tenants(full_name), properties(internal_identifier)')
-        .eq('project_id', projectId)
-        .order('due_date', { ascending: false })
-        .limit(50)
-
-      const items = data ?? []
-      setDues(items)
-
-      const cobrado = items.filter(d => d.status === 'paid').reduce((s, d) => s + Number(d.expected_amount), 0)
-      const pendiente = items.filter(d => d.status === 'pending').reduce((s, d) => s + Number(d.balance_due), 0)
-      const atrasado = items.filter(d => d.status === 'overdue').reduce((s, d) => s + Number(d.balance_due), 0)
-      setSummary({ cobrado, pendiente, atrasado })
-      setLoading(false)
+  const summary = useMemo(() => {
+    const overdue = dues.filter(d => d.status === 'overdue')
+    const partial = dues.filter(d => d.status === 'partial')
+    const now = new Date()
+    const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+    const paid = dues.filter(d => d.status === 'paid' && d.period_month === thisMonth)
+    return {
+      overdueCount: overdue.length,
+      overdueAmount: overdue.reduce((s, d) => s + Number(d.balance_due), 0),
+      partialCount: partial.length,
+      partialAmount: partial.reduce((s, d) => s + Number(d.balance_due), 0),
+      paidAmount: paid.reduce((s, d) => s + Number(d.expected_amount), 0),
     }
-    load()
-  }, [projectId])
+  }, [dues])
 
-  const resumen = [
-    { label: 'Cobrado este mes', valor: `$ ${summary.cobrado.toLocaleString('es-AR')}`, variant: 'success' as const },
-    { label: 'Pendiente', valor: `$ ${summary.pendiente.toLocaleString('es-AR')}`, variant: 'warning' as const },
-    { label: 'Atrasado', valor: `$ ${summary.atrasado.toLocaleString('es-AR')}`, variant: 'destructive' as const },
-  ]
+  const filtered = useMemo(() => {
+    let list = dues
+    if (filter === 'overdue') list = list.filter(d => d.status === 'overdue')
+    else if (filter === 'partial') list = list.filter(d => d.status === 'partial')
+    else if (filter === 'paid') list = list.filter(d => d.status === 'paid')
 
-  const statusLabel: Record<string, string> = { paid: 'Pagado', pending: 'Pendiente', overdue: 'Atrasado', partial: 'Parcial' }
-  const statusVariant: Record<string, 'success' | 'warning' | 'destructive' | 'secondary'> = { paid: 'success', pending: 'warning', overdue: 'destructive', partial: 'secondary' }
+    if (filter === 'overdue') {
+      list = [...list].sort((a, b) => b.days_overdue - a.days_overdue)
+    }
+
+    if (search.trim()) {
+      const q = search.toLowerCase()
+      list = list.filter(d => d.tenant_name.toLowerCase().includes(q) || d.property_address.toLowerCase().includes(q))
+    }
+    return list
+  }, [dues, filter, search])
+
+  const handlePay = async (rentDueId: string, data: { amount: number; method: string; payment_date: string; notes: string }) => {
+    try {
+      await registrarPago(rentDueId, data)
+      toast.success(t('billing.toast.paymentRegistered'))
+    } catch {
+      toast.error(t('billing.toast.paymentError'))
+      throw new Error()
+    }
+  }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Cobranza</h2>
-          <p className="text-muted-foreground">Seguimiento de pagos y alquileres</p>
-        </div>
-        <Button><Plus className="h-4 w-4" />Registrar pago</Button>
+      <div>
+        <h2 className="text-2xl font-bold tracking-tight">{t('billing.title')}</h2>
+        <p className="text-muted-foreground">{t('billing.subtitle')}</p>
       </div>
 
+      {/* Summary cards */}
       <div className="grid gap-4 sm:grid-cols-3">
-        {resumen.map(({ label, valor, variant }) => (
-          <Card key={label}>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">{label}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between">
-                <span className="text-2xl font-bold">{valor}</span>
-                <Badge variant={variant}>{label.split(' ')[0]}</Badge>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {loading ? (
-        <div className="text-center py-16 text-muted-foreground">Cargando cobranza…</div>
-      ) : dues.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-            <CreditCard className="h-12 w-12 text-muted-foreground/40 mb-4" />
-            <h3 className="font-semibold mb-1">Sin movimientos registrados</h3>
-            <p className="text-sm text-muted-foreground">Los pagos aparecerán aquí una vez que tengas contratos activos</p>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b bg-muted/50">
-                    <th className="text-left p-3 font-medium">Inquilino</th>
-                    <th className="text-left p-3 font-medium">Propiedad</th>
-                    <th className="text-left p-3 font-medium">Período</th>
-                    <th className="text-right p-3 font-medium">Monto</th>
-                    <th className="text-right p-3 font-medium">Saldo</th>
-                    <th className="text-center p-3 font-medium">Estado</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {dues.map(d => (
-                    <tr key={d.id} className="border-b last:border-0 hover:bg-muted/30">
-                      <td className="p-3">{(d.tenants as any)?.full_name ?? '—'}</td>
-                      <td className="p-3">{(d.properties as any)?.internal_identifier ?? '—'}</td>
-                      <td className="p-3">{d.period_month}</td>
-                      <td className="p-3 text-right">$ {Number(d.expected_amount).toLocaleString('es-AR')}</td>
-                      <td className="p-3 text-right">$ {Number(d.balance_due).toLocaleString('es-AR')}</td>
-                      <td className="p-3 text-center">
-                        <Badge variant={statusVariant[d.status] ?? 'secondary'}>{statusLabel[d.status] ?? d.status}</Badge>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setFilter('overdue')}>
+          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">{t('billing.summary.overdue')}</CardTitle></CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <span className="text-2xl font-bold text-destructive">{formatCurrency(summary.overdueAmount)}</span>
+              <Badge variant="destructive">{summary.overdueCount}</Badge>
             </div>
           </CardContent>
         </Card>
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setFilter('partial')}>
+          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">{t('billing.summary.partial')}</CardTitle></CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <span className="text-2xl font-bold text-yellow-600">{formatCurrency(summary.partialAmount)}</span>
+              <Badge variant="warning">{summary.partialCount}</Badge>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">{t('billing.summary.collected')}</CardTitle></CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <span className="text-2xl font-bold text-green-600">{formatCurrency(summary.paidAmount)}</span>
+              <Badge variant="success">{t('billing.summary.thisMonth')}</Badge>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input className="pl-9" placeholder={t('billing.search')} value={search} onChange={e => setSearch(e.target.value)} />
+        </div>
+        <Select value={filter} onValueChange={setFilter}>
+          <SelectTrigger className="w-full sm:w-[180px]"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t('billing.filters.all')}</SelectItem>
+            <SelectItem value="overdue">{t('billing.filters.overdue')}</SelectItem>
+            <SelectItem value="partial">{t('billing.filters.partial')}</SelectItem>
+            <SelectItem value="paid">{t('billing.filters.paid')}</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Overdue header */}
+      {filter === 'overdue' && filtered.length > 0 && (
+        <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm">
+          <span className="font-semibold text-destructive">
+            {filtered.length} {t('billing.overdueHeader.count')} — {t('billing.overdueHeader.total')}: {formatCurrency(filtered.reduce((s, d) => s + d.total_due, 0))}
+          </span>
+        </div>
       )}
+
+      {/* Content */}
+      {loading ? (
+        <div className="text-center py-16 text-muted-foreground">{t('common.loading')}</div>
+      ) : filtered.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+            <CreditCard className="h-12 w-12 text-muted-foreground/40 mb-4" />
+            <h3 className="font-semibold mb-1">{t('billing.emptyTitle')}</h3>
+            <p className="text-sm text-muted-foreground">{t('billing.emptyDesc')}</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          {/* Desktop table */}
+          <div className="hidden md:block">
+            <Card>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>{t('billing.columns.tenant')}</TableHead>
+                      <TableHead>{t('billing.columns.property')}</TableHead>
+                      <TableHead>{t('billing.columns.period')}</TableHead>
+                      <TableHead className="text-right">{t('billing.columns.expected')}</TableHead>
+                      <TableHead className="text-right">{t('billing.columns.balance')}</TableHead>
+                      <TableHead className="text-center">{t('billing.columns.daysOverdue')}</TableHead>
+                      <TableHead className="text-right">{t('billing.columns.interest')}</TableHead>
+                      <TableHead className="text-right">{t('billing.columns.totalDue')}</TableHead>
+                      <TableHead className="text-center">{t('billing.columns.status')}</TableHead>
+                      <TableHead className="text-center">{t('billing.columns.actions')}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filtered.map(d => (
+                      <TableRow key={d.id}>
+                        <TableCell className="text-sm">{d.tenant_name}</TableCell>
+                        <TableCell className="text-sm max-w-[200px] truncate">{d.property_address}</TableCell>
+                        <TableCell className="text-sm">{d.period_month}</TableCell>
+                        <TableCell className="text-sm text-right">{formatCurrency(Number(d.expected_amount), d.currency)}</TableCell>
+                        <TableCell className="text-sm text-right">{formatCurrency(Number(d.balance_due), d.currency)}</TableCell>
+                        <TableCell className="text-sm text-center">
+                          {d.status === 'overdue' ? (
+                            d.days_overdue > 0 ? (
+                              <span className="text-destructive font-medium">{d.days_overdue}</span>
+                            ) : (
+                              <span className="text-muted-foreground text-xs">{t('billing.detail.gracePeriod')}</span>
+                            )
+                          ) : '—'}
+                        </TableCell>
+                        <TableCell className="text-sm text-right">
+                          {d.interest_amount > 0 ? (
+                            <span className="text-orange-600">{formatCurrency(d.interest_amount, d.currency)}</span>
+                          ) : d.interest_rate == null ? '—' : formatCurrency(0, d.currency)}
+                        </TableCell>
+                        <TableCell className={`text-sm text-right ${d.status === 'overdue' ? 'font-bold' : ''}`}>
+                          {formatCurrency(d.total_due, d.currency)}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant={statusVariant[d.status] ?? 'secondary'}>{t(`billing.status.${d.status}`)}</Badge>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            <Button variant="ghost" size="icon" onClick={() => setDetailDue(d)}><Eye className="h-4 w-4" /></Button>
+                            {d.status !== 'paid' && (
+                              <Button variant="ghost" size="icon" onClick={() => setPayDue(d)}><DollarSign className="h-4 w-4" /></Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Mobile cards */}
+          <div className="md:hidden space-y-3">
+            {filtered.map(d => (
+              <Card key={d.id} className="cursor-pointer" onClick={() => setDetailDue(d)}>
+                <CardContent className="p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-sm">{d.tenant_name}</span>
+                    <Badge variant={statusVariant[d.status] ?? 'secondary'}>{t(`billing.status.${d.status}`)}</Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground truncate">{d.property_address}</p>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">{d.period_month}</span>
+                    <span className={d.status === 'overdue' ? 'font-bold text-destructive' : 'font-medium'}>{formatCurrency(d.total_due, d.currency)}</span>
+                  </div>
+                  {d.days_overdue > 0 && (
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-destructive">{d.days_overdue} {t('billing.detail.days')} {t('billing.columns.daysOverdue').toLowerCase()}</span>
+                      {d.interest_amount > 0 && <span className="text-orange-600">{t('billing.columns.interest')}: {formatCurrency(d.interest_amount, d.currency)}</span>}
+                    </div>
+                  )}
+                  {d.status !== 'paid' && (
+                    <Button size="sm" className="w-full mt-1" onClick={e => { e.stopPropagation(); setPayDue(d) }}>
+                      <DollarSign className="h-3 w-3 mr-1" />{t('billing.payForm.submit')}
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </>
+      )}
+
+      <CobranzaDetail
+        open={!!detailDue}
+        onOpenChange={open => { if (!open) setDetailDue(null) }}
+        due={detailDue}
+        fetchPagos={fetchPagos}
+        onRegisterPayment={() => { setPayDue(detailDue); setDetailDue(null) }}
+      />
+
+      <PagoForm
+        open={!!payDue}
+        onOpenChange={open => { if (!open) setPayDue(null) }}
+        due={payDue}
+        onSave={handlePay}
+      />
     </div>
   )
 }
