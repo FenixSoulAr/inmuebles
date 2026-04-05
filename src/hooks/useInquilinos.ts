@@ -160,14 +160,13 @@ export function useInquilinos() {
     }))
   }
 
-  const hasActiveContract = async (tenantId: string): Promise<boolean> => {
+  const hasAnyContract = async (tenantId: string): Promise<boolean> => {
     if (!projectId) return false
     const { count } = await supabase
       .from('contracts')
       .select('id', { count: 'exact', head: true })
       .eq('tenant_id', tenantId)
       .eq('project_id', projectId)
-      .eq('is_active', true)
     return (count ?? 0) > 0
   }
 
@@ -179,6 +178,6 @@ export function useInquilinos() {
     eliminarInquilino,
     fetchGuarantors,
     fetchContracts,
-    hasActiveContract,
+    hasAnyContract,
   }
 }

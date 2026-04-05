@@ -195,7 +195,10 @@ export default function ContratoForm({ open, onOpenChange, contract, existingSer
               <Select value={form.tipo_contrato} onValueChange={v => set('tipo_contrato', v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="permanente">{t('contracts.types.permanente')}</SelectItem>
+                  <SelectItem value="vivienda">{t('contracts.types.vivienda')}</SelectItem>
+                  <SelectItem value="temporada">{t('contracts.types.temporada')}</SelectItem>
+                  <SelectItem value="turistico">{t('contracts.types.turistico')}</SelectItem>
+                  <SelectItem value="comercial">{t('contracts.types.comercial')}</SelectItem>
                   <SelectItem value="rural">{t('contracts.types.rural')}</SelectItem>
                 </SelectContent>
               </Select>

@@ -204,6 +204,10 @@
     },
     "types": {
       "permanente": "Permanent",
+      "vivienda": "Residential",
+      "temporada": "Seasonal",
+      "turistico": "Tourist",
+      "comercial": "Commercial",
       "rural": "Rural"
     },
     "adjustmentTypes": {

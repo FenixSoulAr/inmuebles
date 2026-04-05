@@ -64,8 +64,8 @@ export default function Inquilinos() {
   }
 
   const confirmDelete = async (tenant: TenantWithProperty) => {
-    const active = await hasActiveContract(tenant.id)
-    setDeleteBlocked(active)
+    const hasContracts = await hasAnyContract(tenant.id)
+    setDeleteBlocked(hasContracts)
     setDeleteTarget(tenant)
   }
 
