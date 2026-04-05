@@ -214,7 +214,9 @@
     },
     "depositTypes": {
       "fixed": "Monto fijo",
+      "monto_fijo": "Monto fijo",
       "months": "Meses de alquiler",
+      "meses": "Meses de alquiler",
       "cash": "Efectivo"
     },
     "depositModes": {
