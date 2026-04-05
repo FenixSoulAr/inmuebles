@@ -58,11 +58,13 @@ const defaultForm = () => ({
   permite_subalquiler: false,
 })
 
-export default function ContratoForm({ open, onOpenChange, contract, existingServices, propertyOptions, tenantOptions, onSave }: Props) {
+export default function ContratoForm({ open, onOpenChange, contract, existingServices, propertyOptions, tenantOptions, onSave, onTenantCreated }: Props) {
   const { t } = useTranslation()
+  const { crearInquilino } = useInquilinos()
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState(defaultForm())
   const [services, setServices] = useState<ServiceForm[]>([])
+  const [showNewTenant, setShowNewTenant] = useState(false)
   const [showMora, setShowMora] = useState(false)
 
   useEffect(() => {
