@@ -17,7 +17,8 @@
     "maintenance": "En reparación",
     "pending": "Pendiente",
     "in_progress": "En progreso",
-    "active": "Activo"
+    "active": "Activo",
+    "inactive": "Inactivo"
   },
   "propertyType": {
     "apartment": "Departamento",
@@ -72,6 +73,73 @@
     },
     "editBtn": "Editar",
     "deleteBtn": "Eliminar"
+  },
+  "tenants": {
+    "title": "Inquilinos",
+    "subtitle": "Administrá los inquilinos y sus contratos",
+    "search": "Buscar por nombre o DNI...",
+    "new": "Nuevo inquilino",
+    "add": "Agregar inquilino",
+    "emptyTitle": "Sin inquilinos registrados",
+    "emptyDesc": "Agregá inquilinos y asocialos a tus propiedades",
+    "filterAll": "Todos",
+    "filterActive": "Activos",
+    "filterInactive": "Inactivos",
+    "editBtn": "Editar",
+    "deleteBtn": "Eliminar",
+    "columns": {
+      "name": "Nombre completo",
+      "docId": "DNI",
+      "phone": "Teléfono",
+      "status": "Estado",
+      "property": "Propiedad actual",
+      "actions": "Acciones"
+    },
+    "form": {
+      "createTitle": "Nuevo inquilino",
+      "createDesc": "Completá los datos para registrar un nuevo inquilino",
+      "editTitle": "Editar inquilino",
+      "editDesc": "Modificá los datos del inquilino",
+      "fullName": "Nombre completo",
+      "docId": "DNI / CUIT",
+      "email": "Email",
+      "phone": "Teléfono",
+      "status": "Estado",
+      "language": "Idioma preferido",
+      "guarantorsTitle": "Garantes",
+      "addGuarantor": "Agregar garante",
+      "noGuarantors": "Sin garantes registrados",
+      "guarantor": "Garante",
+      "guarantorName": "Nombre completo del garante *",
+      "guarantorContact": "Información de contacto",
+      "guarantorNotes": "Notas"
+    },
+    "detail": {
+      "guarantors": "Garantes",
+      "noGuarantors": "Sin garantes registrados",
+      "contractHistory": "Historial de contratos",
+      "noContracts": "Sin contratos registrados",
+      "property": "Propiedad",
+      "period": "Período",
+      "rent": "Canon",
+      "contractStatus": "Estado",
+      "activeContract": "Activo",
+      "finishedContract": "Finalizado"
+    },
+    "toast": {
+      "created": "Inquilino creado",
+      "updated": "Inquilino actualizado",
+      "deleted": "Inquilino eliminado",
+      "deleteError": "Error al eliminar inquilino"
+    },
+    "delete": {
+      "title": "¿Eliminar inquilino?",
+      "desc": "Se eliminará <strong>{{name}}</strong> y todos sus garantes asociados.",
+      "confirm": "Eliminar",
+      "cancel": "Cancelar",
+      "blockedTitle": "No se puede eliminar",
+      "blockedDesc": "{{name}} tiene un contrato activo. Finalizá el contrato antes de eliminar el inquilino."
+    }
   },
   "common": {
     "save": "Guardar",
