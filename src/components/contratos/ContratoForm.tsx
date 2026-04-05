@@ -187,6 +187,14 @@ export default function ContratoForm({ open, onOpenChange, contract, existingSer
                   ))}
                 </SelectContent>
               </Select>
+              <button
+                type="button"
+                className="flex items-center gap-1 text-xs text-primary hover:underline cursor-pointer"
+                onClick={() => setShowNewTenant(true)}
+              >
+                <UserPlus className="h-3 w-3" />
+                {t('contracts.form.createTenantLink')}
+              </button>
             </div>
             <div className="space-y-2">
               <Label>{t('contracts.form.startDate')} *</Label>
