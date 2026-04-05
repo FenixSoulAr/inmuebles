@@ -349,6 +349,75 @@
     "propertyStatus": "Property status",
     "noProperties": "No properties loaded yet"
   },
+  "billing": {
+    "title": "Billing",
+    "subtitle": "Payment tracking and rent collection",
+    "search": "Search by tenant or address…",
+    "emptyTitle": "No records found",
+    "emptyDesc": "Payments will appear here once you have active contracts",
+    "summary": {
+      "overdue": "Overdue",
+      "partial": "Partial",
+      "collected": "Collected this month",
+      "thisMonth": "This month"
+    },
+    "filters": {
+      "all": "All",
+      "overdue": "Overdue",
+      "partial": "Partial",
+      "paid": "Paid"
+    },
+    "status": {
+      "overdue": "Overdue",
+      "partial": "Partial",
+      "paid": "Paid"
+    },
+    "columns": {
+      "tenant": "Tenant",
+      "property": "Property",
+      "period": "Period",
+      "expected": "Expected amount",
+      "balance": "Balance due",
+      "daysOverdue": "Days overdue",
+      "interest": "Interest",
+      "totalDue": "Total due",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "overdueHeader": {
+      "count": "overdue installments",
+      "total": "Total"
+    },
+    "detail": {
+      "dueDate": "Due date",
+      "expected": "Original amount",
+      "days": "days",
+      "gracePeriod": "Within grace period",
+      "paymentHistory": "Payment history",
+      "noPayments": "No payments recorded",
+      "payDate": "Date",
+      "payAmount": "Amount"
+    },
+    "payForm": {
+      "title": "Register payment",
+      "amount": "Amount received",
+      "method": "Payment method",
+      "date": "Payment date",
+      "notes": "Notes",
+      "notesPlaceholder": "Optional remarks",
+      "submit": "Register payment"
+    },
+    "methods": {
+      "transfer": "Transfer",
+      "cash": "Cash",
+      "check": "Check",
+      "other": "Other"
+    },
+    "toast": {
+      "paymentRegistered": "Payment registered successfully",
+      "paymentError": "Error registering payment"
+    }
+  },
   "lang": {
     "es": "ES",
     "en": "EN"
