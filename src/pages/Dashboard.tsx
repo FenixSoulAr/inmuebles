@@ -49,10 +49,10 @@ export default function Dashboard() {
   }
 
   const estadisticas = [
-    { titulo: t('dashboard.stats.properties'), valor: stats.properties, descripcion: t('dashboard.stats.propertiesDesc'), icon: Building2, color: 'text-blue-600', bg: 'bg-blue-50' },
-    { titulo: t('dashboard.stats.tenants'), valor: stats.tenants, descripcion: t('dashboard.stats.tenantsDesc'), icon: Users, color: 'text-green-600', bg: 'bg-green-50' },
-    { titulo: t('dashboard.stats.pendingDues'), valor: stats.pendingDues, descripcion: t('dashboard.stats.pendingDuesDesc'), icon: CreditCard, color: 'text-yellow-600', bg: 'bg-yellow-50' },
-    { titulo: t('dashboard.stats.repairs'), valor: stats.repairs, descripcion: t('dashboard.stats.repairsDesc'), icon: Wrench, color: 'text-red-600', bg: 'bg-red-50' },
+    { titulo: t('dashboard.stats.properties'), valor: stats.properties, descripcion: t('dashboard.stats.propertiesDesc'), icon: Building2, color: 'text-blue-600', bg: 'bg-blue-50', to: '/propiedades' },
+    { titulo: t('dashboard.stats.tenants'), valor: stats.tenants, descripcion: t('dashboard.stats.tenantsDesc'), icon: Users, color: 'text-green-600', bg: 'bg-green-50', to: '/inquilinos' },
+    { titulo: t('dashboard.stats.pendingDues'), valor: stats.pendingDues, descripcion: t('dashboard.stats.pendingDuesDesc'), icon: CreditCard, color: 'text-yellow-600', bg: 'bg-yellow-50', to: '/cobranza' },
+    { titulo: t('dashboard.stats.repairs'), valor: stats.repairs, descripcion: t('dashboard.stats.repairsDesc'), icon: Wrench, color: 'text-red-600', bg: 'bg-red-50', to: '/reparaciones' },
   ]
 
   return (
