@@ -63,17 +63,19 @@ export default function Dashboard() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {estadisticas.map(({ titulo, valor, descripcion, icon: Icon, color, bg }) => (
-          <Card key={titulo}>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">{titulo}</CardTitle>
-              <div className={`rounded-md p-2 ${bg}`}><Icon className={`h-4 w-4 ${color}`} /></div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{valor}</div>
-              <p className="text-xs text-muted-foreground mt-1">{descripcion}</p>
-            </CardContent>
-          </Card>
+        {estadisticas.map(({ titulo, valor, descripcion, icon: Icon, color, bg, to }) => (
+          <Link key={titulo} to={to} className="block">
+            <Card className="cursor-pointer hover:shadow-md transition-shadow">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">{titulo}</CardTitle>
+                <div className={`rounded-md p-2 ${bg}`}><Icon className={`h-4 w-4 ${color}`} /></div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{valor}</div>
+                <p className="text-xs text-muted-foreground mt-1">{descripcion}</p>
+              </CardContent>
+            </Card>
+          </Link>
         ))}
       </div>
 
