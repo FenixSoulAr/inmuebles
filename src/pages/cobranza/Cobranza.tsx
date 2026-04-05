@@ -14,7 +14,7 @@ import PagoForm from '@/components/cobranza/PagoForm'
 import CobranzaDetail from '@/components/cobranza/CobranzaDetail'
 
 const statusVariant: Record<string, 'destructive' | 'warning' | 'success' | 'secondary'> = {
-  overdue: 'destructive', partial: 'warning', paid: 'success',
+  overdue: 'destructive', partial: 'warning', paid: 'success', upcoming: 'secondary',
 }
 
 export default function Cobranza() {
@@ -26,26 +26,25 @@ export default function Cobranza() {
   const [payDue, setPayDue] = useState<EnrichedRentDue | null>(null)
 
   const summary = useMemo(() => {
-    const overdue = dues.filter(d => d.status === 'overdue')
-    const partial = dues.filter(d => d.status === 'partial')
+    const overdue = dues.filter(d => d.display_status === 'overdue')
+    const upcoming = dues.filter(d => d.display_status === 'upcoming')
     const now = new Date()
     const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-    const paid = dues.filter(d => d.status === 'paid' && d.period_month === thisMonth)
+    const paidThisMonth = dues.filter(d => d.display_status === 'paid' && d.period_month === thisMonth)
     return {
       overdueCount: overdue.length,
       overdueAmount: overdue.reduce((s, d) => s + Number(d.balance_due), 0),
-      partialCount: partial.length,
-      partialAmount: partial.reduce((s, d) => s + Number(d.balance_due), 0),
-      paidAmount: paid.reduce((s, d) => s + Number(d.expected_amount), 0),
+      upcomingCount: upcoming.length,
+      upcomingAmount: upcoming.reduce((s, d) => s + Number(d.balance_due), 0),
+      paidAmount: paidThisMonth.reduce((s, d) => s + Number(d.expected_amount), 0),
     }
   }, [dues])
 
   const filtered = useMemo(() => {
     let list = dues
-    if (filter === 'overdue') list = list.filter(d => d.status === 'overdue')
-    else if (filter === 'partial') list = list.filter(d => d.status === 'partial')
-    else if (filter === 'paid') list = list.filter(d => d.status === 'paid')
+    if (filter !== 'all') list = list.filter(d => d.display_status === filter)
 
+    // Sort: overdue by days_overdue DESC, others by due_date DESC
     if (filter === 'overdue') {
       list = [...list].sort((a, b) => b.days_overdue - a.days_overdue)
     }
@@ -85,13 +84,16 @@ export default function Cobranza() {
             </div>
           </CardContent>
         </Card>
-        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setFilter('partial')}>
-          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">{t('billing.summary.partial')}</CardTitle></CardHeader>
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setFilter('upcoming')}>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('billing.summary.upcoming')}</CardTitle>
+          </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">
-              <span className="text-2xl font-bold text-yellow-600">{formatCurrency(summary.partialAmount)}</span>
-              <Badge variant="warning">{summary.partialCount}</Badge>
+              <span className="text-2xl font-bold">{formatCurrency(summary.upcomingAmount)}</span>
+              <Badge variant="secondary">{summary.upcomingCount}</Badge>
             </div>
+            <p className="text-xs text-muted-foreground mt-1">{t('billing.summary.upcomingDesc')}</p>
           </CardContent>
         </Card>
         <Card>
@@ -116,6 +118,7 @@ export default function Cobranza() {
           <SelectContent>
             <SelectItem value="all">{t('billing.filters.all')}</SelectItem>
             <SelectItem value="overdue">{t('billing.filters.overdue')}</SelectItem>
+            <SelectItem value="upcoming">{t('billing.filters.upcoming')}</SelectItem>
             <SelectItem value="partial">{t('billing.filters.partial')}</SelectItem>
             <SelectItem value="paid">{t('billing.filters.paid')}</SelectItem>
           </SelectContent>
@@ -172,7 +175,7 @@ export default function Cobranza() {
                         <TableCell className="text-sm text-right">{formatCurrency(Number(d.expected_amount), d.currency)}</TableCell>
                         <TableCell className="text-sm text-right">{formatCurrency(Number(d.balance_due), d.currency)}</TableCell>
                         <TableCell className="text-sm text-center">
-                          {d.status === 'overdue' ? (
+                          {d.display_status === 'overdue' ? (
                             d.days_overdue > 0 ? (
                               <span className="text-destructive font-medium">{d.days_overdue}</span>
                             ) : (
@@ -181,20 +184,20 @@ export default function Cobranza() {
                           ) : '—'}
                         </TableCell>
                         <TableCell className="text-sm text-right">
-                          {d.interest_amount > 0 ? (
+                          {d.display_status === 'overdue' && d.interest_amount > 0 ? (
                             <span className="text-orange-600">{formatCurrency(d.interest_amount, d.currency)}</span>
-                          ) : d.interest_rate == null ? '—' : formatCurrency(0, d.currency)}
+                          ) : '—'}
                         </TableCell>
-                        <TableCell className={`text-sm text-right ${d.status === 'overdue' ? 'font-bold' : ''}`}>
+                        <TableCell className={`text-sm text-right ${d.display_status === 'overdue' ? 'font-bold' : ''}`}>
                           {formatCurrency(d.total_due, d.currency)}
                         </TableCell>
                         <TableCell className="text-center">
-                          <Badge variant={statusVariant[d.status] ?? 'secondary'}>{t(`billing.status.${d.status}`)}</Badge>
+                          <Badge variant={statusVariant[d.display_status] ?? 'secondary'}>{t(`billing.status.${d.display_status}`)}</Badge>
                         </TableCell>
                         <TableCell className="text-center">
                           <div className="flex items-center justify-center gap-1">
                             <Button variant="ghost" size="icon" onClick={() => setDetailDue(d)}><Eye className="h-4 w-4" /></Button>
-                            {d.status !== 'paid' && (
+                            {d.display_status !== 'paid' && (
                               <Button variant="ghost" size="icon" onClick={() => setPayDue(d)}><DollarSign className="h-4 w-4" /></Button>
                             )}
                           </div>
@@ -214,20 +217,20 @@ export default function Cobranza() {
                 <CardContent className="p-4 space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="font-medium text-sm">{d.tenant_name}</span>
-                    <Badge variant={statusVariant[d.status] ?? 'secondary'}>{t(`billing.status.${d.status}`)}</Badge>
+                    <Badge variant={statusVariant[d.display_status] ?? 'secondary'}>{t(`billing.status.${d.display_status}`)}</Badge>
                   </div>
                   <p className="text-xs text-muted-foreground truncate">{d.property_address}</p>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">{d.period_month}</span>
-                    <span className={d.status === 'overdue' ? 'font-bold text-destructive' : 'font-medium'}>{formatCurrency(d.total_due, d.currency)}</span>
+                    <span className={d.display_status === 'overdue' ? 'font-bold text-destructive' : 'font-medium'}>{formatCurrency(d.total_due, d.currency)}</span>
                   </div>
-                  {d.days_overdue > 0 && (
+                  {d.display_status === 'overdue' && d.days_overdue > 0 && (
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-destructive">{d.days_overdue} {t('billing.detail.days')} {t('billing.columns.daysOverdue').toLowerCase()}</span>
                       {d.interest_amount > 0 && <span className="text-orange-600">{t('billing.columns.interest')}: {formatCurrency(d.interest_amount, d.currency)}</span>}
                     </div>
                   )}
-                  {d.status !== 'paid' && (
+                  {d.display_status !== 'paid' && (
                     <Button size="sm" className="w-full mt-1" onClick={e => { e.stopPropagation(); setPayDue(d) }}>
                       <DollarSign className="h-3 w-3 mr-1" />{t('billing.payForm.submit')}
                     </Button>

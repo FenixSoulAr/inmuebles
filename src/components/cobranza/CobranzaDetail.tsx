@@ -18,7 +18,7 @@ interface Props {
 }
 
 const statusVariant: Record<string, 'destructive' | 'warning' | 'success' | 'secondary'> = {
-  overdue: 'destructive', partial: 'warning', paid: 'success',
+  overdue: 'destructive', partial: 'warning', paid: 'success', upcoming: 'secondary',
 }
 
 export default function CobranzaDetail({ open, onOpenChange, due, fetchPagos, onRegisterPayment }: Props) {
@@ -57,7 +57,7 @@ export default function CobranzaDetail({ open, onOpenChange, due, fetchPagos, on
             <div><span className="text-muted-foreground">{t('billing.detail.expected')}:</span> <span className="font-medium">{formatCurrency(Number(due.expected_amount), due.currency)}</span></div>
             <div>
               <span className="text-muted-foreground">{t('billing.columns.status')}:</span>{' '}
-              <Badge variant={statusVariant[due.status] ?? 'secondary'}>{t(`billing.status.${due.status}`)}</Badge>
+              <Badge variant={statusVariant[due.display_status] ?? 'secondary'}>{t(`billing.status.${due.display_status}`)}</Badge>
             </div>
           </div>
 
@@ -66,15 +66,15 @@ export default function CobranzaDetail({ open, onOpenChange, due, fetchPagos, on
           <div className="rounded-md border p-3 space-y-1 text-sm">
             <div className="flex justify-between">
               <span className="text-muted-foreground">{t('billing.columns.balance')}</span>
-              <span className={`font-medium ${due.status === 'overdue' ? 'text-destructive' : ''}`}>{formatCurrency(Number(due.balance_due), due.currency)}</span>
+              <span className={`font-medium ${due.display_status === 'overdue' ? 'text-destructive' : ''}`}>{formatCurrency(Number(due.balance_due), due.currency)}</span>
             </div>
-            {due.days_overdue > 0 && (
+            {due.display_status === 'overdue' && due.days_overdue > 0 && (
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{t('billing.columns.daysOverdue')}</span>
                 <span className="font-medium text-destructive">{due.days_overdue} {t('billing.detail.days')}</span>
               </div>
             )}
-            {due.interest_amount > 0 && (
+            {due.display_status === 'overdue' && due.interest_amount > 0 && (
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{t('billing.columns.interest')}</span>
                 <span className="font-medium text-orange-600">{formatCurrency(due.interest_amount, due.currency)}</span>
@@ -86,7 +86,7 @@ export default function CobranzaDetail({ open, onOpenChange, due, fetchPagos, on
             </div>
           </div>
 
-          {due.grace_days > 0 && due.status === 'overdue' && due.days_overdue === 0 && (
+          {due.grace_days > 0 && due.display_status === 'overdue' && due.days_overdue === 0 && (
             <p className="text-sm text-muted-foreground italic">{t('billing.detail.gracePeriod')}</p>
           )}
 
@@ -120,7 +120,7 @@ export default function CobranzaDetail({ open, onOpenChange, due, fetchPagos, on
             )}
           </div>
 
-          {due.status !== 'paid' && (
+          {due.display_status !== 'paid' && (
             <Button onClick={onRegisterPayment} className="w-full">
               <DollarSign className="h-4 w-4 mr-1" />{t('billing.payForm.submit')}
             </Button>

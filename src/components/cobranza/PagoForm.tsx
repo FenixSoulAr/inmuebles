@@ -32,7 +32,7 @@ export default function PagoForm({ open, onOpenChange, due, onSave }: Props) {
 
   const handleSubmit = async () => {
     const amount = parseFloat(form.amount)
-    if (!amount || amount <= 0 || amount > due.total_due) return
+    if (!amount || amount <= 0) return
     setSaving(true)
     try {
       await onSave(due.id, { amount, method: form.method, payment_date: form.payment_date, notes: form.notes })
@@ -63,7 +63,7 @@ export default function PagoForm({ open, onOpenChange, due, onSave }: Props) {
 
           <div className="space-y-2">
             <Label>{t('billing.payForm.amount')} *</Label>
-            <Input type="number" step="0.01" min="0.01" max={due.total_due} value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} />
+            <Input type="number" step="0.01" min="0.01" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} />
           </div>
 
           <div className="space-y-2">
@@ -92,7 +92,7 @@ export default function PagoForm({ open, onOpenChange, due, onSave }: Props) {
 
         <SheetFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>{t('common.cancel')}</Button>
-          <Button onClick={handleSubmit} disabled={saving || !parseFloat(form.amount) || parseFloat(form.amount) <= 0 || parseFloat(form.amount) > due.total_due}>
+          <Button onClick={handleSubmit} disabled={saving || !parseFloat(form.amount) || parseFloat(form.amount) <= 0}>
             {saving ? t('common.saving') : t('billing.payForm.submit')}
           </Button>
         </SheetFooter>
