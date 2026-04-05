@@ -91,7 +91,7 @@ export default function Dashboard() {
             ) : (
               <div className="space-y-3">
                 {upcomingDues.map((d: any) => (
-                  <div key={d.id} className="flex items-center justify-between text-sm border-b pb-2 last:border-0">
+                  <Link key={d.id} to="/cobranza" className="flex items-center justify-between text-sm border-b pb-2 last:border-0 cursor-pointer hover:bg-muted/50 rounded-md px-2 -mx-2 transition-colors">
                     <div>
                       <p className="font-medium">{(d.tenants as any)?.full_name ?? '—'}</p>
                       <p className="text-xs text-muted-foreground">{(d.properties as any)?.internal_identifier} · {d.period_month}</p>
@@ -100,7 +100,7 @@ export default function Dashboard() {
                       <p className="font-semibold">$ {Number(d.expected_amount).toLocaleString('es-AR')}</p>
                       <p className="text-xs text-muted-foreground">{d.due_date}</p>
                     </div>
-                  </div>
+                  </Link>
                 ))}
               </div>
             )}
