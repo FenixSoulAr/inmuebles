@@ -6,6 +6,8 @@ import type { Tables } from '@/integrations/supabase/types'
 export type RentDue = Tables<'rent_dues'>
 export type RentPayment = Tables<'rent_payments'>
 
+export type DisplayStatus = 'paid' | 'upcoming' | 'partial' | 'overdue'
+
 export interface EnrichedRentDue extends RentDue {
   tenant_name: string
   property_address: string
@@ -15,6 +17,7 @@ export interface EnrichedRentDue extends RentDue {
   days_overdue: number
   interest_amount: number
   total_due: number
+  display_status: DisplayStatus
 }
 
 export function useCobranza() {
