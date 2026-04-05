@@ -142,6 +142,144 @@
       "blockedDesc": "{{name}} has an active contract. End the contract before deleting the tenant."
     }
   },
+  "contracts": {
+    "title": "Contracts",
+    "subtitle": "Manage rental contracts",
+    "search": "Search by tenant or property...",
+    "new": "New contract",
+    "add": "Add contract",
+    "emptyTitle": "No contracts registered",
+    "emptyDesc": "Create your first rental contract",
+    "activate": "Activate",
+    "deactivate": "Deactivate",
+    "columns": {
+      "property": "Property",
+      "tenant": "Tenant",
+      "period": "Period",
+      "rent": "Current rent",
+      "adjustment": "Adjustment",
+      "status": "Status"
+    },
+    "form": {
+      "createTitle": "New contract",
+      "createDesc": "Fill in the details to register a new contract",
+      "editTitle": "Edit contract",
+      "editDesc": "Update contract details",
+      "section1": "Parties & term",
+      "section2": "Rent & deposit",
+      "section3": "Price adjustment",
+      "section4": "Late fees",
+      "section5": "Clauses",
+      "section6": "Included services",
+      "property": "Property",
+      "selectProperty": "Select property",
+      "tenant": "Tenant",
+      "selectTenant": "Select tenant",
+      "startDate": "Start date",
+      "endDate": "End date",
+      "tipoContrato": "Contract type",
+      "initialRent": "Initial rent",
+      "currentRent": "Current rent",
+      "currency": "Currency",
+      "rentDueDay": "Payment day",
+      "graceDays": "Grace days",
+      "deposit": "Deposit",
+      "depositType": "Deposit type",
+      "depositMode": "Deposit mode",
+      "currencyDeposit": "Deposit currency",
+      "adjustmentType": "Adjustment type",
+      "adjustmentFrequency": "Frequency (months)",
+      "adjustmentBaseDate": "Adjustment base date",
+      "adjustmentPercentage": "Adjustment percentage",
+      "interestRate": "Interest rate (%)",
+      "penaltyType": "Penalty type",
+      "penaltyValue": "Penalty value",
+      "collapse": "Hide",
+      "expand": "Show",
+      "addService": "Add service",
+      "noServices": "No services configured",
+      "serviceType": "Service",
+      "dueDay": "Due day",
+      "expectedAmount": "Expected amount"
+    },
+    "types": {
+      "permanente": "Permanent",
+      "rural": "Rural"
+    },
+    "adjustmentTypes": {
+      "none": "No adjustment",
+      "manual": "Manual",
+      "ipc": "IPC",
+      "icl": "ICL"
+    },
+    "depositTypes": {
+      "fixed": "Fixed amount",
+      "months": "Months of rent",
+      "cash": "Cash"
+    },
+    "depositModes": {
+      "required": "Required",
+      "optional": "Optional",
+      "none": "No deposit"
+    },
+    "penaltyTypes": {
+      "percentage": "Percentage",
+      "fixed": "Fixed amount"
+    },
+    "clauses": {
+      "expensas_ordinarias": "Regular fees",
+      "expensas_extraordinarias": "Extraordinary fees",
+      "impuestos_a_cargo_locatario": "Taxes paid by tenant",
+      "seguro_obligatorio": "Mandatory insurance",
+      "permite_mascotas": "Pets allowed",
+      "permite_subalquiler": "Subletting allowed"
+    },
+    "serviceTypes": {
+      "luz": "Electricity",
+      "gas": "Gas",
+      "agua": "Water",
+      "expensas": "Building fees",
+      "internet": "Internet",
+      "seguro": "Insurance"
+    },
+    "detail": {
+      "period": "Period",
+      "type": "Type",
+      "months": "months",
+      "nextAdjustment": "Next adjustment",
+      "clauses": "Active clauses",
+      "services": "Services",
+      "adjustmentHistory": "Adjustment history",
+      "noAdjustments": "No adjustments recorded",
+      "adjDate": "Date",
+      "adjPrevious": "Previous",
+      "adjCalculated": "Calculated",
+      "adjConfirmed": "Confirmed",
+      "adjStatus": "Status",
+      "adjStatuses": {
+        "draft": "Draft",
+        "confirmed": "Confirmed",
+        "cancelled": "Cancelled"
+      },
+      "publicLink": "Public link",
+      "copyLink": "Copy link",
+      "linkCopied": "Link copied to clipboard"
+    },
+    "toast": {
+      "created": "Contract created",
+      "updated": "Contract updated",
+      "saveError": "Error saving contract",
+      "activated": "Contract activated",
+      "deactivated": "Contract deactivated",
+      "toggleError": "Error changing status"
+    },
+    "toggle": {
+      "deactivateTitle": "Deactivate contract?",
+      "deactivateDesc": "Deactivating this contract will pause obligation generation.",
+      "activateTitle": "Activate contract?",
+      "activateDesc": "This contract will be reactivated."
+    }
+  },
   "common": {
     "save": "Save",
     "saving": "Saving…",
