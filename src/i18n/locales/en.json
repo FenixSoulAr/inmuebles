@@ -357,18 +357,21 @@
     "emptyDesc": "Payments will appear here once you have active contracts",
     "summary": {
       "overdue": "Overdue",
-      "partial": "Partial",
+      "upcoming": "Upcoming income",
+      "upcomingDesc": "Pending collection",
       "collected": "Collected this month",
       "thisMonth": "This month"
     },
     "filters": {
       "all": "All",
       "overdue": "Overdue",
+      "upcoming": "Upcoming",
       "partial": "Partial",
       "paid": "Paid"
     },
     "status": {
       "overdue": "Overdue",
+      "upcoming": "Upcoming",
       "partial": "Partial",
       "paid": "Paid"
     },

@@ -357,18 +357,21 @@
     "emptyDesc": "Los pagos aparecerán aquí una vez que tengas contratos activos",
     "summary": {
       "overdue": "En mora",
-      "partial": "Parciales",
+      "upcoming": "Próximos ingresos",
+      "upcomingDesc": "Pendientes de cobro",
       "collected": "Cobrado este mes",
       "thisMonth": "Este mes"
     },
     "filters": {
       "all": "Todos",
       "overdue": "En mora",
+      "upcoming": "Próximos",
       "partial": "Parcial",
       "paid": "Pagado"
     },
     "status": {
       "overdue": "En mora",
+      "upcoming": "Próximo",
       "partial": "Parcial",
       "paid": "Pagado"
     },
