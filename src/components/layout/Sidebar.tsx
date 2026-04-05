@@ -51,19 +51,17 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           open ? 'translate-x-0' : '-translate-x-full'
         )}
       >
-        <div className="flex items-center justify-between px-4 py-4">
+        <div className="flex items-center justify-between bg-white border-b border-border px-4 py-4">
           <img src={logoSrc} alt="MyRentaHub" className="h-8 w-auto" />
           <Button
             variant="ghost"
             size="icon"
-            className="lg:hidden text-sidebar-foreground hover:bg-sidebar-accent"
+            className="lg:hidden text-foreground hover:bg-muted"
             onClick={onClose}
           >
             <X className="h-5 w-5" />
           </Button>
         </div>
-
-        <Separator className="bg-sidebar-border" />
 
         <nav className="flex-1 overflow-y-auto px-3 py-4">
           <ul className="space-y-1">

@@ -10,12 +10,20 @@ import { useAuth } from '@/contexts/AuthContext'
 
 export default function Dashboard() {
   const { t } = useTranslation()
+  const { user } = useAuth()
   const { projectId, loading: loadingProject } = useProjectId()
   const [stats, setStats] = useState({ properties: 0, tenants: 0, pendingDues: 0, repairs: 0 })
   const [upcomingDues, setUpcomingDues] = useState<any[]>([])
   const [pendingRepairs, setPendingRepairs] = useState<any[]>([])
   const [properties, setProperties] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours()
+    const name = user?.user_metadata?.full_name || user?.email?.split('@')[0] || ''
+    const saludo = hour < 12 ? 'Buenos días' : hour < 19 ? 'Buenas tardes' : 'Buenas noches'
+    return name ? `${saludo}, ${name}` : saludo
+  }, [user])
 
   useEffect(() => {
     if (!projectId) return
