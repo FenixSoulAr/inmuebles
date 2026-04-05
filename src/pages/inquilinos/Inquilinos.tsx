@@ -15,7 +15,7 @@ import InquilinoDetail from '@/components/inquilinos/InquilinoDetail'
 
 export default function Inquilinos() {
   const { t } = useTranslation()
-  const { inquilinos, loading, crearInquilino, editarInquilino, eliminarInquilino, fetchGuarantors, fetchContracts, hasActiveContract } = useInquilinos()
+  const { inquilinos, loading, crearInquilino, editarInquilino, eliminarInquilino, fetchGuarantors, fetchContracts, hasAnyContract } = useInquilinos()
 
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
