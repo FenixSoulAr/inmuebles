@@ -17,7 +17,8 @@
     "maintenance": "Under repair",
     "pending": "Pending",
     "in_progress": "In progress",
-    "active": "Active"
+    "active": "Active",
+    "inactive": "Inactive"
   },
   "propertyType": {
     "apartment": "Apartment",
@@ -72,6 +73,73 @@
     },
     "editBtn": "Edit",
     "deleteBtn": "Delete"
+  },
+  "tenants": {
+    "title": "Tenants",
+    "subtitle": "Manage tenants and their contracts",
+    "search": "Search by name or ID...",
+    "new": "New tenant",
+    "add": "Add tenant",
+    "emptyTitle": "No tenants registered",
+    "emptyDesc": "Add tenants and link them to your properties",
+    "filterAll": "All",
+    "filterActive": "Active",
+    "filterInactive": "Inactive",
+    "editBtn": "Edit",
+    "deleteBtn": "Delete",
+    "columns": {
+      "name": "Full name",
+      "docId": "ID number",
+      "phone": "Phone",
+      "status": "Status",
+      "property": "Current property",
+      "actions": "Actions"
+    },
+    "form": {
+      "createTitle": "New tenant",
+      "createDesc": "Fill in the details to register a new tenant",
+      "editTitle": "Edit tenant",
+      "editDesc": "Update tenant details",
+      "fullName": "Full name",
+      "docId": "ID / Tax ID",
+      "email": "Email",
+      "phone": "Phone",
+      "status": "Status",
+      "language": "Preferred language",
+      "guarantorsTitle": "Guarantors",
+      "addGuarantor": "Add guarantor",
+      "noGuarantors": "No guarantors registered",
+      "guarantor": "Guarantor",
+      "guarantorName": "Guarantor full name *",
+      "guarantorContact": "Contact information",
+      "guarantorNotes": "Notes"
+    },
+    "detail": {
+      "guarantors": "Guarantors",
+      "noGuarantors": "No guarantors registered",
+      "contractHistory": "Contract history",
+      "noContracts": "No contracts registered",
+      "property": "Property",
+      "period": "Period",
+      "rent": "Rent",
+      "contractStatus": "Status",
+      "activeContract": "Active",
+      "finishedContract": "Finished"
+    },
+    "toast": {
+      "created": "Tenant created",
+      "updated": "Tenant updated",
+      "deleted": "Tenant deleted",
+      "deleteError": "Error deleting tenant"
+    },
+    "delete": {
+      "title": "Delete tenant?",
+      "desc": "<strong>{{name}}</strong> and all associated guarantors will be deleted.",
+      "confirm": "Delete",
+      "cancel": "Cancel",
+      "blockedTitle": "Cannot delete",
+      "blockedDesc": "{{name}} has an active contract. End the contract before deleting the tenant."
+    }
   },
   "common": {
     "save": "Save",
