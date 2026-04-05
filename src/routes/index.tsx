@@ -5,6 +5,7 @@ import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import Dashboard from '@/pages/Dashboard'
 import Propiedades from '@/pages/propiedades/Propiedades'
 import Inquilinos from '@/pages/inquilinos/Inquilinos'
+import Contratos from '@/pages/contratos/Contratos'
 import Cobranza from '@/pages/cobranza/Cobranza'
 import Reparaciones from '@/pages/reparaciones/Reparaciones'
 import Impuestos from '@/pages/impuestos/Impuestos'
@@ -34,6 +35,7 @@ export const router = createBrowserRouter([
           { index: true, element: <Dashboard /> },
           { path: 'propiedades', element: <Propiedades /> },
           { path: 'inquilinos', element: <Inquilinos /> },
+          { path: 'contratos', element: <Contratos /> },
           { path: 'cobranza', element: <Cobranza /> },
           { path: 'reparaciones', element: <Reparaciones /> },
           { path: 'impuestos', element: <Impuestos /> },

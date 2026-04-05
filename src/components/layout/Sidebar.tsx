@@ -20,6 +20,7 @@ const navItems = [
   { to: '/', labelKey: 'nav.dashboard', icon: LayoutDashboard, end: true },
   { to: '/propiedades', labelKey: 'nav.propiedades', icon: Building2 },
   { to: '/inquilinos', labelKey: 'nav.inquilinos', icon: Users },
+  { to: '/contratos', labelKey: 'nav.contratos', icon: FileText },
   { to: '/cobranza', labelKey: 'nav.cobranza', icon: CreditCard },
   { to: '/reparaciones', labelKey: 'nav.reparaciones', icon: Wrench },
   { to: '/impuestos', labelKey: 'nav.impuestos', icon: FileText },

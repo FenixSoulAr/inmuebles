@@ -3,6 +3,7 @@
     "dashboard": "Dashboard",
     "propiedades": "Propiedades",
     "inquilinos": "Inquilinos",
+    "contratos": "Contratos",
     "cobranza": "Cobranza",
     "reparaciones": "Reparaciones",
     "impuestos": "Impuestos",
@@ -139,6 +140,144 @@
       "cancel": "Cancelar",
       "blockedTitle": "No se puede eliminar",
       "blockedDesc": "{{name}} tiene un contrato activo. Finalizá el contrato antes de eliminar el inquilino."
+    }
+  },
+  "contracts": {
+    "title": "Contratos",
+    "subtitle": "Gestioná los contratos de alquiler",
+    "search": "Buscar por inquilino o propiedad...",
+    "new": "Nuevo contrato",
+    "add": "Agregar contrato",
+    "emptyTitle": "Sin contratos registrados",
+    "emptyDesc": "Creá tu primer contrato de alquiler",
+    "activate": "Activar",
+    "deactivate": "Desactivar",
+    "columns": {
+      "property": "Propiedad",
+      "tenant": "Inquilino",
+      "period": "Período",
+      "rent": "Canon actual",
+      "adjustment": "Ajuste",
+      "status": "Estado"
+    },
+    "form": {
+      "createTitle": "Nuevo contrato",
+      "createDesc": "Completá los datos para registrar un nuevo contrato",
+      "editTitle": "Editar contrato",
+      "editDesc": "Modificá los datos del contrato",
+      "section1": "Partes y vigencia",
+      "section2": "Canon y depósito",
+      "section3": "Ajuste de precio",
+      "section4": "Intereses por mora",
+      "section5": "Cláusulas",
+      "section6": "Servicios incluidos",
+      "property": "Propiedad",
+      "selectProperty": "Seleccionar propiedad",
+      "tenant": "Inquilino",
+      "selectTenant": "Seleccionar inquilino",
+      "startDate": "Fecha inicio",
+      "endDate": "Fecha fin",
+      "tipoContrato": "Tipo de contrato",
+      "initialRent": "Canon inicial",
+      "currentRent": "Canon actual",
+      "currency": "Moneda",
+      "rentDueDay": "Día de pago",
+      "graceDays": "Días de gracia",
+      "deposit": "Depósito",
+      "depositType": "Tipo depósito",
+      "depositMode": "Modo depósito",
+      "currencyDeposit": "Moneda depósito",
+      "adjustmentType": "Tipo de ajuste",
+      "adjustmentFrequency": "Frecuencia (meses)",
+      "adjustmentBaseDate": "Fecha base de ajuste",
+      "adjustmentPercentage": "Porcentaje de ajuste",
+      "interestRate": "Tasa de interés (%)",
+      "penaltyType": "Tipo de penalidad",
+      "penaltyValue": "Valor penalidad",
+      "collapse": "Ocultar",
+      "expand": "Mostrar",
+      "addService": "Agregar servicio",
+      "noServices": "Sin servicios configurados",
+      "serviceType": "Servicio",
+      "dueDay": "Día vto.",
+      "expectedAmount": "Monto estimado"
+    },
+    "types": {
+      "permanente": "Permanente",
+      "rural": "Rural"
+    },
+    "adjustmentTypes": {
+      "none": "Sin ajuste",
+      "manual": "Manual",
+      "ipc": "IPC",
+      "icl": "ICL"
+    },
+    "depositTypes": {
+      "fixed": "Monto fijo",
+      "months": "Meses de alquiler",
+      "cash": "Efectivo"
+    },
+    "depositModes": {
+      "required": "Obligatorio",
+      "optional": "Opcional",
+      "none": "Sin depósito"
+    },
+    "penaltyTypes": {
+      "percentage": "Porcentaje",
+      "fixed": "Monto fijo"
+    },
+    "clauses": {
+      "expensas_ordinarias": "Expensas ordinarias",
+      "expensas_extraordinarias": "Expensas extraordinarias",
+      "impuestos_a_cargo_locatario": "Impuestos a cargo del locatario",
+      "seguro_obligatorio": "Seguro obligatorio",
+      "permite_mascotas": "Permite mascotas",
+      "permite_subalquiler": "Permite subalquiler"
+    },
+    "serviceTypes": {
+      "luz": "Luz",
+      "gas": "Gas",
+      "agua": "Agua",
+      "expensas": "Expensas",
+      "internet": "Internet",
+      "seguro": "Seguro"
+    },
+    "detail": {
+      "period": "Período",
+      "type": "Tipo",
+      "months": "meses",
+      "nextAdjustment": "Próximo ajuste",
+      "clauses": "Cláusulas activas",
+      "services": "Servicios",
+      "adjustmentHistory": "Historial de ajustes",
+      "noAdjustments": "Sin ajustes registrados",
+      "adjDate": "Fecha",
+      "adjPrevious": "Anterior",
+      "adjCalculated": "Calculado",
+      "adjConfirmed": "Confirmado",
+      "adjStatus": "Estado",
+      "adjStatuses": {
+        "draft": "Borrador",
+        "confirmed": "Confirmado",
+        "cancelled": "Cancelado"
+      },
+      "publicLink": "Link público",
+      "copyLink": "Copiar link",
+      "linkCopied": "Link copiado al portapapeles"
+    },
+    "toast": {
+      "created": "Contrato creado",
+      "updated": "Contrato actualizado",
+      "saveError": "Error al guardar contrato",
+      "activated": "Contrato activado",
+      "deactivated": "Contrato desactivado",
+      "toggleError": "Error al cambiar estado"
+    },
+    "toggle": {
+      "deactivateTitle": "¿Desactivar contrato?",
+      "deactivateDesc": "Desactivar este contrato pausará la generación de obligaciones.",
+      "activateTitle": "¿Activar contrato?",
+      "activateDesc": "Se reactivará este contrato."
     }
   },
   "common": {
