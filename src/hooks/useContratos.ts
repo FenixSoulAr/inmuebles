@@ -69,9 +69,10 @@ export function useContratos() {
 
   const crearContrato = async (data: Record<string, any>, services: ServiceForm[]) => {
     if (!projectId) throw new Error('Sin proyecto activo')
+    const insertPayload = { ...data, project_id: projectId } as any
     const { data: created, error } = await supabase
       .from('contracts')
-      .insert({ ...data, project_id: projectId })
+      .insert(insertPayload)
       .select('id')
       .single()
     if (error) throw error
