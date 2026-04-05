@@ -139,7 +139,7 @@
       "confirm": "Eliminar",
       "cancel": "Cancelar",
       "blockedTitle": "No se puede eliminar",
-      "blockedDesc": "{{name}} tiene un contrato activo. Finalizá el contrato antes de eliminar el inquilino."
+      "blockedDesc": "{{name}} tiene contratos registrados (activos o históricos). No se puede eliminar un inquilino con historial de contratos."
     }
   },
   "contracts": {
