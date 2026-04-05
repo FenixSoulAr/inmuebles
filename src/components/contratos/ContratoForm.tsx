@@ -23,6 +23,7 @@ interface Props {
   propertyOptions: PropertyOption[]
   tenantOptions: TenantOption[]
   onSave: (data: Record<string, any>, services: ServiceForm[]) => Promise<void>
+  onTenantCreated?: () => Promise<void>
 }
 
 const emptyService = (): ServiceForm => ({ service_type: 'luz', active: true, due_day: 5, expected_amount: 0 })
