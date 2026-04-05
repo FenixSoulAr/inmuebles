@@ -139,7 +139,7 @@
       "confirm": "Eliminar",
       "cancel": "Cancelar",
       "blockedTitle": "No se puede eliminar",
-      "blockedDesc": "{{name}} tiene un contrato activo. Finalizá el contrato antes de eliminar el inquilino."
+      "blockedDesc": "{{name}} tiene contratos registrados (activos o históricos). No se puede eliminar un inquilino con historial de contratos."
     }
   },
   "contracts": {
@@ -175,6 +175,7 @@
       "selectProperty": "Seleccionar propiedad",
       "tenant": "Inquilino",
       "selectTenant": "Seleccionar inquilino",
+      "createTenantLink": "¿No encontrás el inquilino? Crear nuevo",
       "startDate": "Fecha inicio",
       "endDate": "Fecha fin",
       "tipoContrato": "Tipo de contrato",
@@ -204,6 +205,10 @@
     },
     "types": {
       "permanente": "Permanente",
+      "vivienda": "Vivienda",
+      "temporada": "Temporada",
+      "turistico": "Turístico",
+      "comercial": "Comercial",
       "rural": "Rural"
     },
     "adjustmentTypes": {
@@ -214,7 +219,9 @@
     },
     "depositTypes": {
       "fixed": "Monto fijo",
+      "monto_fijo": "Monto fijo",
       "months": "Meses de alquiler",
+      "meses": "Meses de alquiler",
       "cash": "Efectivo"
     },
     "depositModes": {

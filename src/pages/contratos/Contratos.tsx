@@ -212,6 +212,10 @@ export default function Contratos() {
         propertyOptions={propertyOptions}
         tenantOptions={tenantOptions}
         onSave={handleSave}
+        onTenantCreated={async () => {
+          const tenants = await fetchTenantOptions()
+          setTenantOptions(tenants)
+        }}
       />
 
       {/* Detail Sheet */}

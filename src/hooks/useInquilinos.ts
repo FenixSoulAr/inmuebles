@@ -71,7 +71,7 @@ export function useInquilinos() {
     }
   }, [projectId, projectLoading, fetchInquilinos])
 
-  const crearInquilino = async (data: TenantInsert, guarantors: GuarantorForm[]) => {
+  const crearInquilino = async (data: TenantInsert, guarantors: GuarantorForm[]): Promise<string> => {
     if (!projectId) throw new Error('Sin proyecto activo')
     const { data: created, error } = await supabase
       .from('tenants')
@@ -92,6 +92,7 @@ export function useInquilinos() {
       if (gError) throw gError
     }
     await fetchInquilinos()
+    return created.id
   }
 
   const editarInquilino = async (id: string, data: Partial<TenantInsert>, guarantors: GuarantorForm[]) => {
@@ -160,14 +161,13 @@ export function useInquilinos() {
     }))
   }
 
-  const hasActiveContract = async (tenantId: string): Promise<boolean> => {
+  const hasAnyContract = async (tenantId: string): Promise<boolean> => {
     if (!projectId) return false
     const { count } = await supabase
       .from('contracts')
       .select('id', { count: 'exact', head: true })
       .eq('tenant_id', tenantId)
       .eq('project_id', projectId)
-      .eq('is_active', true)
     return (count ?? 0) > 0
   }
 
@@ -179,6 +179,6 @@ export function useInquilinos() {
     eliminarInquilino,
     fetchGuarantors,
     fetchContracts,
-    hasActiveContract,
+    hasAnyContract,
   }
 }

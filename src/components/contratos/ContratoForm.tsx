@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, UserPlus } from 'lucide-react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet'
+import InquilinoForm from '@/components/inquilinos/InquilinoForm'
+import { useInquilinos, type GuarantorForm } from '@/hooks/useInquilinos'
 import type { ContractEnriched, ServiceForm } from '@/hooks/useContratos'
 
 interface PropertyOption { id: string; full_address: string }
@@ -20,6 +23,7 @@ interface Props {
   propertyOptions: PropertyOption[]
   tenantOptions: TenantOption[]
   onSave: (data: Record<string, any>, services: ServiceForm[]) => Promise<void>
+  onTenantCreated?: () => Promise<void>
 }
 
 const emptyService = (): ServiceForm => ({ service_type: 'luz', active: true, due_day: 5, expected_amount: 0 })
@@ -29,7 +33,7 @@ const defaultForm = () => ({
   tenant_id: '',
   start_date: '',
   end_date: '',
-  tipo_contrato: 'permanente',
+  tipo_contrato: 'vivienda',
   initial_rent: '',
   current_rent: '',
   currency: 'ARS',
@@ -54,11 +58,13 @@ const defaultForm = () => ({
   permite_subalquiler: false,
 })
 
-export default function ContratoForm({ open, onOpenChange, contract, existingServices, propertyOptions, tenantOptions, onSave }: Props) {
+export default function ContratoForm({ open, onOpenChange, contract, existingServices, propertyOptions, tenantOptions, onSave, onTenantCreated }: Props) {
   const { t } = useTranslation()
+  const { crearInquilino } = useInquilinos()
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState(defaultForm())
   const [services, setServices] = useState<ServiceForm[]>([])
+  const [showNewTenant, setShowNewTenant] = useState(false)
   const [showMora, setShowMora] = useState(false)
 
   useEffect(() => {
@@ -149,6 +155,7 @@ export default function ContratoForm({ open, onOpenChange, contract, existingSer
   const canSave = form.property_id && form.tenant_id && form.start_date && form.end_date && Number(form.initial_rent) > 0 && Number(form.current_rent) > 0
 
   return (
+    <>
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="overflow-y-auto sm:max-w-2xl">
         <SheetHeader>
@@ -181,6 +188,14 @@ export default function ContratoForm({ open, onOpenChange, contract, existingSer
                   ))}
                 </SelectContent>
               </Select>
+              <button
+                type="button"
+                className="flex items-center gap-1 text-xs text-primary hover:underline cursor-pointer"
+                onClick={() => setShowNewTenant(true)}
+              >
+                <UserPlus className="h-3 w-3" />
+                {t('contracts.form.createTenantLink')}
+              </button>
             </div>
             <div className="space-y-2">
               <Label>{t('contracts.form.startDate')} *</Label>
@@ -195,7 +210,10 @@ export default function ContratoForm({ open, onOpenChange, contract, existingSer
               <Select value={form.tipo_contrato} onValueChange={v => set('tipo_contrato', v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="permanente">{t('contracts.types.permanente')}</SelectItem>
+                  <SelectItem value="vivienda">{t('contracts.types.vivienda')}</SelectItem>
+                  <SelectItem value="temporada">{t('contracts.types.temporada')}</SelectItem>
+                  <SelectItem value="turistico">{t('contracts.types.turistico')}</SelectItem>
+                  <SelectItem value="comercial">{t('contracts.types.comercial')}</SelectItem>
                   <SelectItem value="rural">{t('contracts.types.rural')}</SelectItem>
                 </SelectContent>
               </Select>
@@ -410,5 +428,18 @@ export default function ContratoForm({ open, onOpenChange, contract, existingSer
         </SheetFooter>
       </SheetContent>
     </Sheet>
+
+    {/* Inline tenant creation */}
+    <InquilinoForm
+      open={showNewTenant}
+      onOpenChange={setShowNewTenant}
+      onSave={async (data, guarantors) => {
+        const newId = await crearInquilino(data, guarantors as GuarantorForm[])
+        toast.success(t('tenants.toast.created'))
+        await onTenantCreated?.()
+        set('tenant_id', newId)
+      }}
+    />
+    </>
   )
 }
