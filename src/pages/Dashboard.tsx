@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router-dom'
 import { Building2, Users, CreditCard, Wrench } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -48,10 +49,10 @@ export default function Dashboard() {
   }
 
   const estadisticas = [
-    { titulo: t('dashboard.stats.properties'), valor: stats.properties, descripcion: t('dashboard.stats.propertiesDesc'), icon: Building2, color: 'text-blue-600', bg: 'bg-blue-50' },
-    { titulo: t('dashboard.stats.tenants'), valor: stats.tenants, descripcion: t('dashboard.stats.tenantsDesc'), icon: Users, color: 'text-green-600', bg: 'bg-green-50' },
-    { titulo: t('dashboard.stats.pendingDues'), valor: stats.pendingDues, descripcion: t('dashboard.stats.pendingDuesDesc'), icon: CreditCard, color: 'text-yellow-600', bg: 'bg-yellow-50' },
-    { titulo: t('dashboard.stats.repairs'), valor: stats.repairs, descripcion: t('dashboard.stats.repairsDesc'), icon: Wrench, color: 'text-red-600', bg: 'bg-red-50' },
+    { titulo: t('dashboard.stats.properties'), valor: stats.properties, descripcion: t('dashboard.stats.propertiesDesc'), icon: Building2, color: 'text-blue-600', bg: 'bg-blue-50', to: '/propiedades' },
+    { titulo: t('dashboard.stats.tenants'), valor: stats.tenants, descripcion: t('dashboard.stats.tenantsDesc'), icon: Users, color: 'text-green-600', bg: 'bg-green-50', to: '/inquilinos' },
+    { titulo: t('dashboard.stats.pendingDues'), valor: stats.pendingDues, descripcion: t('dashboard.stats.pendingDuesDesc'), icon: CreditCard, color: 'text-yellow-600', bg: 'bg-yellow-50', to: '/cobranza' },
+    { titulo: t('dashboard.stats.repairs'), valor: stats.repairs, descripcion: t('dashboard.stats.repairsDesc'), icon: Wrench, color: 'text-red-600', bg: 'bg-red-50', to: '/reparaciones' },
   ]
 
   return (
@@ -62,17 +63,19 @@ export default function Dashboard() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {estadisticas.map(({ titulo, valor, descripcion, icon: Icon, color, bg }) => (
-          <Card key={titulo}>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">{titulo}</CardTitle>
-              <div className={`rounded-md p-2 ${bg}`}><Icon className={`h-4 w-4 ${color}`} /></div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{valor}</div>
-              <p className="text-xs text-muted-foreground mt-1">{descripcion}</p>
-            </CardContent>
-          </Card>
+        {estadisticas.map(({ titulo, valor, descripcion, icon: Icon, color, bg, to }) => (
+          <Link key={titulo} to={to} className="block">
+            <Card className="cursor-pointer hover:shadow-md transition-shadow">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">{titulo}</CardTitle>
+                <div className={`rounded-md p-2 ${bg}`}><Icon className={`h-4 w-4 ${color}`} /></div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{valor}</div>
+                <p className="text-xs text-muted-foreground mt-1">{descripcion}</p>
+              </CardContent>
+            </Card>
+          </Link>
         ))}
       </div>
 
@@ -88,7 +91,7 @@ export default function Dashboard() {
             ) : (
               <div className="space-y-3">
                 {upcomingDues.map((d: any) => (
-                  <div key={d.id} className="flex items-center justify-between text-sm border-b pb-2 last:border-0">
+                  <Link key={d.id} to="/cobranza" className="flex items-center justify-between text-sm border-b pb-2 last:border-0 cursor-pointer hover:bg-muted/50 rounded-md px-2 -mx-2 transition-colors">
                     <div>
                       <p className="font-medium">{(d.tenants as any)?.full_name ?? '—'}</p>
                       <p className="text-xs text-muted-foreground">{(d.properties as any)?.internal_identifier} · {d.period_month}</p>
@@ -97,7 +100,7 @@ export default function Dashboard() {
                       <p className="font-semibold">$ {Number(d.expected_amount).toLocaleString('es-AR')}</p>
                       <p className="text-xs text-muted-foreground">{d.due_date}</p>
                     </div>
-                  </div>
+                  </Link>
                 ))}
               </div>
             )}
@@ -115,13 +118,13 @@ export default function Dashboard() {
             ) : (
               <div className="space-y-3">
                 {pendingRepairs.map((r: any) => (
-                  <div key={r.id} className="flex items-center justify-between text-sm border-b pb-2 last:border-0">
+                  <Link key={r.id} to="/reparaciones" className="flex items-center justify-between text-sm border-b pb-2 last:border-0 cursor-pointer hover:bg-muted/50 rounded-md px-2 -mx-2 transition-colors">
                     <div>
                       <p className="font-medium">{r.description}</p>
                       <p className="text-xs text-muted-foreground">{(r.properties as any)?.internal_identifier}</p>
                     </div>
                     <Badge variant={r.status === 'pending' ? 'warning' : 'secondary'}>{String(t(`status.${r.status}`, r.status))}</Badge>
-                  </div>
+                  </Link>
                 ))}
               </div>
             )}
