@@ -155,6 +155,7 @@ export default function ContratoForm({ open, onOpenChange, contract, existingSer
   const canSave = form.property_id && form.tenant_id && form.start_date && form.end_date && Number(form.initial_rent) > 0 && Number(form.current_rent) > 0
 
   return (
+    <>
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="overflow-y-auto sm:max-w-2xl">
         <SheetHeader>
