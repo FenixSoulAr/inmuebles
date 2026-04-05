@@ -427,5 +427,18 @@ export default function ContratoForm({ open, onOpenChange, contract, existingSer
         </SheetFooter>
       </SheetContent>
     </Sheet>
+
+    {/* Inline tenant creation */}
+    <InquilinoForm
+      open={showNewTenant}
+      onOpenChange={setShowNewTenant}
+      onSave={async (data, guarantors) => {
+        const newId = await crearInquilino(data, guarantors as GuarantorForm[])
+        toast.success(t('tenants.toast.created'))
+        await onTenantCreated?.()
+        set('tenant_id', newId)
+      }}
+    />
+    </>
   )
 }
