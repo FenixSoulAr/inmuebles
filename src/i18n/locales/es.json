@@ -175,6 +175,7 @@
       "selectProperty": "Seleccionar propiedad",
       "tenant": "Inquilino",
       "selectTenant": "Seleccionar inquilino",
+      "createTenantLink": "¿No encontrás el inquilino? Crear nuevo",
       "startDate": "Fecha inicio",
       "endDate": "Fecha fin",
       "tipoContrato": "Tipo de contrato",

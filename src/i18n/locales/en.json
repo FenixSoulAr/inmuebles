@@ -175,6 +175,7 @@
       "selectProperty": "Select property",
       "tenant": "Tenant",
       "selectTenant": "Select tenant",
+      "createTenantLink": "Can't find the tenant? Create new",
       "startDate": "Start date",
       "endDate": "End date",
       "tipoContrato": "Contract type",
