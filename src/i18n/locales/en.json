@@ -381,8 +381,11 @@
       "period": "Period",
       "expected": "Expected amount",
       "balance": "Balance due",
-      "daysOverdue": "Days overdue",
+      "daysOverdue": "Late today",
+      "daysOverdueTooltip": "Calculated as of today for reference. You can set the actual payment date when registering.",
+      "daysOverdueFootnote": "* Calculated as of today. Final interest depends on the tenant's actual payment date.",
       "interest": "Interest",
+      "interestTooltip": "Referential as of today",
       "totalDue": "Total due",
       "status": "Status",
       "actions": "Actions"
@@ -399,16 +402,28 @@
       "paymentHistory": "Payment history",
       "noPayments": "No payments recorded",
       "payDate": "Date",
-      "payAmount": "Amount"
+      "payAmount": "Amount",
+      "estimatedInterest": "Estimated interest (referential)",
+      "interestDisclaimer": "Final interest depends on the tenant's actual payment date"
     },
     "payForm": {
       "title": "Register payment",
+      "amountReceived": "Amount effectively received",
       "amount": "Amount received",
       "method": "Payment method",
       "date": "Payment date",
+      "dateQuestion": "When did the tenant pay?",
       "notes": "Notes",
       "notesPlaceholder": "Optional remarks",
-      "submit": "Register payment"
+      "submit": "Register payment",
+      "referenceTotal": "Collection reference",
+      "referenceTotalHint": "You decide the final amount",
+      "agreedCanon": "Agreed rent for this period",
+      "noLate": "No late — paid on time",
+      "lateLabel": "late",
+      "estimatedInterest": "Estimated interest",
+      "interestHint": "You may or may not include interest in the received amount",
+      "noRateConfigured": "No interest rate configured in the contract"
     },
     "methods": {
       "transfer": "Transfer",
