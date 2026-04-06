@@ -526,6 +526,98 @@
       "deleteError": "Error deleting"
     }
   },
+  "taxes": {
+    "title": "Taxes",
+    "subtitle": "Property taxes, municipal fees, and other obligations",
+    "new": "New tax",
+    "search": "Search by property or type…",
+    "emptyTitle": "No taxes registered",
+    "emptyDesc": "Add your property tax obligations to track their due dates",
+    "editBtn": "Edit",
+    "viewAnnual": "Annual view",
+    "viewList": "List view",
+    "clearFilter": "Clear filter",
+    "annualTitle": "Summary {{year}}",
+    "annualPaid": "Paid",
+    "summary": {
+      "overdue": "Overdue",
+      "next30": "Next 30 days",
+      "paidYear": "Paid this year"
+    },
+    "status": {
+      "paid": "Paid",
+      "pending": "Pending",
+      "overdue": "Overdue"
+    },
+    "types": {
+      "municipal": "Municipal (ABL)",
+      "property": "Property tax",
+      "provincial": "Provincial",
+      "other": "Other"
+    },
+    "responsible": {
+      "owner": "Owner",
+      "tenant": "Tenant"
+    },
+    "frequencies": {
+      "monthly": "Monthly",
+      "bimonthly": "Bimonthly",
+      "annual": "Annual",
+      "one-time": "One-time"
+    },
+    "cellStatus": {
+      "paid": "All paid",
+      "overdue": "Overdue",
+      "pending": "Pending",
+      "empty": "No obligations"
+    },
+    "columns": {
+      "property": "Property",
+      "type": "Type",
+      "responsible": "Responsible",
+      "frequency": "Frequency",
+      "dueDate": "Due date",
+      "amount": "Amount",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "filters": {
+      "allProperties": "All properties",
+      "allTypes": "All types",
+      "allStatus": "All statuses"
+    },
+    "form": {
+      "createTitle": "New tax obligation",
+      "createDesc": "Fill in the tax obligation details",
+      "editTitle": "Edit tax obligation",
+      "editDesc": "Update the tax obligation details",
+      "property": "Property",
+      "selectProperty": "Select property",
+      "type": "Tax type",
+      "responsible": "Responsible",
+      "frequency": "Frequency",
+      "dueDate": "Due date",
+      "amount": "Estimated amount (ARS)",
+      "amountPlaceholder": "Enter amount",
+      "notes": "Notes",
+      "notesPlaceholder": "Optional remarks",
+      "active": "Active"
+    },
+    "payForm": {
+      "title": "Mark as paid",
+      "desc": "Confirm payment for this tax obligation",
+      "notes": "Notes",
+      "notesPlaceholder": "Optional remarks",
+      "confirm": "Confirm payment"
+    },
+    "toast": {
+      "created": "Tax registered",
+      "updated": "Tax updated",
+      "markedPaid": "Tax marked as paid",
+      "markedPending": "Tax marked as pending",
+      "saveError": "Error saving"
+    }
+  },
   "lang": {
     "es": "ES",
     "en": "EN"
