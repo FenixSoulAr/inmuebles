@@ -75,9 +75,12 @@ export default function CobranzaDetail({ open, onOpenChange, due, fetchPagos, on
               </div>
             )}
             {due.display_status === 'overdue' && due.interest_amount > 0 && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">{t('billing.columns.interest')}</span>
-                <span className="font-medium text-orange-600">{formatCurrency(due.interest_amount, due.currency)}</span>
+              <div className="space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">{t('billing.detail.estimatedInterest')}</span>
+                  <span className="font-medium text-orange-600">{formatCurrency(due.interest_amount, due.currency)}</span>
+                </div>
+                <p className="text-xs text-muted-foreground">{t('billing.detail.interestDisclaimer')}</p>
               </div>
             )}
             <div className="flex justify-between border-t pt-1">

@@ -227,6 +227,9 @@ export default function Cobranza() {
                 </Table>
               </CardContent>
             </Card>
+            {filtered.some(d => d.display_status === 'overdue' && d.days_overdue > 0) && (
+              <p className="text-xs text-muted-foreground mt-2 px-1">{t('billing.columns.daysOverdueFootnote')}</p>
+            )}
           </div>
 
           {/* Mobile cards */}
