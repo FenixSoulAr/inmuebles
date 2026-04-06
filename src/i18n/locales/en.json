@@ -443,6 +443,89 @@
       "paymentError": "Error registering payment"
     }
   },
+  "repairs": {
+    "title": "Repairs",
+    "subtitle": "Maintenance tracking and fixes",
+    "search": "Search by description or address…",
+    "new": "New repair",
+    "emptyTitle": "No repairs registered",
+    "emptyDesc": "Log maintenance issues to track them",
+    "editBtn": "Edit",
+    "deleteBtn": "Delete",
+    "summary": {
+      "active": "Pending / In progress",
+      "noEstimate": "No estimate",
+      "resolved": "Resolved"
+    },
+    "statuses": {
+      "pending": "Pending",
+      "open": "Open",
+      "in_progress": "In progress",
+      "resolved": "Resolved"
+    },
+    "payers": {
+      "owner": "Owner",
+      "tenant": "Tenant"
+    },
+    "columns": {
+      "property": "Property",
+      "description": "Description",
+      "requestedBy": "Reported by",
+      "payer": "Pays",
+      "estimate": "Estimate",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "filters": {
+      "all": "All",
+      "pending": "Pending",
+      "open": "Open",
+      "in_progress": "In progress",
+      "resolved": "Resolved"
+    },
+    "form": {
+      "createTitle": "New repair",
+      "createDesc": "Fill in the issue details",
+      "editTitle": "Edit repair",
+      "editDesc": "Update the issue details",
+      "sectionBasic": "Basic info",
+      "sectionResponsibility": "Responsibilities",
+      "sectionEstimate": "Estimate",
+      "property": "Property",
+      "selectProperty": "Select property",
+      "description": "Description",
+      "descriptionPlaceholder": "Describe the problem or repair needed",
+      "reportedAt": "Reported date",
+      "status": "Status",
+      "requestedBy": "Who reported?",
+      "payer": "Who pays?",
+      "estimateAmount": "Estimated budget (ARS)",
+      "estimatePlaceholder": "Enter the budget amount",
+      "noEstimateHint": "No estimate loaded yet"
+    },
+    "detail": {
+      "title": "Repair detail",
+      "noEstimate": "No estimate",
+      "receipt": "Receipt",
+      "viewReceipt": "View receipt"
+    },
+    "delete": {
+      "title": "Delete repair?",
+      "desc": "This repair will be deleted. This action cannot be undone.",
+      "confirm": "Delete",
+      "blockedTitle": "Cannot delete",
+      "blockedDesc": "An active repair cannot be deleted. Mark it as Resolved first.",
+      "activeHint": "Can only be deleted when status is Resolved",
+      "ok": "Got it"
+    },
+    "toast": {
+      "created": "Repair registered",
+      "updated": "Repair updated",
+      "deleted": "Repair deleted",
+      "saveError": "Error saving",
+      "deleteError": "Error deleting"
+    }
+  },
   "lang": {
     "es": "ES",
     "en": "EN"

@@ -443,6 +443,89 @@
       "paymentError": "Error al registrar el pago"
     }
   },
+  "repairs": {
+    "title": "Reparaciones",
+    "subtitle": "Control de mantenimiento y arreglos",
+    "search": "Buscar por descripción o dirección…",
+    "new": "Nueva reparación",
+    "emptyTitle": "Sin reparaciones registradas",
+    "emptyDesc": "Registrá incidencias de mantenimiento para hacerles seguimiento",
+    "editBtn": "Editar",
+    "deleteBtn": "Eliminar",
+    "summary": {
+      "active": "Pendientes / En curso",
+      "noEstimate": "Sin presupuesto",
+      "resolved": "Resueltas"
+    },
+    "statuses": {
+      "pending": "Pendiente",
+      "open": "Abierta",
+      "in_progress": "En curso",
+      "resolved": "Resuelta"
+    },
+    "payers": {
+      "owner": "Propietario",
+      "tenant": "Inquilino"
+    },
+    "columns": {
+      "property": "Propiedad",
+      "description": "Descripción",
+      "requestedBy": "Reportó",
+      "payer": "Paga",
+      "estimate": "Presupuesto",
+      "status": "Estado",
+      "actions": "Acciones"
+    },
+    "filters": {
+      "all": "Todos",
+      "pending": "Pendiente",
+      "open": "Abierta",
+      "in_progress": "En curso",
+      "resolved": "Resuelta"
+    },
+    "form": {
+      "createTitle": "Nueva reparación",
+      "createDesc": "Completá los datos de la incidencia",
+      "editTitle": "Editar reparación",
+      "editDesc": "Modificá los datos de la incidencia",
+      "sectionBasic": "Datos básicos",
+      "sectionResponsibility": "Responsabilidades",
+      "sectionEstimate": "Presupuesto",
+      "property": "Propiedad",
+      "selectProperty": "Seleccionar propiedad",
+      "description": "Descripción",
+      "descriptionPlaceholder": "Describí el problema o reparación necesaria",
+      "reportedAt": "Fecha reportada",
+      "status": "Estado",
+      "requestedBy": "¿Quién reportó?",
+      "payer": "¿Quién paga?",
+      "estimateAmount": "Presupuesto estimado (ARS)",
+      "estimatePlaceholder": "Ingresá el monto del presupuesto",
+      "noEstimateHint": "Sin presupuesto cargado aún"
+    },
+    "detail": {
+      "title": "Detalle de reparación",
+      "noEstimate": "Sin presupuesto",
+      "receipt": "Comprobante",
+      "viewReceipt": "Ver comprobante"
+    },
+    "delete": {
+      "title": "¿Eliminar reparación?",
+      "desc": "Se eliminará esta reparación. Esta acción no se puede deshacer.",
+      "confirm": "Eliminar",
+      "blockedTitle": "No se puede eliminar",
+      "blockedDesc": "No se puede eliminar una reparación activa. Marcala como Resuelta antes de eliminarla.",
+      "activeHint": "Solo se puede eliminar cuando el estado es Resuelta",
+      "ok": "Entendido"
+    },
+    "toast": {
+      "created": "Reparación registrada",
+      "updated": "Reparación actualizada",
+      "deleted": "Reparación eliminada",
+      "saveError": "Error al guardar",
+      "deleteError": "Error al eliminar"
+    }
+  },
   "lang": {
     "es": "ES",
     "en": "EN"
