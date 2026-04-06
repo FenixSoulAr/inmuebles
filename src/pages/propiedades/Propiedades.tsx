@@ -162,7 +162,7 @@ export default function Propiedades() {
                       <p className="font-semibold">{p.internal_identifier}</p>
                       <p className="text-xs text-muted-foreground">{t(`propertyType.${p.type}`, p.type)}</p>
                     </div>
-                    <StatusBadge status={p.status} />
+                    <StatusBadge property={p} />
                   </div>
                   <p className="text-sm text-muted-foreground truncate">{p.full_address}</p>
                   <div className="flex gap-2 pt-1">
