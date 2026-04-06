@@ -132,6 +132,7 @@ export default function Cobranza() {
         <Select value={filter} onValueChange={setFilter}>
           <SelectTrigger className="w-full sm:w-[180px]"><SelectValue /></SelectTrigger>
           <SelectContent>
+            <SelectItem value="current_month">{t('billing.filters.currentMonth')}</SelectItem>
             <SelectItem value="all">{t('billing.filters.all')}</SelectItem>
             <SelectItem value="overdue">{t('billing.filters.overdue')}</SelectItem>
             <SelectItem value="upcoming">{t('billing.filters.upcoming')}</SelectItem>
