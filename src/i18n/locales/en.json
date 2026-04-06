@@ -393,6 +393,7 @@
       "interest": "Interest",
       "interestTooltip": "Referential as of today",
       "totalDue": "Total due",
+      "paymentDate": "Payment date",
       "status": "Status",
       "actions": "Actions"
     },
