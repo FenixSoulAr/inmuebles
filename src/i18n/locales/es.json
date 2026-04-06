@@ -362,7 +362,9 @@
       "collected": "Cobrado este mes",
       "thisMonth": "Este mes"
     },
+    "currentMonthHeader": "Cuotas de {{month}}",
     "filters": {
+      "currentMonth": "Este mes",
       "all": "Todos",
       "overdue": "En mora",
       "upcoming": "Próximos",
