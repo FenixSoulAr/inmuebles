@@ -18,6 +18,7 @@ export default defineConfig({
       'i18next',
       'react-i18next',
       'i18next-browser-languagedetector',
+      '@radix-ui/react-tooltip',
     ],
   },
 })
