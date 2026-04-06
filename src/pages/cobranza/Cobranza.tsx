@@ -21,7 +21,7 @@ const statusVariant: Record<string, 'destructive' | 'warning' | 'success' | 'sec
 export default function Cobranza() {
   const { t } = useTranslation()
   const { dues, loading, registrarPago, fetchPagos } = useCobranza()
-  const [filter, setFilter] = useState('all')
+  const [filter, setFilter] = useState('current_month')
   const [search, setSearch] = useState('')
   const [detailDue, setDetailDue] = useState<EnrichedRentDue | null>(null)
   const [payDue, setPayDue] = useState<EnrichedRentDue | null>(null)
