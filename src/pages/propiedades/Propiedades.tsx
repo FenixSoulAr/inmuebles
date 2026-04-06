@@ -14,17 +14,23 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { usePropiedades, type Propiedad, type PropiedadInsert } from '@/hooks/usePropiedades'
 
 const TYPE_OPTIONS = ['apartment', 'house', 'ph', 'local', 'office', 'warehouse'] as const
-const STATUS_OPTIONS = ['available', 'rented', 'maintenance'] as const
+const STATUS_OPTIONS = ['occupied', 'vacant'] as const
 
-const statusVariant: Record<string, 'success' | 'default' | 'warning' | 'secondary'> = {
-  rented: 'success',
-  occupied: 'success',
-  available: 'default',
-  vacant: 'default',
-  maintenance: 'warning',
+const emptyForm = { full_address: '', internal_identifier: '', type: 'apartment', status: 'vacant' }
+
+function getDisplayStatus(p: Propiedad): string {
+  if (!p.active) return 'inactive'
+  if (p.status === 'occupied') return 'occupied'
+  if (p.status === 'vacant') return 'vacant'
+  return 'unknown'
 }
 
-const emptyForm = { full_address: '', internal_identifier: '', type: 'apartment', status: 'available' }
+const displayStatusVariant: Record<string, 'success' | 'default' | 'warning' | 'secondary'> = {
+  occupied: 'success',
+  vacant: 'warning',
+  inactive: 'secondary',
+  unknown: 'secondary',
+}
 
 export default function Propiedades() {
   const { t } = useTranslation()
@@ -82,9 +88,10 @@ export default function Propiedades() {
     }
   }
 
-  const StatusBadge = ({ status }: { status: string }) => (
-    <Badge variant={statusVariant[status] ?? 'secondary'}>{t(`status.${status}`, status)}</Badge>
-  )
+  const StatusBadge = ({ property }: { property: Propiedad }) => {
+    const ds = getDisplayStatus(property)
+    return <Badge variant={displayStatusVariant[ds] ?? 'secondary'}>{t(`status.${ds}`, ds)}</Badge>
+  }
 
   return (
     <div className="space-y-6">
@@ -134,7 +141,7 @@ export default function Propiedades() {
                       <TableCell className="font-medium">{p.full_address}</TableCell>
                       <TableCell>{p.internal_identifier}</TableCell>
                       <TableCell>{t(`propertyType.${p.type}`, p.type)}</TableCell>
-                      <TableCell><StatusBadge status={p.status} /></TableCell>
+                      <TableCell><StatusBadge property={p} /></TableCell>
                       <TableCell className="text-right space-x-1">
                         <Button variant="ghost" size="icon" onClick={() => openEdit(p)}><Pencil className="h-4 w-4" /></Button>
                         <Button variant="ghost" size="icon" onClick={() => setDeleteTarget(p)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
@@ -155,7 +162,7 @@ export default function Propiedades() {
                       <p className="font-semibold">{p.internal_identifier}</p>
                       <p className="text-xs text-muted-foreground">{t(`propertyType.${p.type}`, p.type)}</p>
                     </div>
-                    <StatusBadge status={p.status} />
+                    <StatusBadge property={p} />
                   </div>
                   <p className="text-sm text-muted-foreground truncate">{p.full_address}</p>
                   <div className="flex gap-2 pt-1">
