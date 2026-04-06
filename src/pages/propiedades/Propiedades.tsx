@@ -141,7 +141,7 @@ export default function Propiedades() {
                       <TableCell className="font-medium">{p.full_address}</TableCell>
                       <TableCell>{p.internal_identifier}</TableCell>
                       <TableCell>{t(`propertyType.${p.type}`, p.type)}</TableCell>
-                      <TableCell><StatusBadge status={p.status} /></TableCell>
+                      <TableCell><StatusBadge property={p} /></TableCell>
                       <TableCell className="text-right space-x-1">
                         <Button variant="ghost" size="icon" onClick={() => openEdit(p)}><Pencil className="h-4 w-4" /></Button>
                         <Button variant="ghost" size="icon" onClick={() => setDeleteTarget(p)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
