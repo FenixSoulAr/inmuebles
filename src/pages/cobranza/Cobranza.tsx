@@ -160,8 +160,26 @@ export default function Cobranza() {
                       <TableHead>{t('billing.columns.period')}</TableHead>
                       <TableHead className="text-right">{t('billing.columns.expected')}</TableHead>
                       <TableHead className="text-right">{t('billing.columns.balance')}</TableHead>
-                      <TableHead className="text-center">{t('billing.columns.daysOverdue')}</TableHead>
-                      <TableHead className="text-right">{t('billing.columns.interest')}</TableHead>
+                      <TableHead className="text-center">
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="inline-flex items-center gap-1 cursor-help">{t('billing.columns.daysOverdue')} <Info className="h-3 w-3 text-muted-foreground" /></span>
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-[240px] text-xs">{t('billing.columns.daysOverdueTooltip')}</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </TableHead>
+                      <TableHead className="text-right">
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="inline-flex items-center gap-1 cursor-help">{t('billing.columns.interest')} <Info className="h-3 w-3 text-muted-foreground" /></span>
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-[240px] text-xs">{t('billing.columns.interestTooltip')}</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </TableHead>
                       <TableHead className="text-right">{t('billing.columns.totalDue')}</TableHead>
                       <TableHead className="text-center">{t('billing.columns.status')}</TableHead>
                       <TableHead className="text-center">{t('billing.columns.actions')}</TableHead>
