@@ -393,6 +393,7 @@
       "interest": "Interés",
       "interestTooltip": "Referencial al día de hoy",
       "totalDue": "Total a cobrar",
+      "paymentDate": "Fecha de pago",
       "status": "Estado",
       "actions": "Acciones"
     },
