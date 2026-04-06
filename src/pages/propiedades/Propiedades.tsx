@@ -88,9 +88,10 @@ export default function Propiedades() {
     }
   }
 
-  const StatusBadge = ({ status }: { status: string }) => (
-    <Badge variant={statusVariant[status] ?? 'secondary'}>{t(`status.${status}`, status)}</Badge>
-  )
+  const StatusBadge = ({ property }: { property: Propiedad }) => {
+    const ds = getDisplayStatus(property)
+    return <Badge variant={displayStatusVariant[ds] ?? 'secondary'}>{t(`status.${ds}`, ds)}</Badge>
+  }
 
   return (
     <div className="space-y-6">
