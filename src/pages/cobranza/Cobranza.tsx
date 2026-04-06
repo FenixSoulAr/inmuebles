@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CreditCard, Eye, DollarSign, Search } from 'lucide-react'
+import { CreditCard, Eye, DollarSign, Search, Info } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { formatCurrency } from '@/lib/utils'
 import { useCobranza, type EnrichedRentDue } from '@/hooks/useCobranza'
 import PagoForm from '@/components/cobranza/PagoForm'
@@ -159,8 +160,26 @@ export default function Cobranza() {
                       <TableHead>{t('billing.columns.period')}</TableHead>
                       <TableHead className="text-right">{t('billing.columns.expected')}</TableHead>
                       <TableHead className="text-right">{t('billing.columns.balance')}</TableHead>
-                      <TableHead className="text-center">{t('billing.columns.daysOverdue')}</TableHead>
-                      <TableHead className="text-right">{t('billing.columns.interest')}</TableHead>
+                      <TableHead className="text-center">
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="inline-flex items-center gap-1 cursor-help">{t('billing.columns.daysOverdue')} <Info className="h-3 w-3 text-muted-foreground" /></span>
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-[240px] text-xs">{t('billing.columns.daysOverdueTooltip')}</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </TableHead>
+                      <TableHead className="text-right">
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="inline-flex items-center gap-1 cursor-help">{t('billing.columns.interest')} <Info className="h-3 w-3 text-muted-foreground" /></span>
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-[240px] text-xs">{t('billing.columns.interestTooltip')}</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </TableHead>
                       <TableHead className="text-right">{t('billing.columns.totalDue')}</TableHead>
                       <TableHead className="text-center">{t('billing.columns.status')}</TableHead>
                       <TableHead className="text-center">{t('billing.columns.actions')}</TableHead>
@@ -177,7 +196,7 @@ export default function Cobranza() {
                         <TableCell className="text-sm text-center">
                           {d.display_status === 'overdue' ? (
                             d.days_overdue > 0 ? (
-                              <span className="text-destructive font-medium">{d.days_overdue}</span>
+                              <span className="text-destructive font-medium">{d.days_overdue}*</span>
                             ) : (
                               <span className="text-muted-foreground text-xs">{t('billing.detail.gracePeriod')}</span>
                             )
@@ -208,6 +227,9 @@ export default function Cobranza() {
                 </Table>
               </CardContent>
             </Card>
+            {filtered.some(d => d.display_status === 'overdue' && d.days_overdue > 0) && (
+              <p className="text-xs text-muted-foreground mt-2 px-1">{t('billing.columns.daysOverdueFootnote')}</p>
+            )}
           </div>
 
           {/* Mobile cards */}

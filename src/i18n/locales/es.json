@@ -381,8 +381,11 @@
       "period": "Período",
       "expected": "Monto esperado",
       "balance": "Saldo pendiente",
-      "daysOverdue": "Días mora",
+      "daysOverdue": "Mora hoy",
+      "daysOverdueTooltip": "Calculado al día de hoy como referencia. Al registrar el pago podés indicar la fecha real.",
+      "daysOverdueFootnote": "* Calculado al día de hoy. El interés final depende de la fecha en que el inquilino realizó el pago.",
       "interest": "Interés",
+      "interestTooltip": "Referencial al día de hoy",
       "totalDue": "Total a cobrar",
       "status": "Estado",
       "actions": "Acciones"
@@ -399,16 +402,28 @@
       "paymentHistory": "Historial de pagos",
       "noPayments": "Sin pagos registrados",
       "payDate": "Fecha",
-      "payAmount": "Monto"
+      "payAmount": "Monto",
+      "estimatedInterest": "Interés estimado (referencial)",
+      "interestDisclaimer": "El interés final depende de la fecha de pago real del inquilino"
     },
     "payForm": {
       "title": "Registrar pago",
+      "amountReceived": "Monto efectivamente recibido",
       "amount": "Monto recibido",
       "method": "Método de pago",
       "date": "Fecha de pago",
+      "dateQuestion": "¿Cuándo pagó el inquilino?",
       "notes": "Notas",
       "notesPlaceholder": "Observaciones opcionales",
-      "submit": "Registrar pago"
+      "submit": "Registrar pago",
+      "referenceTotal": "Referencia de cobro",
+      "referenceTotalHint": "El monto final lo definís vos",
+      "agreedCanon": "Canon acordado para este período",
+      "noLate": "Sin mora — pagó en término",
+      "lateLabel": "de mora",
+      "estimatedInterest": "Interés estimado",
+      "interestHint": "Podés incluir o no el interés al monto recibido",
+      "noRateConfigured": "Sin tasa de interés configurada en el contrato"
     },
     "methods": {
       "transfer": "Transferencia",
