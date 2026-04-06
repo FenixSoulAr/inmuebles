@@ -45,15 +45,18 @@ export function useCobranza() {
     }]))
 
     const today = new Date()
+    today.setHours(0, 0, 0, 0)
     const enriched: EnrichedRentDue[] = (duesRes.data ?? []).map(d => {
       const contract = contractMap.get(d.contract_id) ?? { interest_rate: null, grace_days: 0, currency: 'ARS' }
       const dueDate = new Date(d.due_date)
+      dueDate.setHours(0, 0, 0, 0)
 
       // Compute display_status based on real state
       let display_status: DisplayStatus
       if (Number(d.balance_due) <= 0) {
         display_status = 'paid'
-      } else if (dueDate > today) {
+      } else if (dueDate >= today) {
+        // Today or future → upcoming (not overdue)
         display_status = 'upcoming'
       } else if (Number(d.balance_due) < Number(d.expected_amount)) {
         display_status = 'partial'

@@ -142,6 +142,15 @@ export default function Cobranza() {
         </Select>
       </div>
 
+      {/* Current month header */}
+      {filter === 'current_month' && filtered.length > 0 && (
+        <div className="rounded-md border border-border bg-muted/50 p-3 text-sm">
+          <span className="font-semibold capitalize">
+            {t('billing.currentMonthHeader', { month: currentMonthLabel })} ({filtered.length})
+          </span>
+        </div>
+      )}
+
       {/* Overdue header */}
       {filter === 'overdue' && filtered.length > 0 && (
         <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm">
