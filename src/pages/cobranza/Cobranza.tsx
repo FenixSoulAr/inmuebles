@@ -21,7 +21,7 @@ const statusVariant: Record<string, 'destructive' | 'warning' | 'success' | 'sec
 export default function Cobranza() {
   const { t } = useTranslation()
   const { dues, loading, registrarPago, fetchPagos } = useCobranza()
-  const [filter, setFilter] = useState('all')
+  const [filter, setFilter] = useState('current_month')
   const [search, setSearch] = useState('')
   const [detailDue, setDetailDue] = useState<EnrichedRentDue | null>(null)
   const [payDue, setPayDue] = useState<EnrichedRentDue | null>(null)
@@ -41,13 +41,28 @@ export default function Cobranza() {
     }
   }, [dues])
 
+  const currentMonth = useMemo(() => {
+    const now = new Date()
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  }, [])
+
+  const currentMonthLabel = useMemo(() => {
+    const now = new Date()
+    return new Intl.DateTimeFormat('es-AR', { month: 'long', year: 'numeric' }).format(now)
+  }, [])
+
   const filtered = useMemo(() => {
     let list = dues
-    if (filter !== 'all') list = list.filter(d => d.display_status === filter)
+    if (filter === 'current_month') {
+      list = list.filter(d => d.period_month === currentMonth)
+    } else if (filter !== 'all') {
+      list = list.filter(d => d.display_status === filter)
+    }
 
-    // Sort: overdue by days_overdue DESC, others by due_date DESC
     if (filter === 'overdue') {
       list = [...list].sort((a, b) => b.days_overdue - a.days_overdue)
+    } else if (filter === 'current_month') {
+      list = [...list].sort((a, b) => a.due_date.localeCompare(b.due_date))
     }
 
     if (search.trim()) {
@@ -55,7 +70,7 @@ export default function Cobranza() {
       list = list.filter(d => d.tenant_name.toLowerCase().includes(q) || d.property_address.toLowerCase().includes(q))
     }
     return list
-  }, [dues, filter, search])
+  }, [dues, filter, search, currentMonth])
 
   const handlePay = async (rentDueId: string, data: { amount: number; method: string; payment_date: string; notes: string }) => {
     try {
@@ -117,6 +132,7 @@ export default function Cobranza() {
         <Select value={filter} onValueChange={setFilter}>
           <SelectTrigger className="w-full sm:w-[180px]"><SelectValue /></SelectTrigger>
           <SelectContent>
+            <SelectItem value="current_month">{t('billing.filters.currentMonth')}</SelectItem>
             <SelectItem value="all">{t('billing.filters.all')}</SelectItem>
             <SelectItem value="overdue">{t('billing.filters.overdue')}</SelectItem>
             <SelectItem value="upcoming">{t('billing.filters.upcoming')}</SelectItem>
@@ -125,6 +141,15 @@ export default function Cobranza() {
           </SelectContent>
         </Select>
       </div>
+
+      {/* Current month header */}
+      {filter === 'current_month' && filtered.length > 0 && (
+        <div className="rounded-md border border-border bg-muted/50 p-3 text-sm">
+          <span className="font-semibold capitalize">
+            {t('billing.currentMonthHeader', { month: currentMonthLabel })} ({filtered.length})
+          </span>
+        </div>
+      )}
 
       {/* Overdue header */}
       {filter === 'overdue' && filtered.length > 0 && (

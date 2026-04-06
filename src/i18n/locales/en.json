@@ -362,7 +362,9 @@
       "collected": "Collected this month",
       "thisMonth": "This month"
     },
+    "currentMonthHeader": "Dues for {{month}}",
     "filters": {
+      "currentMonth": "This month",
       "all": "All",
       "overdue": "Overdue",
       "upcoming": "Upcoming",
