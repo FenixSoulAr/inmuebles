@@ -196,7 +196,7 @@ export default function Cobranza() {
                         <TableCell className="text-sm text-center">
                           {d.display_status === 'overdue' ? (
                             d.days_overdue > 0 ? (
-                              <span className="text-destructive font-medium">{d.days_overdue}</span>
+                              <span className="text-destructive font-medium">{d.days_overdue}*</span>
                             ) : (
                               <span className="text-muted-foreground text-xs">{t('billing.detail.gracePeriod')}</span>
                             )
