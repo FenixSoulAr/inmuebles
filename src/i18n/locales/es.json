@@ -357,16 +357,20 @@
     "emptyDesc": "Los pagos aparecerán aquí una vez que tengas contratos activos",
     "summary": {
       "overdue": "En mora",
-      "upcoming": "Próximos ingresos",
-      "upcomingDesc": "Pendientes de cobro",
+      "pendingMonth": "Pendiente este mes",
+      "pendingMonthDesc": "Por cobrar en {{month}}",
       "collected": "Cobrado este mes",
       "thisMonth": "Este mes"
     },
     "currentMonthHeader": "Cuotas de {{month}}",
+    "paidThisMonthHeader": {
+      "count": "cuotas cobradas este mes"
+    },
     "filters": {
       "currentMonth": "Este mes",
       "all": "Todos",
       "overdue": "En mora",
+      "paidThisMonth": "Cobrado este mes",
       "upcoming": "Próximos",
       "partial": "Parcial",
       "paid": "Pagado"
@@ -389,6 +393,7 @@
       "interest": "Interés",
       "interestTooltip": "Referencial al día de hoy",
       "totalDue": "Total a cobrar",
+      "paymentDate": "Fecha de pago",
       "status": "Estado",
       "actions": "Acciones"
     },
