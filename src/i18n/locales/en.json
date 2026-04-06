@@ -357,16 +357,20 @@
     "emptyDesc": "Payments will appear here once you have active contracts",
     "summary": {
       "overdue": "Overdue",
-      "upcoming": "Upcoming income",
-      "upcomingDesc": "Pending collection",
+      "pendingMonth": "Pending this month",
+      "pendingMonthDesc": "To collect in {{month}}",
       "collected": "Collected this month",
       "thisMonth": "This month"
     },
     "currentMonthHeader": "Dues for {{month}}",
+    "paidThisMonthHeader": {
+      "count": "installments collected this month"
+    },
     "filters": {
       "currentMonth": "This month",
       "all": "All",
       "overdue": "Overdue",
+      "paidThisMonth": "Collected this month",
       "upcoming": "Upcoming",
       "partial": "Partial",
       "paid": "Paid"

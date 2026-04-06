@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CreditCard, Eye, DollarSign, Search, Info } from 'lucide-react'
+import { CreditCard, Eye, DollarSign, Search, Info, AlertTriangle, Clock, CheckCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -9,10 +9,11 @@ import { Input } from '@/components/ui/input'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency, formatDate } from '@/lib/utils'
 import { useCobranza, type EnrichedRentDue } from '@/hooks/useCobranza'
 import PagoForm from '@/components/cobranza/PagoForm'
 import CobranzaDetail from '@/components/cobranza/CobranzaDetail'
+import { cn } from '@/lib/utils'
 
 const statusVariant: Record<string, 'destructive' | 'warning' | 'success' | 'secondary'> = {
   overdue: 'destructive', partial: 'warning', paid: 'success', upcoming: 'secondary',
@@ -20,26 +21,11 @@ const statusVariant: Record<string, 'destructive' | 'warning' | 'success' | 'sec
 
 export default function Cobranza() {
   const { t } = useTranslation()
-  const { dues, loading, registrarPago, fetchPagos } = useCobranza()
+  const { dues, loading, registrarPago, fetchPagos, thisMonthTotal, thisMonthPaidDueIds, thisMonthPaymentMap } = useCobranza()
   const [filter, setFilter] = useState('current_month')
   const [search, setSearch] = useState('')
   const [detailDue, setDetailDue] = useState<EnrichedRentDue | null>(null)
   const [payDue, setPayDue] = useState<EnrichedRentDue | null>(null)
-
-  const summary = useMemo(() => {
-    const overdue = dues.filter(d => d.display_status === 'overdue')
-    const upcoming = dues.filter(d => d.display_status === 'upcoming')
-    const now = new Date()
-    const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-    const paidThisMonth = dues.filter(d => d.display_status === 'paid' && d.period_month === thisMonth)
-    return {
-      overdueCount: overdue.length,
-      overdueAmount: overdue.reduce((s, d) => s + Number(d.balance_due), 0),
-      upcomingCount: upcoming.length,
-      upcomingAmount: upcoming.reduce((s, d) => s + Number(d.balance_due), 0),
-      paidAmount: paidThisMonth.reduce((s, d) => s + Number(d.expected_amount), 0),
-    }
-  }, [dues])
 
   const currentMonth = useMemo(() => {
     const now = new Date()
@@ -51,10 +37,25 @@ export default function Cobranza() {
     return new Intl.DateTimeFormat('es-AR', { month: 'long', year: 'numeric' }).format(now)
   }, [])
 
+  const summary = useMemo(() => {
+    const overdue = dues.filter(d => d.display_status === 'overdue')
+    const pendingThisMonth = dues.filter(d => d.period_month === currentMonth && Number(d.balance_due) > 0)
+    return {
+      overdueCount: overdue.length,
+      overdueAmount: overdue.reduce((s, d) => s + Number(d.balance_due), 0),
+      pendingMonthCount: pendingThisMonth.length,
+      pendingMonthAmount: pendingThisMonth.reduce((s, d) => s + Number(d.balance_due), 0),
+      paidThisMonthTotal: thisMonthTotal,
+      paidThisMonthCount: thisMonthPaidDueIds.size,
+    }
+  }, [dues, currentMonth, thisMonthTotal, thisMonthPaidDueIds])
+
   const filtered = useMemo(() => {
     let list = dues
     if (filter === 'current_month') {
-      list = list.filter(d => d.period_month === currentMonth)
+      list = list.filter(d => d.period_month === currentMonth && Number(d.balance_due) > 0)
+    } else if (filter === 'paid_this_month') {
+      list = list.filter(d => thisMonthPaidDueIds.has(d.id))
     } else if (filter !== 'all') {
       list = list.filter(d => d.display_status === filter)
     }
@@ -63,6 +64,12 @@ export default function Cobranza() {
       list = [...list].sort((a, b) => b.days_overdue - a.days_overdue)
     } else if (filter === 'current_month') {
       list = [...list].sort((a, b) => a.due_date.localeCompare(b.due_date))
+    } else if (filter === 'paid_this_month') {
+      list = [...list].sort((a, b) => {
+        const da = thisMonthPaymentMap.get(a.id) ?? ''
+        const db = thisMonthPaymentMap.get(b.id) ?? ''
+        return db.localeCompare(da)
+      })
     }
 
     if (search.trim()) {
@@ -70,7 +77,7 @@ export default function Cobranza() {
       list = list.filter(d => d.tenant_name.toLowerCase().includes(q) || d.property_address.toLowerCase().includes(q))
     }
     return list
-  }, [dues, filter, search, currentMonth])
+  }, [dues, filter, search, currentMonth, thisMonthPaidDueIds, thisMonthPaymentMap])
 
   const handlePay = async (rentDueId: string, data: { amount: number; method: string; payment_date: string; notes: string }) => {
     try {
@@ -82,6 +89,8 @@ export default function Cobranza() {
     }
   }
 
+  const showPaymentDateColumn = filter === 'paid_this_month'
+
   return (
     <div className="space-y-6">
       <div>
@@ -91,8 +100,20 @@ export default function Cobranza() {
 
       {/* Summary cards */}
       <div className="grid gap-4 sm:grid-cols-3">
-        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setFilter('overdue')}>
-          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">{t('billing.summary.overdue')}</CardTitle></CardHeader>
+        {/* Card 1 - En mora */}
+        <Card
+          className={cn(
+            'cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all',
+            filter === 'overdue' && 'ring-2 ring-primary'
+          )}
+          onClick={() => setFilter('overdue')}
+        >
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
+              <AlertTriangle className="h-4 w-4 text-destructive" />
+              {t('billing.summary.overdue')}
+            </CardTitle>
+          </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">
               <span className="text-2xl font-bold text-destructive">{formatCurrency(summary.overdueAmount)}</span>
@@ -100,23 +121,49 @@ export default function Cobranza() {
             </div>
           </CardContent>
         </Card>
-        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setFilter('upcoming')}>
+
+        {/* Card 2 - Pendiente este mes */}
+        <Card
+          className={cn(
+            'cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all',
+            filter === 'current_month' && 'ring-2 ring-primary'
+          )}
+          onClick={() => setFilter('current_month')}
+        >
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">{t('billing.summary.upcoming')}</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
+              <Clock className="h-4 w-4 text-orange-500" />
+              {t('billing.summary.pendingMonth')}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">
-              <span className="text-2xl font-bold">{formatCurrency(summary.upcomingAmount)}</span>
-              <Badge variant="secondary">{summary.upcomingCount}</Badge>
+              <span className="text-2xl font-bold text-orange-600">{formatCurrency(summary.pendingMonthAmount)}</span>
+              <Badge variant="warning">{summary.pendingMonthCount}</Badge>
             </div>
-            <p className="text-xs text-muted-foreground mt-1">{t('billing.summary.upcomingDesc')}</p>
+            <p className="text-xs text-muted-foreground mt-1 capitalize">
+              {t('billing.summary.pendingMonthDesc', { month: currentMonthLabel })}
+            </p>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">{t('billing.summary.collected')}</CardTitle></CardHeader>
+
+        {/* Card 3 - Cobrado este mes */}
+        <Card
+          className={cn(
+            'cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all',
+            filter === 'paid_this_month' && 'ring-2 ring-primary'
+          )}
+          onClick={() => setFilter('paid_this_month')}
+        >
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
+              <CheckCircle className="h-4 w-4 text-green-600" />
+              {t('billing.summary.collected')}
+            </CardTitle>
+          </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">
-              <span className="text-2xl font-bold text-green-600">{formatCurrency(summary.paidAmount)}</span>
+              <span className="text-2xl font-bold text-green-600">{formatCurrency(summary.paidThisMonthTotal)}</span>
               <Badge variant="success">{t('billing.summary.thisMonth')}</Badge>
             </div>
           </CardContent>
@@ -130,12 +177,12 @@ export default function Cobranza() {
           <Input className="pl-9" placeholder={t('billing.search')} value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         <Select value={filter} onValueChange={setFilter}>
-          <SelectTrigger className="w-full sm:w-[180px]"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-[200px]"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="current_month">{t('billing.filters.currentMonth')}</SelectItem>
-            <SelectItem value="all">{t('billing.filters.all')}</SelectItem>
             <SelectItem value="overdue">{t('billing.filters.overdue')}</SelectItem>
-            <SelectItem value="upcoming">{t('billing.filters.upcoming')}</SelectItem>
+            <SelectItem value="paid_this_month">{t('billing.filters.paidThisMonth')}</SelectItem>
+            <SelectItem value="all">{t('billing.filters.all')}</SelectItem>
             <SelectItem value="partial">{t('billing.filters.partial')}</SelectItem>
             <SelectItem value="paid">{t('billing.filters.paid')}</SelectItem>
           </SelectContent>
@@ -156,6 +203,15 @@ export default function Cobranza() {
         <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm">
           <span className="font-semibold text-destructive">
             {filtered.length} {t('billing.overdueHeader.count')} — {t('billing.overdueHeader.total')}: {formatCurrency(filtered.reduce((s, d) => s + d.total_due, 0))}
+          </span>
+        </div>
+      )}
+
+      {/* Paid this month header */}
+      {filter === 'paid_this_month' && filtered.length > 0 && (
+        <div className="rounded-md border border-green-500/30 bg-green-500/5 p-3 text-sm">
+          <span className="font-semibold text-green-700">
+            {filtered.length} {t('billing.paidThisMonthHeader.count')} — {t('billing.overdueHeader.total')}: {formatCurrency(summary.paidThisMonthTotal)}
           </span>
         </div>
       )}
@@ -185,26 +241,33 @@ export default function Cobranza() {
                       <TableHead>{t('billing.columns.period')}</TableHead>
                       <TableHead className="text-right">{t('billing.columns.expected')}</TableHead>
                       <TableHead className="text-right">{t('billing.columns.balance')}</TableHead>
-                      <TableHead className="text-center">
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="inline-flex items-center gap-1 cursor-help">{t('billing.columns.daysOverdue')} <Info className="h-3 w-3 text-muted-foreground" /></span>
-                            </TooltipTrigger>
-                            <TooltipContent className="max-w-[240px] text-xs">{t('billing.columns.daysOverdueTooltip')}</TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </TableHead>
-                      <TableHead className="text-right">
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="inline-flex items-center gap-1 cursor-help">{t('billing.columns.interest')} <Info className="h-3 w-3 text-muted-foreground" /></span>
-                            </TooltipTrigger>
-                            <TooltipContent className="max-w-[240px] text-xs">{t('billing.columns.interestTooltip')}</TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </TableHead>
+                      {showPaymentDateColumn && (
+                        <TableHead>{t('billing.columns.paymentDate')}</TableHead>
+                      )}
+                      {!showPaymentDateColumn && (
+                        <>
+                          <TableHead className="text-center">
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="inline-flex items-center gap-1 cursor-help">{t('billing.columns.daysOverdue')} <Info className="h-3 w-3 text-muted-foreground" /></span>
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-[240px] text-xs">{t('billing.columns.daysOverdueTooltip')}</TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </TableHead>
+                          <TableHead className="text-right">
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="inline-flex items-center gap-1 cursor-help">{t('billing.columns.interest')} <Info className="h-3 w-3 text-muted-foreground" /></span>
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-[240px] text-xs">{t('billing.columns.interestTooltip')}</TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </TableHead>
+                        </>
+                      )}
                       <TableHead className="text-right">{t('billing.columns.totalDue')}</TableHead>
                       <TableHead className="text-center">{t('billing.columns.status')}</TableHead>
                       <TableHead className="text-center">{t('billing.columns.actions')}</TableHead>
@@ -218,20 +281,29 @@ export default function Cobranza() {
                         <TableCell className="text-sm">{d.period_month}</TableCell>
                         <TableCell className="text-sm text-right">{formatCurrency(Number(d.expected_amount), d.currency)}</TableCell>
                         <TableCell className="text-sm text-right">{formatCurrency(Number(d.balance_due), d.currency)}</TableCell>
-                        <TableCell className="text-sm text-center">
-                          {d.display_status === 'overdue' ? (
-                            d.days_overdue > 0 ? (
-                              <span className="text-destructive font-medium">{d.days_overdue}*</span>
-                            ) : (
-                              <span className="text-muted-foreground text-xs">{t('billing.detail.gracePeriod')}</span>
-                            )
-                          ) : '—'}
-                        </TableCell>
-                        <TableCell className="text-sm text-right">
-                          {d.display_status === 'overdue' && d.interest_amount > 0 ? (
-                            <span className="text-orange-600">{formatCurrency(d.interest_amount, d.currency)}</span>
-                          ) : '—'}
-                        </TableCell>
+                        {showPaymentDateColumn && (
+                          <TableCell className="text-sm">
+                            {thisMonthPaymentMap.get(d.id) ? formatDate(thisMonthPaymentMap.get(d.id)!) : '—'}
+                          </TableCell>
+                        )}
+                        {!showPaymentDateColumn && (
+                          <>
+                            <TableCell className="text-sm text-center">
+                              {d.display_status === 'overdue' ? (
+                                d.days_overdue > 0 ? (
+                                  <span className="text-destructive font-medium">{d.days_overdue}*</span>
+                                ) : (
+                                  <span className="text-muted-foreground text-xs">{t('billing.detail.gracePeriod')}</span>
+                                )
+                              ) : '—'}
+                            </TableCell>
+                            <TableCell className="text-sm text-right">
+                              {d.display_status === 'overdue' && d.interest_amount > 0 ? (
+                                <span className="text-orange-600">{formatCurrency(d.interest_amount, d.currency)}</span>
+                              ) : '—'}
+                            </TableCell>
+                          </>
+                        )}
                         <TableCell className={`text-sm text-right ${d.display_status === 'overdue' ? 'font-bold' : ''}`}>
                           {formatCurrency(d.total_due, d.currency)}
                         </TableCell>
@@ -271,6 +343,9 @@ export default function Cobranza() {
                     <span className="text-muted-foreground">{d.period_month}</span>
                     <span className={d.display_status === 'overdue' ? 'font-bold text-destructive' : 'font-medium'}>{formatCurrency(d.total_due, d.currency)}</span>
                   </div>
+                  {showPaymentDateColumn && thisMonthPaymentMap.get(d.id) && (
+                    <p className="text-xs text-muted-foreground">{t('billing.columns.paymentDate')}: {formatDate(thisMonthPaymentMap.get(d.id)!)}</p>
+                  )}
                   {d.display_status === 'overdue' && d.days_overdue > 0 && (
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-destructive">{d.days_overdue} {t('billing.detail.days')} {t('billing.columns.daysOverdue').toLowerCase()}</span>
