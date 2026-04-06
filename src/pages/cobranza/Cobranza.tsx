@@ -41,13 +41,28 @@ export default function Cobranza() {
     }
   }, [dues])
 
+  const currentMonth = useMemo(() => {
+    const now = new Date()
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  }, [])
+
+  const currentMonthLabel = useMemo(() => {
+    const now = new Date()
+    return new Intl.DateTimeFormat('es-AR', { month: 'long', year: 'numeric' }).format(now)
+  }, [])
+
   const filtered = useMemo(() => {
     let list = dues
-    if (filter !== 'all') list = list.filter(d => d.display_status === filter)
+    if (filter === 'current_month') {
+      list = list.filter(d => d.period_month === currentMonth)
+    } else if (filter !== 'all') {
+      list = list.filter(d => d.display_status === filter)
+    }
 
-    // Sort: overdue by days_overdue DESC, others by due_date DESC
     if (filter === 'overdue') {
       list = [...list].sort((a, b) => b.days_overdue - a.days_overdue)
+    } else if (filter === 'current_month') {
+      list = [...list].sort((a, b) => a.due_date.localeCompare(b.due_date))
     }
 
     if (search.trim()) {
@@ -55,7 +70,7 @@ export default function Cobranza() {
       list = list.filter(d => d.tenant_name.toLowerCase().includes(q) || d.property_address.toLowerCase().includes(q))
     }
     return list
-  }, [dues, filter, search])
+  }, [dues, filter, search, currentMonth])
 
   const handlePay = async (rentDueId: string, data: { amount: number; method: string; payment_date: string; notes: string }) => {
     try {
