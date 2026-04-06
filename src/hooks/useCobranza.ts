@@ -48,8 +48,14 @@ export function useCobranza() {
 
     const today = new Date()
     today.setHours(0, 0, 0, 0)
-    const enriched: EnrichedRentDue[] = (duesRes.data ?? []).map(d => {
-      const contract = contractMap.get(d.contract_id) ?? { interest_rate: null, grace_days: 0, currency: 'ARS' }
+    const enriched: EnrichedRentDue[] = (duesRes.data ?? []).filter(d => {
+      const contract = contractMap.get(d.contract_id)
+      if (!contract) return false
+      if (contract.is_active) return true
+      // Inactive contract: only show dues within the contract period
+      return contract.end_date ? d.due_date <= contract.end_date : false
+    }).map(d => {
+      const contract = contractMap.get(d.contract_id) ?? { interest_rate: null, grace_days: 0, currency: 'ARS', is_active: false, end_date: null }
       const dueDate = new Date(d.due_date)
       dueDate.setHours(0, 0, 0, 0)
 
