@@ -42,6 +42,8 @@ export function useCobranza() {
       interest_rate: c.interest_rate,
       grace_days: c.grace_days ?? 0,
       currency: c.currency ?? 'ARS',
+      is_active: c.is_active,
+      end_date: c.end_date,
     }]))
 
     const today = new Date()
