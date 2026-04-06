@@ -526,6 +526,98 @@
       "deleteError": "Error al eliminar"
     }
   },
+  "taxes": {
+    "title": "Impuestos",
+    "subtitle": "ABL, Inmobiliario, Rentas y otros gravámenes por propiedad",
+    "new": "Nuevo impuesto",
+    "search": "Buscar por propiedad o tipo…",
+    "emptyTitle": "Sin impuestos registrados",
+    "emptyDesc": "Cargá los impuestos de cada propiedad para controlar sus vencimientos",
+    "editBtn": "Editar",
+    "viewAnnual": "Vista anual",
+    "viewList": "Ver lista",
+    "clearFilter": "Limpiar filtro",
+    "annualTitle": "Resumen {{year}}",
+    "annualPaid": "Pagadas",
+    "summary": {
+      "overdue": "Vencidos",
+      "next30": "Próximos 30 días",
+      "paidYear": "Pagados este año"
+    },
+    "status": {
+      "paid": "Pagado",
+      "pending": "Pendiente",
+      "overdue": "Vencido"
+    },
+    "types": {
+      "municipal": "Municipal (ABL)",
+      "property": "Inmobiliario",
+      "provincial": "Provincial (Rentas)",
+      "other": "Otro"
+    },
+    "responsible": {
+      "owner": "Propietario",
+      "tenant": "Inquilino"
+    },
+    "frequencies": {
+      "monthly": "Mensual",
+      "bimonthly": "Bimestral",
+      "annual": "Anual",
+      "one-time": "Único"
+    },
+    "cellStatus": {
+      "paid": "Todo pagado",
+      "overdue": "Vencido",
+      "pending": "Pendiente",
+      "empty": "Sin obligaciones"
+    },
+    "columns": {
+      "property": "Propiedad",
+      "type": "Tipo",
+      "responsible": "Responsable",
+      "frequency": "Frecuencia",
+      "dueDate": "Vencimiento",
+      "amount": "Monto",
+      "status": "Estado",
+      "actions": "Acciones"
+    },
+    "filters": {
+      "allProperties": "Todas las propiedades",
+      "allTypes": "Todos los tipos",
+      "allStatus": "Todos los estados"
+    },
+    "form": {
+      "createTitle": "Nuevo impuesto",
+      "createDesc": "Completá los datos de la obligación fiscal",
+      "editTitle": "Editar impuesto",
+      "editDesc": "Modificá los datos de la obligación fiscal",
+      "property": "Propiedad",
+      "selectProperty": "Seleccionar propiedad",
+      "type": "Tipo de impuesto",
+      "responsible": "Responsable",
+      "frequency": "Frecuencia",
+      "dueDate": "Fecha de vencimiento",
+      "amount": "Monto estimado (ARS)",
+      "amountPlaceholder": "Ingresá el monto",
+      "notes": "Notas",
+      "notesPlaceholder": "Observaciones opcionales",
+      "active": "Activo"
+    },
+    "payForm": {
+      "title": "Marcar como pagado",
+      "desc": "Confirmá el pago de esta obligación fiscal",
+      "notes": "Notas",
+      "notesPlaceholder": "Observaciones opcionales",
+      "confirm": "Confirmar pago"
+    },
+    "toast": {
+      "created": "Impuesto registrado",
+      "updated": "Impuesto actualizado",
+      "markedPaid": "Impuesto marcado como pagado",
+      "markedPending": "Impuesto marcado como pendiente",
+      "saveError": "Error al guardar"
+    }
+  },
   "lang": {
     "es": "ES",
     "en": "EN"
