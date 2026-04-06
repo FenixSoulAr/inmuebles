@@ -14,17 +14,23 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { usePropiedades, type Propiedad, type PropiedadInsert } from '@/hooks/usePropiedades'
 
 const TYPE_OPTIONS = ['apartment', 'house', 'ph', 'local', 'office', 'warehouse'] as const
-const STATUS_OPTIONS = ['available', 'rented', 'maintenance'] as const
+const STATUS_OPTIONS = ['occupied', 'vacant'] as const
 
-const statusVariant: Record<string, 'success' | 'default' | 'warning' | 'secondary'> = {
-  rented: 'success',
-  occupied: 'success',
-  available: 'default',
-  vacant: 'default',
-  maintenance: 'warning',
+const emptyForm = { full_address: '', internal_identifier: '', type: 'apartment', status: 'vacant' }
+
+function getDisplayStatus(p: Propiedad): string {
+  if (!p.active) return 'inactive'
+  if (p.status === 'occupied') return 'occupied'
+  if (p.status === 'vacant') return 'vacant'
+  return 'unknown'
 }
 
-const emptyForm = { full_address: '', internal_identifier: '', type: 'apartment', status: 'available' }
+const displayStatusVariant: Record<string, 'success' | 'default' | 'warning' | 'secondary'> = {
+  occupied: 'success',
+  vacant: 'warning',
+  inactive: 'secondary',
+  unknown: 'secondary',
+}
 
 export default function Propiedades() {
   const { t } = useTranslation()
