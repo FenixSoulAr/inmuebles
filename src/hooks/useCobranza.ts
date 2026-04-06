@@ -33,7 +33,7 @@ export function useCobranza() {
       supabase.from('rent_dues').select('*').eq('project_id', projectId).order('due_date', { ascending: false }),
       supabase.from('tenants').select('id, full_name').eq('project_id', projectId),
       supabase.from('properties').select('id, full_address').eq('project_id', projectId),
-      supabase.from('contracts').select('id, interest_rate, grace_days, currency').eq('project_id', projectId),
+      supabase.from('contracts').select('id, interest_rate, grace_days, currency, is_active, end_date').eq('project_id', projectId),
     ])
 
     const tenantMap = new Map((tenantsRes.data ?? []).map(t => [t.id, t.full_name]))
