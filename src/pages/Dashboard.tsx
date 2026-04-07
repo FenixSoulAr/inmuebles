@@ -31,13 +31,14 @@ export default function Dashboard() {
     const load = async () => {
       const now = new Date()
       const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-      const [propRes, tenantRes, duesRes, repairRes, upcomingRes, pendRepRes] = await Promise.all([
+      const [propRes, tenantRes, duesRes, repairRes, upcomingRes, pendRepRes, proofsRes] = await Promise.all([
         supabase.from('properties').select('id, full_address, status, internal_identifier', { count: 'exact' }).eq('project_id', projectId).eq('active', true),
         supabase.from('tenants').select('id', { count: 'exact' }).eq('project_id', projectId).eq('status', 'active'),
         supabase.from('rent_dues').select('id', { count: 'exact' }).eq('project_id', projectId).eq('period_month', currentMonth).gt('balance_due', 0),
         supabase.from('maintenance_issues').select('id', { count: 'exact' }).eq('project_id', projectId).in('status', ['pending', 'in_progress']),
         supabase.from('rent_dues').select('id, period_month, due_date, expected_amount, status, tenants(full_name), properties(internal_identifier)').eq('project_id', projectId).gte('due_date', new Date().toISOString().slice(0, 10)).order('due_date').limit(5),
         supabase.from('maintenance_issues').select('id, description, status, reported_at, properties(internal_identifier)').eq('project_id', projectId).in('status', ['pending', 'in_progress']).order('reported_at', { ascending: false }).limit(5),
+        supabase.from('payment_proofs').select('id', { count: 'exact' }).eq('project_id', projectId).eq('proof_status', 'pending'),
       ])
 
       setStats({
