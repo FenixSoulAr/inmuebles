@@ -12,7 +12,7 @@ export default function Dashboard() {
   const { t } = useTranslation()
   const { user } = useAuth()
   const { projectId, loading: loadingProject } = useProjectId()
-  const [stats, setStats] = useState({ properties: 0, tenants: 0, pendingDues: 0, repairs: 0 })
+  const [stats, setStats] = useState({ properties: 0, tenants: 0, pendingDues: 0, repairs: 0, pendingProofs: 0 })
   const [upcomingDues, setUpcomingDues] = useState<any[]>([])
   const [pendingRepairs, setPendingRepairs] = useState<any[]>([])
   const [properties, setProperties] = useState<any[]>([])
