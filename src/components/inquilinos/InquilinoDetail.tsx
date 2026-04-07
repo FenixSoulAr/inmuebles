@@ -6,10 +6,12 @@ import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { formatDate, formatCurrency } from '@/lib/utils'
 import { supabase } from '@/integrations/supabase/client'
 import { useProjectId } from '@/hooks/useProjectId'
 import { toast } from 'sonner'
+import CuentaCorriente from './CuentaCorriente'
 import type { TenantWithProperty, Guarantor } from '@/hooks/useInquilinos'
 
 interface ContractRow {
@@ -79,11 +81,13 @@ export default function InquilinoDetail({ open, onOpenChange, tenant, onEdit, on
   const { t } = useTranslation()
   const [guarantors, setGuarantors] = useState<Guarantor[]>([])
   const [contracts, setContracts] = useState<ContractRow[]>([])
+  const [activeTab, setActiveTab] = useState('info')
 
   useEffect(() => {
     if (open && tenant) {
       fetchGuarantors(tenant.id).then(setGuarantors)
       fetchContracts(tenant.id).then(setContracts)
+      setActiveTab('info')
     } else {
       setGuarantors([])
       setContracts([])
@@ -115,58 +119,68 @@ export default function InquilinoDetail({ open, onOpenChange, tenant, onEdit, on
 
           <Separator />
 
-          {/* Guarantors */}
-          <div>
-            <h4 className="font-semibold mb-2">{t('tenants.detail.guarantors')}</h4>
-            {guarantors.length === 0 ? (
-              <p className="text-sm text-muted-foreground">{t('tenants.detail.noGuarantors')}</p>
-            ) : (
-              <div className="space-y-2">
-                {guarantors.map(g => (
-                  <div key={g.id} className="rounded-md border p-3 text-sm">
-                    <p className="font-medium">{g.full_name}</p>
-                    {g.contact_info && <p className="text-muted-foreground">{g.contact_info}</p>}
-                    {g.notes && <p className="text-muted-foreground italic">{g.notes}</p>}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          {/* Tabs */}
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="w-full">
+              <TabsTrigger value="info" className="flex-1">{t('tenants.detail.guarantors')}</TabsTrigger>
+              <TabsTrigger value="contracts" className="flex-1">{t('tenants.detail.contractHistory')}</TabsTrigger>
+              <TabsTrigger value="cuenta" className="flex-1">{t('tenants.cuentaCorriente.tab')}</TabsTrigger>
+            </TabsList>
 
-          <Separator />
-
-          {/* Contract history */}
-          <div>
-            <h4 className="font-semibold mb-2">{t('tenants.detail.contractHistory')}</h4>
-            {contracts.length === 0 ? (
-              <p className="text-sm text-muted-foreground">{t('tenants.detail.noContracts')}</p>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{t('tenants.detail.property')}</TableHead>
-                    <TableHead>{t('tenants.detail.period')}</TableHead>
-                    <TableHead>{t('tenants.detail.rent')}</TableHead>
-                    <TableHead>{t('tenants.detail.contractStatus')}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {contracts.map(c => (
-                    <TableRow key={c.id}>
-                      <TableCell className="text-xs">{c.property_address}</TableCell>
-                      <TableCell className="text-xs">{formatDate(c.start_date)} → {formatDate(c.end_date)}</TableCell>
-                      <TableCell className="text-xs">{formatCurrency(c.current_rent, c.currency ?? 'ARS')}</TableCell>
-                      <TableCell>
-                        <Badge variant={c.is_active ? 'success' : 'secondary'}>
-                          {c.is_active ? t('tenants.detail.activeContract') : t('tenants.detail.finishedContract')}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
+            {/* Guarantors tab */}
+            <TabsContent value="info">
+              {guarantors.length === 0 ? (
+                <p className="text-sm text-muted-foreground">{t('tenants.detail.noGuarantors')}</p>
+              ) : (
+                <div className="space-y-2">
+                  {guarantors.map(g => (
+                    <div key={g.id} className="rounded-md border p-3 text-sm">
+                      <p className="font-medium">{g.full_name}</p>
+                      {g.contact_info && <p className="text-muted-foreground">{g.contact_info}</p>}
+                      {g.notes && <p className="text-muted-foreground italic">{g.notes}</p>}
+                    </div>
                   ))}
-                </TableBody>
-              </Table>
-            )}
-          </div>
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Contract history tab */}
+            <TabsContent value="contracts">
+              {contracts.length === 0 ? (
+                <p className="text-sm text-muted-foreground">{t('tenants.detail.noContracts')}</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>{t('tenants.detail.property')}</TableHead>
+                      <TableHead>{t('tenants.detail.period')}</TableHead>
+                      <TableHead>{t('tenants.detail.rent')}</TableHead>
+                      <TableHead>{t('tenants.detail.contractStatus')}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {contracts.map(c => (
+                      <TableRow key={c.id}>
+                        <TableCell className="text-xs">{c.property_address}</TableCell>
+                        <TableCell className="text-xs">{formatDate(c.start_date)} → {formatDate(c.end_date)}</TableCell>
+                        <TableCell className="text-xs">{formatCurrency(c.current_rent, c.currency ?? 'ARS')}</TableCell>
+                        <TableCell>
+                          <Badge variant={c.is_active ? 'success' : 'secondary'}>
+                            {c.is_active ? t('tenants.detail.activeContract') : t('tenants.detail.finishedContract')}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </TabsContent>
+
+            {/* Cuenta corriente tab */}
+            <TabsContent value="cuenta">
+              <CuentaCorriente tenantId={tenant.id} active={activeTab === 'cuenta'} />
+            </TabsContent>
+          </Tabs>
         </div>
 
         <div className="flex gap-2 pt-2 flex-wrap">
