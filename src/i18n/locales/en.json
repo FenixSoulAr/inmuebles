@@ -443,6 +443,37 @@
       "paymentError": "Error registering payment"
     }
   },
+  "cobranza": {
+    "proofs": {
+      "title": "Proofs to review",
+      "typeRent": "Rent",
+      "serviceTypes": {
+        "expensas": "Building fees",
+        "luz": "Electricity",
+        "gas": "Gas",
+        "agua": "Water",
+        "otro": "Other"
+      },
+      "period": "Period",
+      "amount": "Amount",
+      "paidAt": "Payment date",
+      "sentAt": "Sent",
+      "viewFile": "View proof",
+      "approve": "Approve",
+      "reject": "Reject",
+      "approveTitle": "Approve proof?",
+      "approveDesc": "Do you confirm you received this payment?",
+      "rejectTitle": "Reject proof",
+      "rejectDesc": "Provide a reason so the tenant can see it.",
+      "rejectReasonLabel": "Rejection reason",
+      "rejectReasonPlaceholder": "E.g.: The amount doesn't match the agreement",
+      "approved": "Proof approved",
+      "rejected": "Proof rejected",
+      "approveError": "Error approving proof",
+      "rejectError": "Error rejecting proof",
+      "fileError": "Could not open file"
+    }
+  },
   "repairs": {
     "title": "Repairs",
     "subtitle": "Maintenance tracking and fixes",
