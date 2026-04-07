@@ -99,6 +99,9 @@ export default function Cobranza() {
         <p className="text-muted-foreground">{t('billing.subtitle')}</p>
       </div>
 
+      {/* Pending proofs section */}
+      <PendingProofs />
+
       {/* Summary cards */}
       <div className="grid gap-4 sm:grid-cols-3">
         {/* Card 1 - En mora */}
