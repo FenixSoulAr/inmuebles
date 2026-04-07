@@ -124,45 +124,56 @@ export default function PendingProofs() {
     // 2. For advance rent payments (no obligation), create a rent_due first
     let finalObligationId = proof.obligation_id
     if (!proof.obligation_id && proof.type === 'rent') {
-      const { data: contractData } = await supabase
-        .from('contracts')
-        .select('property_id, tenant_id')
-        .eq('id', proof.contract_id)
-        .single()
-      if (!contractData) {
-        toast.error(t('cobranza.proofs.approveError'))
-        setApproveId(null)
-        return
-      }
-
-      const { data: newDue, error: dueInsErr } = await supabase
+      // Check if a rent_due already exists for this contract+period
+      const { data: existing } = await supabase
         .from('rent_dues')
-        .insert({
-          project_id: projectId!,
-          contract_id: proof.contract_id,
-          property_id: contractData.property_id,
-          tenant_id: contractData.tenant_id,
-          period_month: proof.period,
-          due_date: proof.paid_at.split('T')[0],
-          expected_amount: proof.amount,
-          balance_due: 0,
-          status: 'paid',
-        })
         .select('id')
-        .single()
-      if (dueInsErr || !newDue) {
-        toast.error(t('cobranza.proofs.approveError'))
-        setApproveId(null)
-        return
+        .eq('contract_id', proof.contract_id)
+        .eq('period_month', proof.period)
+        .maybeSingle()
+
+      if (existing) {
+        // Use existing due — mark it paid and link the proof
+        finalObligationId = existing.id
+        await supabase.from('rent_dues').update({ status: 'paid', balance_due: 0 }).eq('id', existing.id)
+        await supabase.from('payment_proofs').update({ obligation_id: existing.id }).eq('id', proof.id)
+      } else {
+        // No existing due — create one
+        const { data: contractData } = await supabase
+          .from('contracts')
+          .select('property_id, tenant_id')
+          .eq('id', proof.contract_id)
+          .single()
+        if (!contractData) {
+          toast.error(t('cobranza.proofs.approveError'))
+          setApproveId(null)
+          return
+        }
+
+        const { data: newDue, error: dueInsErr } = await supabase
+          .from('rent_dues')
+          .insert({
+            project_id: projectId!,
+            contract_id: proof.contract_id,
+            property_id: contractData.property_id,
+            tenant_id: contractData.tenant_id,
+            period_month: proof.period,
+            due_date: proof.paid_at.split('T')[0],
+            expected_amount: proof.amount,
+            balance_due: 0,
+            status: 'paid',
+          })
+          .select('id')
+          .single()
+        if (dueInsErr || !newDue) {
+          toast.error(t('cobranza.proofs.approveError'))
+          setApproveId(null)
+          return
+        }
+
+        finalObligationId = newDue.id
+        await supabase.from('payment_proofs').update({ obligation_id: newDue.id }).eq('id', proof.id)
       }
-
-      finalObligationId = newDue.id
-
-      // Link the proof to the new rent_due
-      await supabase
-        .from('payment_proofs')
-        .update({ obligation_id: newDue.id })
-        .eq('id', proof.id)
     }
 
     // 3. Insert payment record
