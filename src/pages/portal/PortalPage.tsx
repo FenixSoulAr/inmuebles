@@ -266,7 +266,7 @@ export default function PortalPage() {
                     <p className="text-sm font-medium">{formatDate(p.payment_date)}</p>
                     <p className="text-xs text-muted-foreground capitalize">{p.method}</p>
                   </div>
-                  <p className="text-sm font-semibold text-green-700">{formatCurrency(p.amount, currency)}</p>
+                  <p className="text-sm font-semibold text-primary">{formatCurrency(p.amount, currency)}</p>
                 </div>
               ))}
               {payments.length === 0 && (

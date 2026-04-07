@@ -120,7 +120,7 @@ export default function PortalSetup() {
         <CardHeader className="text-center">
           <img src={logoFull} alt="MyRentaHub" className="mx-auto mb-4 h-12 w-auto" />
           <CardTitle className="text-lg flex items-center justify-center gap-2">
-            <CheckCircle2 className="h-5 w-5 text-green-600" />
+            <CheckCircle2 className="h-5 w-5 text-primary" />
             {t('portal.setupTitle')}
           </CardTitle>
           <CardDescription>{t('portal.setupDesc')}</CardDescription>
