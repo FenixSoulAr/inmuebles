@@ -39,7 +39,7 @@ export function generateNaming(opts: {
   reference: string
   fileExtension: string
 }) {
-  const { docType, scope, reference, fileExtension } = opts
+  const { docType, reference, fileExtension } = opts
   const now = new Date()
   const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
   const monthYear = `${monthNames[now.getMonth()]} ${now.getFullYear()}`

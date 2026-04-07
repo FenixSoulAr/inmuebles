@@ -185,8 +185,8 @@ export default function DocumentoUpload({ open, onOpenChange, properties, contra
           </div>
 
           {/* Step 2: Naming preview */}
-          <div className="rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 p-4 space-y-1">
-            <div className="flex items-center gap-2 text-sm text-blue-700 dark:text-blue-300">
+          <div className="rounded-lg bg-primary/5 border border-primary/20 p-4 space-y-1">
+            <div className="flex items-center gap-2 text-sm text-primary">
               <FileText className="h-4 w-4" />
               {t('docs.upload.previewLabel')}
             </div>
