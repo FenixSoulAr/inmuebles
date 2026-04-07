@@ -74,6 +74,7 @@ export default function PendingProofs() {
     const enriched: EnrichedProof[] = (data ?? []).map((p: any) => ({
       id: p.id,
       contract_id: p.contract_id,
+      obligation_id: p.obligation_id ?? null,
       type: p.type,
       service_type: p.service_type,
       period: p.period,
