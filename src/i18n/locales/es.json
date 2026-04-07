@@ -347,7 +347,9 @@
     "pendingRepairs": "Reparaciones pendientes",
     "noPendingRepairs": "Sin reparaciones pendientes",
     "propertyStatus": "Estado de propiedades",
-    "noProperties": "Aún no cargaste propiedades"
+    "noProperties": "Aún no cargaste propiedades",
+    "pendingProofs": "Comprobantes por revisar",
+    "pendingProofsDesc": "Comprobantes de pago enviados por inquilinos esperando tu aprobación"
   },
   "billing": {
     "title": "Cobranza",
