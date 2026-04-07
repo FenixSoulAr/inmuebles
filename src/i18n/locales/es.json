@@ -618,6 +618,86 @@
       "saveError": "Error al guardar"
     }
   },
+  "docs": {
+    "title": "Documentos",
+    "subtitle": "Contratos, escrituras y archivos adjuntos",
+    "search": "Buscar por título o archivo…",
+    "emptyTitle": "Sin documentos cargados",
+    "emptyDesc": "Subí contratos, escrituras y otros documentos relacionados a tus propiedades",
+    "summary": {
+      "total": "Total documentos",
+      "byProperty": "Por propiedad",
+      "byContract": "Por contrato"
+    },
+    "sections": {
+      "property": "Documentos de propiedades",
+      "contract": "Documentos de contratos",
+      "project": "Documentos generales"
+    },
+    "columns": {
+      "title": "Título",
+      "type": "Tipo",
+      "reference": "Referencia",
+      "date": "Fecha",
+      "size": "Tamaño",
+      "actions": "Acciones"
+    },
+    "filters": {
+      "allTypes": "Todos los tipos",
+      "allProperties": "Todas las propiedades"
+    },
+    "docTypes": {
+      "contract": "Contrato",
+      "deed": "Escritura",
+      "regulation": "Reglamento",
+      "floor_plan": "Plano",
+      "insurance": "Seguro",
+      "tax": "Impuesto",
+      "receipt": "Comprobante",
+      "id_document": "Documento identidad",
+      "other": "Otro"
+    },
+    "scopes": {
+      "property": "Propiedad",
+      "contract": "Contrato",
+      "project": "Proyecto"
+    },
+    "actions": {
+      "view": "Ver",
+      "download": "Descargar",
+      "delete": "Eliminar"
+    },
+    "upload": {
+      "btn": "Subir documento",
+      "first": "Subir primer documento",
+      "title": "Subir documento",
+      "desc": "Clasificá y subí un archivo",
+      "docType": "Tipo de documento",
+      "scope": "Pertenece a",
+      "property": "Propiedad",
+      "selectProperty": "Seleccionar propiedad",
+      "contract": "Contrato",
+      "selectContract": "Seleccionar contrato",
+      "previewLabel": "El archivo se guardará como:",
+      "customTitle": "Título personalizado",
+      "file": "Archivo",
+      "notes": "Notas",
+      "notesPlaceholder": "Observaciones opcionales",
+      "submit": "Subir documento"
+    },
+    "delete": {
+      "title": "¿Eliminar documento?",
+      "desc": "Se eliminará «{{name}}» del sistema y del almacenamiento. Esta acción no se puede deshacer.",
+      "confirm": "Eliminar"
+    },
+    "toast": {
+      "uploaded": "Documento subido",
+      "uploadError": "Error al subir documento",
+      "deleted": "Documento eliminado",
+      "deleteError": "Error al eliminar documento",
+      "tooLarge": "El archivo excede el máximo de 10 MB"
+    }
+  },
   "lang": {
     "es": "ES",
     "en": "EN"

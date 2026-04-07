@@ -618,6 +618,86 @@
       "saveError": "Error saving"
     }
   },
+  "docs": {
+    "title": "Documents",
+    "subtitle": "Contracts, deeds and attached files",
+    "search": "Search by title or file name…",
+    "emptyTitle": "No documents uploaded",
+    "emptyDesc": "Upload contracts, deeds and other documents related to your properties",
+    "summary": {
+      "total": "Total documents",
+      "byProperty": "By property",
+      "byContract": "By contract"
+    },
+    "sections": {
+      "property": "Property documents",
+      "contract": "Contract documents",
+      "project": "General documents"
+    },
+    "columns": {
+      "title": "Title",
+      "type": "Type",
+      "reference": "Reference",
+      "date": "Date",
+      "size": "Size",
+      "actions": "Actions"
+    },
+    "filters": {
+      "allTypes": "All types",
+      "allProperties": "All properties"
+    },
+    "docTypes": {
+      "contract": "Contract",
+      "deed": "Deed",
+      "regulation": "Regulation",
+      "floor_plan": "Floor plan",
+      "insurance": "Insurance",
+      "tax": "Tax",
+      "receipt": "Receipt",
+      "id_document": "ID document",
+      "other": "Other"
+    },
+    "scopes": {
+      "property": "Property",
+      "contract": "Contract",
+      "project": "Project"
+    },
+    "actions": {
+      "view": "View",
+      "download": "Download",
+      "delete": "Delete"
+    },
+    "upload": {
+      "btn": "Upload document",
+      "first": "Upload first document",
+      "title": "Upload document",
+      "desc": "Classify and upload a file",
+      "docType": "Document type",
+      "scope": "Belongs to",
+      "property": "Property",
+      "selectProperty": "Select property",
+      "contract": "Contract",
+      "selectContract": "Select contract",
+      "previewLabel": "The file will be saved as:",
+      "customTitle": "Custom title",
+      "file": "File",
+      "notes": "Notes",
+      "notesPlaceholder": "Optional remarks",
+      "submit": "Upload document"
+    },
+    "delete": {
+      "title": "Delete document?",
+      "desc": "\"{{name}}\" will be deleted from the system and storage. This action cannot be undone.",
+      "confirm": "Delete"
+    },
+    "toast": {
+      "uploaded": "Document uploaded",
+      "uploadError": "Error uploading document",
+      "deleted": "Document deleted",
+      "deleteError": "Error deleting document",
+      "tooLarge": "File exceeds the 10 MB limit"
+    }
+  },
   "lang": {
     "es": "ES",
     "en": "EN"
