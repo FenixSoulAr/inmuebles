@@ -45,7 +45,7 @@ function InvitePortalButton({ tenant }: { tenant: TenantWithProperty }) {
     }
     setInviting(true)
     try {
-      const { data: { session } } = await supabase.auth.getSession()
+      await supabase.auth.getSession()
       const resp = await supabase.functions.invoke('invite-tenant', {
         body: { tenant_id: tenant.id, email: tenant.email, project_id: activeProjectId },
       })
