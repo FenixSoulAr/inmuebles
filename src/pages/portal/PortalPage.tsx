@@ -79,7 +79,7 @@ export default function PortalPage() {
 
         const [duesRes, paymentsRes, proofsRes] = await Promise.all([
           supabase.from('rent_dues').select('*').eq('contract_id', contractData.id).order('due_date', { ascending: false }).limit(12),
-          supabase.from('rent_payments').select('*').order('payment_date', { ascending: false }).limit(20),
+          supabase.from('payments').select('id, amount, paid_at, concept, method').eq('contract_id', contractData.id).order('paid_at', { ascending: false }).limit(20),
           supabase.from('payment_proofs').select('id, obligation_id, period, amount, created_at, proof_status, rejection_reason, type, service_type').eq('contract_id', contractData.id).order('created_at', { ascending: false }).limit(10),
         ])
 
