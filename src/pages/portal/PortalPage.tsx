@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
+
 import { LogOut, Home, AlertTriangle, CalendarClock, CreditCard, Loader2 } from 'lucide-react'
 import { formatDate, formatCurrency } from '@/lib/utils'
 import logoFull from '@/assets/logo-full.png'

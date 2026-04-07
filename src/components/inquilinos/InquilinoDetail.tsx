@@ -126,9 +126,10 @@ export default function InquilinoDetail({ open, onOpenChange, tenant, onEdit, on
           </div>
         </div>
 
-        <div className="flex gap-2 pt-2">
+        <div className="flex gap-2 pt-2 flex-wrap">
           <Button variant="outline" onClick={onEdit}><Pencil className="h-4 w-4 mr-1" />{t('tenants.editBtn')}</Button>
           <Button variant="outline" onClick={onDelete}><Trash2 className="h-4 w-4 mr-1 text-destructive" />{t('tenants.deleteBtn')}</Button>
+          <InvitePortalButton tenant={tenant} />
         </div>
       </SheetContent>
     </Sheet>
