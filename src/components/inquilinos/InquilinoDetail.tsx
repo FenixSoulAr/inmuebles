@@ -35,7 +35,7 @@ interface Props {
 
 function InvitePortalButton({ tenant }: { tenant: TenantWithProperty }) {
   const { t } = useTranslation()
-  const { activeProjectId } = useProjectId()
+  const { projectId: activeProjectId } = useProjectId()
   const [inviting, setInviting] = useState(false)
 
   const handleInvite = async () => {
