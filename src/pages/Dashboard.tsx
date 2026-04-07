@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
-import { Building2, Users, CreditCard, Wrench } from 'lucide-react'
+import { Building2, Users, CreditCard, Wrench, FileCheck } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { supabase } from '@/integrations/supabase/client'
@@ -12,7 +12,7 @@ export default function Dashboard() {
   const { t } = useTranslation()
   const { user } = useAuth()
   const { projectId, loading: loadingProject } = useProjectId()
-  const [stats, setStats] = useState({ properties: 0, tenants: 0, pendingDues: 0, repairs: 0 })
+  const [stats, setStats] = useState({ properties: 0, tenants: 0, pendingDues: 0, repairs: 0, pendingProofs: 0 })
   const [upcomingDues, setUpcomingDues] = useState<any[]>([])
   const [pendingRepairs, setPendingRepairs] = useState<any[]>([])
   const [properties, setProperties] = useState<any[]>([])
@@ -31,13 +31,14 @@ export default function Dashboard() {
     const load = async () => {
       const now = new Date()
       const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-      const [propRes, tenantRes, duesRes, repairRes, upcomingRes, pendRepRes] = await Promise.all([
+      const [propRes, tenantRes, duesRes, repairRes, upcomingRes, pendRepRes, proofsRes] = await Promise.all([
         supabase.from('properties').select('id, full_address, status, internal_identifier', { count: 'exact' }).eq('project_id', projectId).eq('active', true),
         supabase.from('tenants').select('id', { count: 'exact' }).eq('project_id', projectId).eq('status', 'active'),
         supabase.from('rent_dues').select('id', { count: 'exact' }).eq('project_id', projectId).eq('period_month', currentMonth).gt('balance_due', 0),
         supabase.from('maintenance_issues').select('id', { count: 'exact' }).eq('project_id', projectId).in('status', ['pending', 'in_progress']),
         supabase.from('rent_dues').select('id, period_month, due_date, expected_amount, status, tenants(full_name), properties(internal_identifier)').eq('project_id', projectId).gte('due_date', new Date().toISOString().slice(0, 10)).order('due_date').limit(5),
         supabase.from('maintenance_issues').select('id, description, status, reported_at, properties(internal_identifier)').eq('project_id', projectId).in('status', ['pending', 'in_progress']).order('reported_at', { ascending: false }).limit(5),
+        supabase.from('payment_proofs').select('id', { count: 'exact' }).eq('project_id', projectId).eq('proof_status', 'pending'),
       ])
 
       setStats({
@@ -45,6 +46,7 @@ export default function Dashboard() {
         tenants: tenantRes.count ?? 0,
         pendingDues: duesRes.count ?? 0,
         repairs: repairRes.count ?? 0,
+        pendingProofs: proofsRes.count ?? 0,
       })
       setProperties(propRes.data ?? [])
       setUpcomingDues(upcomingRes.data ?? [])
@@ -89,6 +91,23 @@ export default function Dashboard() {
           </Link>
         ))}
       </div>
+
+      {stats.pendingProofs > 0 && (
+        <Link to="/cobranza" className="block">
+          <Card className="cursor-pointer hover:shadow-md transition-shadow border-orange-200 bg-orange-50/30">
+            <CardContent className="flex items-center gap-3 py-4">
+              <div className="rounded-md p-2 bg-orange-100">
+                <FileCheck className="h-5 w-5 text-orange-600" />
+              </div>
+              <div className="flex-1">
+                <p className="font-medium text-sm">{t('dashboard.pendingProofs')}</p>
+                <p className="text-xs text-muted-foreground">{t('dashboard.pendingProofsDesc')}</p>
+              </div>
+              <Badge variant="destructive">{stats.pendingProofs}</Badge>
+            </CardContent>
+          </Card>
+        </Link>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>

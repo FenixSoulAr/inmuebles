@@ -347,7 +347,9 @@
     "pendingRepairs": "Pending repairs",
     "noPendingRepairs": "No pending repairs",
     "propertyStatus": "Property status",
-    "noProperties": "No properties loaded yet"
+    "noProperties": "No properties loaded yet",
+    "pendingProofs": "Proofs to review",
+    "pendingProofsDesc": "Payment proofs submitted by tenants awaiting your approval"
   },
   "billing": {
     "title": "Billing",
