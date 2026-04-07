@@ -46,6 +46,7 @@ export default function Dashboard() {
         tenants: tenantRes.count ?? 0,
         pendingDues: duesRes.count ?? 0,
         repairs: repairRes.count ?? 0,
+        pendingProofs: proofsRes.count ?? 0,
       })
       setProperties(propRes.data ?? [])
       setUpcomingDues(upcomingRes.data ?? [])
