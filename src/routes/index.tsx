@@ -15,6 +15,10 @@ import SignIn from '@/pages/auth/SignIn'
 import SignUp from '@/pages/auth/SignUp'
 import ForgotPassword from '@/pages/auth/ForgotPassword'
 import ResetPassword from '@/pages/auth/ResetPassword'
+import PortalPage from '@/pages/portal/PortalPage'
+import PortalLogin from '@/pages/portal/PortalLogin'
+import PortalSetup from '@/pages/portal/PortalSetup'
+import { TenantRoute } from '@/components/portal/TenantRoute'
 
 export const router = createBrowserRouter([
   {
@@ -24,6 +28,16 @@ export const router = createBrowserRouter([
       { path: '/signup', element: <SignUp /> },
       { path: '/forgot-password', element: <ForgotPassword /> },
       { path: '/reset-password', element: <ResetPassword /> },
+      { path: '/portal/login', element: <PortalLogin /> },
+      { path: '/portal/setup', element: <PortalSetup /> },
+      {
+        path: '/portal',
+        element: (
+          <TenantRoute>
+            <PortalPage />
+          </TenantRoute>
+        ),
+      },
       {
         path: '/',
         element: (

@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Pencil, Trash2 } from 'lucide-react'
+import { Pencil, Trash2, Send, Loader2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
 import { formatDate, formatCurrency } from '@/lib/utils'
+import { supabase } from '@/integrations/supabase/client'
+import { useProjectId } from '@/hooks/useProjectId'
+import { toast } from 'sonner'
 import type { TenantWithProperty, Guarantor } from '@/hooks/useInquilinos'
 
 interface ContractRow {
@@ -27,6 +30,49 @@ interface Props {
   onDelete: () => void
   fetchGuarantors: (tenantId: string) => Promise<Guarantor[]>
   fetchContracts: (tenantId: string) => Promise<ContractRow[]>
+}
+
+
+function InvitePortalButton({ tenant }: { tenant: TenantWithProperty }) {
+  const { t } = useTranslation()
+  const { projectId: activeProjectId } = useProjectId()
+  const [inviting, setInviting] = useState(false)
+
+  const handleInvite = async () => {
+    if (!tenant.email) {
+      toast.error(t('portal.noEmail'))
+      return
+    }
+    setInviting(true)
+    try {
+      await supabase.auth.getSession()
+      const resp = await supabase.functions.invoke('invite-tenant', {
+        body: { tenant_id: tenant.id, email: tenant.email, project_id: activeProjectId },
+      })
+      if (resp.error) throw new Error(resp.error.message)
+      const body = resp.data as { success?: boolean; error?: string; message?: string }
+      if (body.error) {
+        if (body.error === 'tenant_already_invited') {
+          toast.error(t('portal.alreadyInvited'))
+        } else {
+          throw new Error(body.error)
+        }
+      } else {
+        toast.success(t('portal.inviteSent', { email: tenant.email }))
+      }
+    } catch (err) {
+      toast.error((err as Error).message)
+    } finally {
+      setInviting(false)
+    }
+  }
+
+  return (
+    <Button variant="outline" onClick={handleInvite} disabled={inviting}>
+      {inviting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Send className="h-4 w-4 mr-1 text-primary" />}
+      {t('portal.inviteBtn')}
+    </Button>
+  )
 }
 
 export default function InquilinoDetail({ open, onOpenChange, tenant, onEdit, onDelete, fetchGuarantors, fetchContracts }: Props) {
@@ -123,9 +169,10 @@ export default function InquilinoDetail({ open, onOpenChange, tenant, onEdit, on
           </div>
         </div>
 
-        <div className="flex gap-2 pt-2">
+        <div className="flex gap-2 pt-2 flex-wrap">
           <Button variant="outline" onClick={onEdit}><Pencil className="h-4 w-4 mr-1" />{t('tenants.editBtn')}</Button>
           <Button variant="outline" onClick={onDelete}><Trash2 className="h-4 w-4 mr-1 text-destructive" />{t('tenants.deleteBtn')}</Button>
+          <InvitePortalButton tenant={tenant} />
         </div>
       </SheetContent>
     </Sheet>
