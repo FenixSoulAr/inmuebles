@@ -744,6 +744,19 @@
     "alreadyInvited": "Tenant has already been invited to the portal",
     "proof": {
       "title": "Upload proof of payment",
+      "sendNew": "+ Submit proof",
+      "type": "Proof type",
+      "typeRent": "Rent",
+      "typeService": "Service (utilities/fees...)",
+      "serviceType": "Service type",
+      "services": {
+        "expensas": "Building fees",
+        "luz": "Electricity",
+        "gas": "Gas",
+        "agua": "Water",
+        "otro": "Other"
+      },
+      "noPeriod": "Enter the period",
       "period": "Period",
       "amount": "How much did you transfer?",
       "date": "Transfer date",

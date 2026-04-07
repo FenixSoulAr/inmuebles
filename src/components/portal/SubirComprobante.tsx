@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { formatCurrency } from '@/lib/utils'
 
 interface RentDue {
@@ -22,7 +23,7 @@ interface RentDue {
 interface Props {
   open: boolean
   onOpenChange: (open: boolean) => void
-  due: RentDue
+  due?: RentDue | null
   contractId: string
   projectId: string
   onSuccess: () => void
@@ -31,14 +32,23 @@ interface Props {
 const ACCEPTED = '.jpg,.jpeg,.png,.pdf,.webp'
 const MAX_SIZE = 10 * 1024 * 1024
 
+const SERVICE_TYPES = ['expensas', 'luz', 'gas', 'agua', 'otro'] as const
+
 export default function SubirComprobante({ open, onOpenChange, due, contractId, projectId, onSuccess }: Props) {
   const { t } = useTranslation()
   const fileRef = useRef<HTMLInputElement>(null)
-  const [amount, setAmount] = useState(String(due.balance_due))
+  const [proofType, setProofType] = useState<'rent' | 'service'>(due ? 'rent' : 'rent')
+  const [serviceType, setServiceType] = useState<string>('expensas')
+  const [period, setPeriod] = useState(due?.period_month ?? '')
+  const [amount, setAmount] = useState(due ? String(due.balance_due) : '')
   const [paidAt, setPaidAt] = useState(() => new Date().toISOString().split('T')[0])
   const [comment, setComment] = useState('')
   const [file, setFile] = useState<File | null>(null)
   const [submitting, setSubmitting] = useState(false)
+
+  const isLinkedToDue = !!due
+  const showServiceType = proofType === 'service'
+  
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]
@@ -60,13 +70,17 @@ export default function SubirComprobante({ open, onOpenChange, due, contractId, 
       toast.error(t('portal.proof.noFile'))
       return
     }
+    const finalPeriod = isLinkedToDue ? due.period_month : period.trim()
+    if (!finalPeriod) {
+      toast.error(t('portal.proof.noPeriod'))
+      return
+    }
 
     setSubmitting(true)
     try {
-      // Upload file using ArrayBuffer for mobile stability
       const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg'
       const timestamp = Date.now()
-      const storagePath = `${contractId}/${due.period_month}_${timestamp}.${ext}`
+      const storagePath = `${contractId}/${finalPeriod}_${timestamp}.${ext}`
 
       const arrayBuffer = await file.arrayBuffer()
       const { error: uploadError } = await supabase.storage
@@ -78,15 +92,15 @@ export default function SubirComprobante({ open, onOpenChange, due, contractId, 
 
       if (uploadError) throw uploadError
 
-      // Insert payment proof
       const { error: insertError } = await supabase
         .from('payment_proofs')
         .insert({
           project_id: projectId,
           contract_id: contractId,
-          obligation_id: due.id,
-          type: 'rent',
-          period: due.period_month,
+          obligation_id: due?.id ?? null,
+          type: proofType,
+          service_type: proofType === 'service' ? serviceType : null,
+          period: finalPeriod,
           amount: numAmount,
           paid_at: paidAt,
           files: [storagePath],
@@ -119,10 +133,56 @@ export default function SubirComprobante({ open, onOpenChange, due, contractId, 
         </SheetHeader>
 
         <div className="space-y-4 mt-4">
-          {/* Period (read-only) */}
+          {/* Proof type selector */}
+          <div>
+            <Label>{t('portal.proof.type')}</Label>
+            {isLinkedToDue ? (
+              <Input value={t('portal.proof.typeRent')} disabled />
+            ) : (
+              <Select value={proofType} onValueChange={(v) => setProofType(v as 'rent' | 'service')}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="rent">{t('portal.proof.typeRent')}</SelectItem>
+                  <SelectItem value="service">{t('portal.proof.typeService')}</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+
+          {/* Service type (only when type=service) */}
+          {showServiceType && (
+            <div>
+              <Label>{t('portal.proof.serviceType')}</Label>
+              <Select value={serviceType} onValueChange={setServiceType}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SERVICE_TYPES.map(st => (
+                    <SelectItem key={st} value={st}>
+                      {t(`portal.proof.services.${st}`)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* Period */}
           <div>
             <Label>{t('portal.proof.period')}</Label>
-            <Input value={due.period_month} disabled />
+            {isLinkedToDue ? (
+              <Input value={due.period_month} disabled />
+            ) : (
+              <Input
+                type="month"
+                value={period}
+                onChange={e => setPeriod(e.target.value)}
+                placeholder="2026-05"
+              />
+            )}
           </div>
 
           {/* Amount */}
@@ -180,11 +240,13 @@ export default function SubirComprobante({ open, onOpenChange, due, contractId, 
             <p className="text-xs text-muted-foreground mt-1">{t('portal.proof.fileHint')}</p>
           </div>
 
-          {/* Expected info */}
-          <div className="rounded-md bg-muted/50 border p-3 text-sm">
-            <span className="text-muted-foreground">{t('portal.proof.expectedLabel')}: </span>
-            <span className="font-semibold">{formatCurrency(due.balance_due)}</span>
-          </div>
+          {/* Expected info (only when linked to due) */}
+          {isLinkedToDue && (
+            <div className="rounded-md bg-muted/50 border p-3 text-sm">
+              <span className="text-muted-foreground">{t('portal.proof.expectedLabel')}: </span>
+              <span className="font-semibold">{formatCurrency(due.balance_due)}</span>
+            </div>
+          )}
 
           {/* Submit */}
           <Button

@@ -744,6 +744,19 @@
     "alreadyInvited": "El inquilino ya fue invitado al portal",
     "proof": {
       "title": "Subir comprobante",
+      "sendNew": "+ Enviar comprobante",
+      "type": "Tipo de comprobante",
+      "typeRent": "Alquiler",
+      "typeService": "Servicio (expensas/luz/gas...)",
+      "serviceType": "Tipo de servicio",
+      "services": {
+        "expensas": "Expensas",
+        "luz": "Luz",
+        "gas": "Gas",
+        "agua": "Agua",
+        "otro": "Otro"
+      },
+      "noPeriod": "Ingresá el período",
       "period": "Período",
       "amount": "¿Cuánto transferiste?",
       "date": "Fecha de transferencia",

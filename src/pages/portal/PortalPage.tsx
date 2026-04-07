@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { LogOut, Home, AlertTriangle, CalendarClock, CreditCard, Loader2, Upload, FileCheck, Info } from 'lucide-react'
+import { LogOut, Home, AlertTriangle, CalendarClock, CreditCard, Loader2, Upload, FileCheck, Info, Plus } from 'lucide-react'
 import { formatDate, formatCurrency } from '@/lib/utils'
 import logoFull from '@/assets/logo-full.png'
 import SubirComprobante from '@/components/portal/SubirComprobante'
@@ -47,6 +47,8 @@ interface ProofRecord {
   created_at: string
   proof_status: string
   rejection_reason: string | null
+  type: string
+  service_type: string | null
 }
 
 export default function PortalPage() {
@@ -60,6 +62,7 @@ export default function PortalPage() {
   const [showPayments, setShowPayments] = useState(false)
   const [showProofs, setShowProofs] = useState(false)
   const [uploadDue, setUploadDue] = useState<RentDue | null>(null)
+  const [freeUploadOpen, setFreeUploadOpen] = useState(false)
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -74,11 +77,10 @@ export default function PortalPage() {
       if (contractData) {
         setContract(contractData as unknown as ContractData)
 
-        // Fetch rent dues, payments, and proofs in parallel
         const [duesRes, paymentsRes, proofsRes] = await Promise.all([
           supabase.from('rent_dues').select('*').eq('contract_id', contractData.id).order('due_date', { ascending: false }).limit(12),
           supabase.from('rent_payments').select('*').order('payment_date', { ascending: false }).limit(20),
-          supabase.from('payment_proofs').select('id, obligation_id, period, amount, created_at, proof_status, rejection_reason').eq('contract_id', contractData.id).order('created_at', { ascending: false }).limit(10),
+          supabase.from('payment_proofs').select('id, obligation_id, period, amount, created_at, proof_status, rejection_reason, type, service_type').eq('contract_id', contractData.id).order('created_at', { ascending: false }).limit(10),
         ])
 
         if (duesRes.data) setRentDues(duesRes.data)
@@ -105,6 +107,13 @@ export default function PortalPage() {
 
   const getProofForDue = (dueId: string) => {
     return proofs.find(p => p.obligation_id === dueId)
+  }
+
+  const getProofTypeLabel = (p: ProofRecord) => {
+    if (p.type === 'service' && p.service_type) {
+      return t(`portal.proof.services.${p.service_type}`)
+    }
+    return t('portal.proof.typeRent')
   }
 
   const totalDebt = rentDues
@@ -224,6 +233,17 @@ export default function PortalPage() {
           </Card>
         </div>
 
+        {/* Free upload button */}
+        {contract && (
+          <Button
+            className="w-full"
+            onClick={() => setFreeUploadOpen(true)}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            {t('portal.proof.sendNew')}
+          </Button>
+        )}
+
         {/* Recent Dues */}
         <Card>
           <CardHeader className="pb-2">
@@ -300,7 +320,9 @@ export default function PortalPage() {
                   <div key={p.id} className="flex items-center justify-between rounded-md border p-3">
                     <div>
                       <p className="text-sm font-medium">{p.period}</p>
-                      <p className="text-xs text-muted-foreground">{formatDate(p.created_at)}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {getProofTypeLabel(p)} · {formatDate(p.created_at)}
+                      </p>
                     </div>
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-semibold">{formatCurrency(p.amount, currency)}</p>
@@ -363,12 +385,23 @@ export default function PortalPage() {
         </Card>
       </main>
 
-      {/* Upload Sheet */}
+      {/* Upload Sheet — linked to due */}
       {uploadDue && contract && (
         <SubirComprobante
           open={!!uploadDue}
           onOpenChange={open => { if (!open) setUploadDue(null) }}
           due={uploadDue}
+          contractId={contract.id}
+          projectId={contract.project_id}
+          onSuccess={fetchData}
+        />
+      )}
+
+      {/* Upload Sheet — free (no due) */}
+      {freeUploadOpen && contract && (
+        <SubirComprobante
+          open={freeUploadOpen}
+          onOpenChange={setFreeUploadOpen}
           contractId={contract.id}
           projectId={contract.project_id}
           onSuccess={fetchData}
