@@ -34,9 +34,9 @@ interface RentDue {
 interface Payment {
   id: string
   amount: number
-  payment_date: string
+  paid_at: string
+  concept: string | null
   method: string
-  rent_due_id: string
 }
 
 interface ProofRecord {
@@ -79,7 +79,7 @@ export default function PortalPage() {
 
         const [duesRes, paymentsRes, proofsRes] = await Promise.all([
           supabase.from('rent_dues').select('*').eq('contract_id', contractData.id).order('due_date', { ascending: false }).limit(12),
-          supabase.from('rent_payments').select('*').order('payment_date', { ascending: false }).limit(20),
+          supabase.from('payments').select('id, amount, paid_at, concept, method').eq('contract_id', contractData.id).order('paid_at', { ascending: false }).limit(20),
           supabase.from('payment_proofs').select('id, obligation_id, period, amount, created_at, proof_status, rejection_reason, type, service_type').eq('contract_id', contractData.id).order('created_at', { ascending: false }).limit(10),
         ])
 
@@ -224,7 +224,7 @@ export default function PortalPage() {
               {lastPayment ? (
                 <>
                   <p className="text-sm font-bold">{formatCurrency(lastPayment.amount, currency)}</p>
-                  <p className="text-[10px] text-muted-foreground">{formatDate(lastPayment.payment_date)}</p>
+                  <p className="text-[10px] text-muted-foreground">{formatDate(lastPayment.paid_at)}</p>
                 </>
               ) : (
                 <p className="text-sm font-bold">—</p>
@@ -371,8 +371,8 @@ export default function PortalPage() {
               {payments.map(p => (
                 <div key={p.id} className="flex items-center justify-between rounded-md border p-3">
                   <div>
-                    <p className="text-sm font-medium">{formatDate(p.payment_date)}</p>
-                    <p className="text-xs text-muted-foreground capitalize">{p.method}</p>
+                    <p className="text-sm font-medium">{formatDate(p.paid_at)}</p>
+                    <p className="text-xs text-muted-foreground capitalize">{p.concept ?? p.method}</p>
                   </div>
                   <p className="text-sm font-semibold text-primary">{formatCurrency(p.amount, currency)}</p>
                 </div>
