@@ -66,6 +66,7 @@ export default function CuentaCorriente({ tenantId, active }: Props) {
         .from('rent_dues')
         .select('id, period_month, due_date, expected_amount, balance_due, status')
         .eq('contract_id', contract.id)
+        .lte('due_date', new Date().toISOString().split('T')[0])
         .order('due_date', { ascending: true }),
       supabase
         .from('payments')
