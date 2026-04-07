@@ -371,8 +371,8 @@ export default function PortalPage() {
               {payments.map(p => (
                 <div key={p.id} className="flex items-center justify-between rounded-md border p-3">
                   <div>
-                    <p className="text-sm font-medium">{formatDate(p.payment_date)}</p>
-                    <p className="text-xs text-muted-foreground capitalize">{p.method}</p>
+                    <p className="text-sm font-medium">{formatDate(p.paid_at)}</p>
+                    <p className="text-xs text-muted-foreground capitalize">{p.concept ?? p.method}</p>
                   </div>
                   <p className="text-sm font-semibold text-primary">{formatCurrency(p.amount, currency)}</p>
                 </div>
