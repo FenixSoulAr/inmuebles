@@ -48,35 +48,43 @@ export default function PendingProofs() {
     if (!projectId) return
     setLoading(true)
 
-    const [proofsRes, contractsRes, tenantsRes, propsRes] = await Promise.all([
-      supabase.from('payment_proofs').select('*').eq('project_id', projectId).eq('proof_status', 'pending').order('created_at', { ascending: true }),
-      supabase.from('contracts').select('id, tenant_id, property_id, currency').eq('project_id', projectId),
-      supabase.from('tenants').select('id, full_name').eq('project_id', projectId),
-      supabase.from('properties').select('id, full_address').eq('project_id', projectId),
-    ])
+    const { data, error } = await supabase
+      .from('payment_proofs')
+      .select(`
+        *,
+        contracts (
+          id,
+          currency,
+          tenants ( full_name ),
+          properties ( full_address )
+        )
+      `)
+      .eq('project_id', projectId)
+      .eq('proof_status', 'pending')
+      .order('created_at', { ascending: true })
 
-    const contractMap = new Map((contractsRes.data ?? []).map(c => [c.id, c]))
-    const tenantMap = new Map((tenantsRes.data ?? []).map(t => [t.id, t.full_name]))
-    const propMap = new Map((propsRes.data ?? []).map(p => [p.id, p.full_address]))
+    if (error) {
+      console.error('fetchProofs error:', error)
+      setProofs([])
+      setLoading(false)
+      return
+    }
 
-    const enriched: EnrichedProof[] = (proofsRes.data ?? []).map(p => {
-      const contract = contractMap.get(p.contract_id)
-      return {
-        id: p.id,
-        contract_id: p.contract_id,
-        type: p.type,
-        service_type: p.service_type,
-        period: p.period,
-        amount: Number(p.amount),
-        paid_at: p.paid_at,
-        files: p.files ?? [],
-        comment: p.comment,
-        created_at: p.created_at,
-        tenant_name: contract ? (tenantMap.get(contract.tenant_id) ?? '—') : '—',
-        property_address: contract ? (propMap.get(contract.property_id) ?? '—') : '—',
-        currency: contract?.currency ?? 'ARS',
-      }
-    })
+    const enriched: EnrichedProof[] = (data ?? []).map((p: any) => ({
+      id: p.id,
+      contract_id: p.contract_id,
+      type: p.type,
+      service_type: p.service_type,
+      period: p.period,
+      amount: Number(p.amount),
+      paid_at: p.paid_at,
+      files: p.files ?? [],
+      comment: p.comment,
+      created_at: p.created_at,
+      tenant_name: p.contracts?.tenants?.full_name ?? '—',
+      property_address: p.contracts?.properties?.full_address ?? '—',
+      currency: p.contracts?.currency ?? 'ARS',
+    }))
 
     setProofs(enriched)
     setLoading(false)
