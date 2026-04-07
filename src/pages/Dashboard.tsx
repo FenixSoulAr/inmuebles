@@ -92,6 +92,23 @@ export default function Dashboard() {
         ))}
       </div>
 
+      {stats.pendingProofs > 0 && (
+        <Link to="/cobranza" className="block">
+          <Card className="cursor-pointer hover:shadow-md transition-shadow border-orange-200 bg-orange-50/30">
+            <CardContent className="flex items-center gap-3 py-4">
+              <div className="rounded-md p-2 bg-orange-100">
+                <FileCheck className="h-5 w-5 text-orange-600" />
+              </div>
+              <div className="flex-1">
+                <p className="font-medium text-sm">{t('dashboard.pendingProofs')}</p>
+                <p className="text-xs text-muted-foreground">{t('dashboard.pendingProofsDesc')}</p>
+              </div>
+              <Badge variant="destructive">{stats.pendingProofs}</Badge>
+            </CardContent>
+          </Card>
+        </Link>
+      )}
+
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader><CardTitle className="text-base">{t('dashboard.upcomingDues')}</CardTitle></CardHeader>
