@@ -105,16 +105,54 @@ export default function PendingProofs() {
 
   const handleApprove = async () => {
     if (!approveId) return
-    const { error } = await supabase.from('payment_proofs').update({
+    const proof = proofs.find(p => p.id === approveId)
+    if (!proof) return
+
+    // 1. Update proof status
+    const { error: proofErr } = await supabase.from('payment_proofs').update({
       proof_status: 'approved',
       approved_at: new Date().toISOString(),
     }).eq('id', approveId).eq('project_id', projectId!)
-    if (error) {
+    if (proofErr) {
       toast.error(t('cobranza.proofs.approveError'))
-    } else {
-      toast.success(t('cobranza.proofs.approved'))
-      fetchProofs()
+      setApproveId(null)
+      return
     }
+
+    // 2. Insert payment record
+    const { error: payErr } = await supabase.from('payments').insert({
+      project_id: projectId!,
+      contract_id: proof.contract_id,
+      obligation_id: proof.obligation_id ?? null,
+      amount: proof.amount,
+      method: 'transfer',
+      concept: proof.type === 'service'
+        ? `Servicio: ${proof.service_type}`
+        : `Alquiler ${proof.period}`,
+      paid_at: proof.paid_at,
+      notes: proof.comment ?? null,
+    })
+    if (payErr) {
+      toast.error(t('cobranza.proofs.approveError'))
+      setApproveId(null)
+      return
+    }
+
+    // 3. If linked to a rent_due, mark it paid
+    if (proof.obligation_id) {
+      const { error: dueErr } = await supabase.from('rent_dues').update({
+        status: 'paid',
+        balance_due: 0,
+      }).eq('id', proof.obligation_id)
+      if (dueErr) {
+        toast.error(t('cobranza.proofs.approveError'))
+        setApproveId(null)
+        return
+      }
+    }
+
+    toast.success(t('cobranza.proofs.approved'))
+    fetchProofs()
     setApproveId(null)
   }
 
