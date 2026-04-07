@@ -34,9 +34,9 @@ interface RentDue {
 interface Payment {
   id: string
   amount: number
-  payment_date: string
+  paid_at: string
+  concept: string | null
   method: string
-  rent_due_id: string
 }
 
 interface ProofRecord {
