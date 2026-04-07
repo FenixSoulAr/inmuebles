@@ -741,6 +741,30 @@
     "inviteBtn": "Invite to portal",
     "inviteSent": "Invitation sent to {{email}}",
     "noEmail": "Tenant does not have a registered email",
-    "alreadyInvited": "Tenant has already been invited to the portal"
+    "alreadyInvited": "Tenant has already been invited to the portal",
+    "proof": {
+      "title": "Upload proof of payment",
+      "period": "Period",
+      "amount": "How much did you transfer?",
+      "date": "Transfer date",
+      "comment": "Comment",
+      "commentPlaceholder": "Optional — transfer details",
+      "file": "Proof file",
+      "selectFile": "Select file",
+      "fileHint": "JPG, PNG, PDF or WebP — max 10 MB",
+      "expectedLabel": "Outstanding balance",
+      "submit": "Submit proof",
+      "sent": "Proof submitted. Your landlord will review it.",
+      "error": "Error submitting proof",
+      "tooLarge": "File exceeds 10 MB",
+      "invalidAmount": "Enter a valid amount",
+      "noFile": "Select a file",
+      "myProofs": "My proofs",
+      "status": {
+        "pending": "Under review",
+        "approved": "Approved",
+        "rejected": "Rejected"
+      }
+    }
   }
 }

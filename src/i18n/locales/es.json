@@ -741,6 +741,30 @@
     "inviteBtn": "Invitar al portal",
     "inviteSent": "Invitación enviada a {{email}}",
     "noEmail": "El inquilino no tiene email registrado",
-    "alreadyInvited": "El inquilino ya fue invitado al portal"
+    "alreadyInvited": "El inquilino ya fue invitado al portal",
+    "proof": {
+      "title": "Subir comprobante",
+      "period": "Período",
+      "amount": "¿Cuánto transferiste?",
+      "date": "Fecha de transferencia",
+      "comment": "Comentario",
+      "commentPlaceholder": "Opcional — detalle de la transferencia",
+      "file": "Comprobante",
+      "selectFile": "Seleccionar archivo",
+      "fileHint": "JPG, PNG, PDF o WebP — máx. 10 MB",
+      "expectedLabel": "Saldo pendiente",
+      "submit": "Enviar comprobante",
+      "sent": "Comprobante enviado. El propietario lo revisará.",
+      "error": "Error al enviar el comprobante",
+      "tooLarge": "El archivo excede los 10 MB",
+      "invalidAmount": "Ingresá un monto válido",
+      "noFile": "Seleccioná un archivo",
+      "myProofs": "Mis comprobantes",
+      "status": {
+        "pending": "En revisión",
+        "approved": "Aprobado",
+        "rejected": "Rechazado"
+      }
+    }
   }
 }

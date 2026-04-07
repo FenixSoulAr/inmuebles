@@ -1821,6 +1821,7 @@ export type Database = {
       }
       tenants: {
         Row: {
+          auth_user_id: string | null
           created_at: string
           doc_id: string | null
           email: string | null
@@ -1833,6 +1834,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          auth_user_id?: string | null
           created_at?: string
           doc_id?: string | null
           email?: string | null
@@ -1845,6 +1847,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          auth_user_id?: string | null
           created_at?: string
           doc_id?: string | null
           email?: string | null
