@@ -140,6 +140,20 @@
       "cancel": "Cancelar",
       "blockedTitle": "No se puede eliminar",
       "blockedDesc": "{{name}} tiene contratos registrados (activos o históricos). No se puede eliminar un inquilino con historial de contratos."
+    },
+    "cuentaCorriente": {
+      "tab": "Cuenta corriente",
+      "property": "Propiedad",
+      "currentBalance": "Saldo actual",
+      "date": "Fecha",
+      "concept": "Concepto",
+      "debit": "Débito",
+      "credit": "Crédito",
+      "balance": "Saldo",
+      "installment": "Cuota",
+      "payment": "Pago",
+      "noActiveContract": "Este inquilino no tiene contrato activo",
+      "noMovements": "Sin movimientos registrados"
     }
   },
   "contracts": {

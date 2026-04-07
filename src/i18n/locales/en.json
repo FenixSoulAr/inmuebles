@@ -140,6 +140,20 @@
       "cancel": "Cancel",
       "blockedTitle": "Cannot delete",
       "blockedDesc": "{{name}} has registered contracts (active or historical). A tenant with contract history cannot be deleted."
+    },
+    "cuentaCorriente": {
+      "tab": "Account statement",
+      "property": "Property",
+      "currentBalance": "Current balance",
+      "date": "Date",
+      "concept": "Concept",
+      "debit": "Debit",
+      "credit": "Credit",
+      "balance": "Balance",
+      "installment": "Installment",
+      "payment": "Payment",
+      "noActiveContract": "This tenant has no active contract",
+      "noMovements": "No movements registered"
     }
   },
   "contracts": {
