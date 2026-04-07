@@ -48,7 +48,7 @@ export default function SubirComprobante({ open, onOpenChange, due, contractId, 
 
   const isLinkedToDue = !!due
   const showServiceType = proofType === 'service'
-  const showPeriodInput = proofType === 'rent' && !isLinkedToDue
+  
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]
