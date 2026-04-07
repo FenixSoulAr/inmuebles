@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { FileCheck, Eye, CheckCircle, XCircle, ExternalLink } from 'lucide-react'
+import { FileCheck, CheckCircle, XCircle, ExternalLink } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/integrations/supabase/client'
 import { useProjectId } from '@/hooks/useProjectId'
