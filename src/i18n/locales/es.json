@@ -473,7 +473,6 @@
       "rejectError": "Error al rechazar comprobante",
       "fileError": "No se pudo abrir el archivo"
     }
-    }
   },
   "repairs": {
     "title": "Reparaciones",
