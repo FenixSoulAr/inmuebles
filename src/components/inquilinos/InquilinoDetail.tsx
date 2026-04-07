@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Pencil, Trash2 } from 'lucide-react'
+import { Pencil, Trash2, Send, Loader2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
 import { formatDate, formatCurrency } from '@/lib/utils'
+import { supabase } from '@/integrations/supabase/client'
+import { useProjectId } from '@/hooks/useProjectId'
+import { toast } from 'sonner'
 import type { TenantWithProperty, Guarantor } from '@/hooks/useInquilinos'
 
 interface ContractRow {
