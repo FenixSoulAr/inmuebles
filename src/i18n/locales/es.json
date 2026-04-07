@@ -443,6 +443,38 @@
       "paymentError": "Error al registrar el pago"
     }
   },
+  "cobranza": {
+    "proofs": {
+      "title": "Comprobantes por revisar",
+      "typeRent": "Alquiler",
+      "serviceTypes": {
+        "expensas": "Expensas",
+        "luz": "Luz",
+        "gas": "Gas",
+        "agua": "Agua",
+        "otro": "Otro"
+      },
+      "period": "Período",
+      "amount": "Monto",
+      "paidAt": "Fecha de pago",
+      "sentAt": "Enviado",
+      "viewFile": "Ver comprobante",
+      "approve": "Aprobar",
+      "reject": "Rechazar",
+      "approveTitle": "¿Aprobar comprobante?",
+      "approveDesc": "¿Confirmás que recibiste este pago?",
+      "rejectTitle": "Rechazar comprobante",
+      "rejectDesc": "Indicá el motivo del rechazo para que el inquilino lo vea.",
+      "rejectReasonLabel": "Motivo del rechazo",
+      "rejectReasonPlaceholder": "Ej: El monto no coincide con lo acordado",
+      "approved": "Comprobante aprobado",
+      "rejected": "Comprobante rechazado",
+      "approveError": "Error al aprobar comprobante",
+      "rejectError": "Error al rechazar comprobante",
+      "fileError": "No se pudo abrir el archivo"
+    }
+    }
+  },
   "repairs": {
     "title": "Reparaciones",
     "subtitle": "Control de mantenimiento y arreglos",

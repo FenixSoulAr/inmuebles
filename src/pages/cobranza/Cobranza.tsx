@@ -13,6 +13,7 @@ import { formatCurrency, formatDate } from '@/lib/utils'
 import { useCobranza, type EnrichedRentDue } from '@/hooks/useCobranza'
 import PagoForm from '@/components/cobranza/PagoForm'
 import CobranzaDetail from '@/components/cobranza/CobranzaDetail'
+import PendingProofs from '@/components/cobranza/PendingProofs'
 import { cn } from '@/lib/utils'
 
 const statusVariant: Record<string, 'destructive' | 'warning' | 'success' | 'secondary'> = {
@@ -97,6 +98,9 @@ export default function Cobranza() {
         <h2 className="text-2xl font-bold tracking-tight">{t('billing.title')}</h2>
         <p className="text-muted-foreground">{t('billing.subtitle')}</p>
       </div>
+
+      {/* Pending proofs section */}
+      <PendingProofs />
 
       {/* Summary cards */}
       <div className="grid gap-4 sm:grid-cols-3">
