@@ -21,6 +21,7 @@ import {
 interface EnrichedProof {
   id: string
   contract_id: string
+  obligation_id: string | null
   type: string
   service_type: string | null
   period: string
