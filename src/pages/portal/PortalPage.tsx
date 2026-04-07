@@ -224,7 +224,7 @@ export default function PortalPage() {
               {lastPayment ? (
                 <>
                   <p className="text-sm font-bold">{formatCurrency(lastPayment.amount, currency)}</p>
-                  <p className="text-[10px] text-muted-foreground">{formatDate(lastPayment.payment_date)}</p>
+                  <p className="text-[10px] text-muted-foreground">{formatDate(lastPayment.paid_at)}</p>
                 </>
               ) : (
                 <p className="text-sm font-bold">—</p>
