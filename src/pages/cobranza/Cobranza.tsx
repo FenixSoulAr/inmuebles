@@ -13,6 +13,7 @@ import { formatCurrency, formatDate } from '@/lib/utils'
 import { useCobranza, type EnrichedRentDue } from '@/hooks/useCobranza'
 import PagoForm from '@/components/cobranza/PagoForm'
 import CobranzaDetail from '@/components/cobranza/CobranzaDetail'
+import PendingProofs from '@/components/cobranza/PendingProofs'
 import { cn } from '@/lib/utils'
 
 const statusVariant: Record<string, 'destructive' | 'warning' | 'success' | 'secondary'> = {
