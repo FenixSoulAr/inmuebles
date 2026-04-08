@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet'
@@ -56,6 +57,13 @@ const defaultForm = () => ({
   seguro_obligatorio: false,
   permite_mascotas: false,
   permite_subalquiler: false,
+  // Rural fields
+  surface_hectares: '',
+  canon_kg_per_ha: '',
+  rural_payment_frequency_months: '1',
+  rural_canon_unit: 'kg_carne',
+  rural_price_per_unit: '',
+  rural_canon_notes: '',
 })
 
 export default function ContratoForm({ open, onOpenChange, contract, existingServices, propertyOptions, tenantOptions, onSave, onTenantCreated }: Props) {
@@ -66,6 +74,8 @@ export default function ContratoForm({ open, onOpenChange, contract, existingSer
   const [services, setServices] = useState<ServiceForm[]>([])
   const [showNewTenant, setShowNewTenant] = useState(false)
   const [showMora, setShowMora] = useState(false)
+
+  const isRural = form.tipo_contrato === 'rural'
 
   useEffect(() => {
     if (contract) {
@@ -97,6 +107,12 @@ export default function ContratoForm({ open, onOpenChange, contract, existingSer
         seguro_obligatorio: contract.seguro_obligatorio ?? false,
         permite_mascotas: contract.permite_mascotas ?? false,
         permite_subalquiler: contract.permite_subalquiler ?? false,
+        surface_hectares: String((contract as any).surface_hectares ?? ''),
+        canon_kg_per_ha: String((contract as any).canon_kg_per_ha ?? ''),
+        rural_payment_frequency_months: String((contract as any).rural_payment_frequency_months ?? 1),
+        rural_canon_unit: (contract as any).rural_canon_unit ?? 'kg_carne',
+        rural_price_per_unit: String((contract as any).rural_price_per_unit ?? ''),
+        rural_canon_notes: (contract as any).rural_canon_notes ?? '',
       })
       setServices(existingServices ?? [])
       setShowMora(!!(contract.interest_rate || contract.penalty_type))
@@ -108,6 +124,23 @@ export default function ContratoForm({ open, onOpenChange, contract, existingSer
   }, [contract, existingServices, open])
 
   const set = (field: string, value: any) => setForm(f => ({ ...f, [field]: value }))
+
+  // Rural computed values
+  const ruralTotalUnitsYear = (Number(form.canon_kg_per_ha) || 0) * (Number(form.surface_hectares) || 0)
+  const ruralFreq = Number(form.rural_payment_frequency_months) || 1
+  const ruralEstimatedInstallment = ruralTotalUnitsYear > 0 && Number(form.rural_price_per_unit) > 0
+    ? (ruralTotalUnitsYear * Number(form.rural_price_per_unit)) / (12 / ruralFreq)
+    : 0
+
+  const ruralUnitLabel = (unit: string) => {
+    const map: Record<string, string> = {
+      kg_carne: 'Kg',
+      quintal_grano: t('contracts.rural.unitQuintal', 'Quintales'),
+      kg_grano: 'Kg',
+      otro: t('contracts.rural.unitOther', 'Unidades'),
+    }
+    return map[unit] ?? unit
+  }
 
   const handleSubmit = async () => {
     setSaving(true)
@@ -141,6 +174,17 @@ export default function ContratoForm({ open, onOpenChange, contract, existingSer
         permite_mascotas: form.permite_mascotas,
         permite_subalquiler: form.permite_subalquiler,
       }
+
+      // Rural-specific fields
+      if (isRural) {
+        payload.surface_hectares = form.surface_hectares ? Number(form.surface_hectares) : null
+        payload.canon_kg_per_ha = form.canon_kg_per_ha ? Number(form.canon_kg_per_ha) : null
+        payload.rural_payment_frequency_months = Number(form.rural_payment_frequency_months) || 1
+        payload.rural_canon_unit = form.rural_canon_unit
+        payload.rural_price_per_unit = form.rural_price_per_unit ? Number(form.rural_price_per_unit) : null
+        payload.rural_canon_notes = form.rural_canon_notes || null
+      }
+
       await onSave(payload, services.filter(s => s.service_type))
       onOpenChange(false)
     } finally {
@@ -223,71 +267,177 @@ export default function ContratoForm({ open, onOpenChange, contract, existingSer
           <Separator />
 
           {/* SECTION 2: Rent & Deposit */}
-          <Label className="text-base font-semibold">{t('contracts.form.section2')}</Label>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label>{t('contracts.form.initialRent')} *</Label>
-              <Input type="number" value={form.initial_rent} onChange={e => set('initial_rent', e.target.value)} />
+          <Label className="text-base font-semibold">{isRural ? t('contracts.rural.sectionTitle') : t('contracts.form.section2')}</Label>
+
+          {isRural ? (
+            /* Rural-specific canon section */
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>{t('contracts.rural.paymentFrequency')}</Label>
+                <Select value={form.rural_payment_frequency_months} onValueChange={v => set('rural_payment_frequency_months', v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">{t('contracts.rural.freqMonthly')}</SelectItem>
+                    <SelectItem value="3">{t('contracts.rural.freqQuarterly')}</SelectItem>
+                    <SelectItem value="6">{t('contracts.rural.freqSemiannual')}</SelectItem>
+                    <SelectItem value="12">{t('contracts.rural.freqAnnual')}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>{t('contracts.rural.canonUnit')}</Label>
+                <Select value={form.rural_canon_unit} onValueChange={v => set('rural_canon_unit', v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="kg_carne">{t('contracts.rural.unitKgCarne')}</SelectItem>
+                    <SelectItem value="quintal_grano">{t('contracts.rural.unitQuintalGrano')}</SelectItem>
+                    <SelectItem value="kg_grano">{t('contracts.rural.unitKgGrano')}</SelectItem>
+                    <SelectItem value="otro">{t('contracts.rural.unitOtro')}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>{t('contracts.rural.canonPerHa')} ({ruralUnitLabel(form.rural_canon_unit)}/ha)</Label>
+                <Input type="number" value={form.canon_kg_per_ha} onChange={e => set('canon_kg_per_ha', e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>{t('contracts.rural.surfaceHa')}</Label>
+                <Input type="number" value={form.surface_hectares} onChange={e => set('surface_hectares', e.target.value)} />
+              </div>
+              {ruralTotalUnitsYear > 0 && (
+                <div className="col-span-2 rounded-md bg-muted p-3 text-sm">
+                  <span className="text-muted-foreground">{t('contracts.rural.totalUnitsYear')}:</span>{' '}
+                  <span className="font-semibold">{ruralTotalUnitsYear.toLocaleString('es-AR')} {ruralUnitLabel(form.rural_canon_unit)}/{t('contracts.rural.year')}</span>
+                </div>
+              )}
+              <div className="space-y-2">
+                <Label>{t('contracts.rural.pricePerUnit')} (ARS)</Label>
+                <Input type="number" value={form.rural_price_per_unit} onChange={e => set('rural_price_per_unit', e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>{t('contracts.form.currency')}</Label>
+                <Select value={form.currency} onValueChange={v => set('currency', v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ARS">ARS</SelectItem>
+                    <SelectItem value="USD">USD</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {ruralEstimatedInstallment > 0 && (
+                <div className="col-span-2 rounded-md bg-muted p-3 text-sm">
+                  <span className="text-muted-foreground">{t('contracts.rural.estimatedInstallment')}:</span>{' '}
+                  <span className="font-semibold">{new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(ruralEstimatedInstallment)}</span>
+                </div>
+              )}
+              <div className="space-y-2">
+                <Label>{t('contracts.form.initialRent')} *</Label>
+                <Input type="number" value={form.initial_rent} onChange={e => set('initial_rent', e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>{t('contracts.form.currentRent')} *</Label>
+                <Input type="number" value={form.current_rent} onChange={e => set('current_rent', e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>{t('contracts.form.rentDueDay')}</Label>
+                <Input type="number" min={1} max={31} value={form.rent_due_day} onChange={e => set('rent_due_day', e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>{t('contracts.form.graceDays')}</Label>
+                <Input type="number" value={form.grace_days} onChange={e => set('grace_days', e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>{t('contracts.form.deposit')}</Label>
+                <Input type="number" value={form.deposit} onChange={e => set('deposit', e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>{t('contracts.form.depositMode')}</Label>
+                <Select value={form.deposit_mode} onValueChange={v => set('deposit_mode', v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="required">{t('contracts.depositModes.required')}</SelectItem>
+                    <SelectItem value="optional">{t('contracts.depositModes.optional')}</SelectItem>
+                    <SelectItem value="none">{t('contracts.depositModes.none')}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="col-span-2 space-y-2">
+                <Label>{t('contracts.rural.canonNotes')}</Label>
+                <Textarea
+                  value={form.rural_canon_notes}
+                  onChange={e => set('rural_canon_notes', e.target.value)}
+                  placeholder={t('contracts.rural.canonNotesPlaceholder')}
+                  rows={3}
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label>{t('contracts.form.currentRent')} *</Label>
-              <Input type="number" value={form.current_rent} onChange={e => set('current_rent', e.target.value)} />
+          ) : (
+            /* Standard rent & deposit section */
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>{t('contracts.form.initialRent')} *</Label>
+                <Input type="number" value={form.initial_rent} onChange={e => set('initial_rent', e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>{t('contracts.form.currentRent')} *</Label>
+                <Input type="number" value={form.current_rent} onChange={e => set('current_rent', e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>{t('contracts.form.currency')}</Label>
+                <Select value={form.currency} onValueChange={v => set('currency', v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ARS">ARS</SelectItem>
+                    <SelectItem value="USD">USD</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>{t('contracts.form.rentDueDay')}</Label>
+                <Input type="number" min={1} max={31} value={form.rent_due_day} onChange={e => set('rent_due_day', e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>{t('contracts.form.graceDays')}</Label>
+                <Input type="number" value={form.grace_days} onChange={e => set('grace_days', e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>{t('contracts.form.deposit')}</Label>
+                <Input type="number" value={form.deposit} onChange={e => set('deposit', e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>{t('contracts.form.depositType')}</Label>
+                <Select value={form.deposit_type} onValueChange={v => set('deposit_type', v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="monto_fijo">{t('contracts.depositTypes.fixed')}</SelectItem>
+                    <SelectItem value="meses">{t('contracts.depositTypes.months')}</SelectItem>
+                    <SelectItem value="cash">{t('contracts.depositTypes.cash')}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>{t('contracts.form.depositMode')}</Label>
+                <Select value={form.deposit_mode} onValueChange={v => set('deposit_mode', v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="required">{t('contracts.depositModes.required')}</SelectItem>
+                    <SelectItem value="optional">{t('contracts.depositModes.optional')}</SelectItem>
+                    <SelectItem value="none">{t('contracts.depositModes.none')}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>{t('contracts.form.currencyDeposit')}</Label>
+                <Select value={form.currency_deposit} onValueChange={v => set('currency_deposit', v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ARS">ARS</SelectItem>
+                    <SelectItem value="USD">USD</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label>{t('contracts.form.currency')}</Label>
-              <Select value={form.currency} onValueChange={v => set('currency', v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ARS">ARS</SelectItem>
-                  <SelectItem value="USD">USD</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>{t('contracts.form.rentDueDay')}</Label>
-              <Input type="number" min={1} max={31} value={form.rent_due_day} onChange={e => set('rent_due_day', e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>{t('contracts.form.graceDays')}</Label>
-              <Input type="number" value={form.grace_days} onChange={e => set('grace_days', e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>{t('contracts.form.deposit')}</Label>
-              <Input type="number" value={form.deposit} onChange={e => set('deposit', e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>{t('contracts.form.depositType')}</Label>
-              <Select value={form.deposit_type} onValueChange={v => set('deposit_type', v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="monto_fijo">{t('contracts.depositTypes.fixed')}</SelectItem>
-                  <SelectItem value="meses">{t('contracts.depositTypes.months')}</SelectItem>
-                  <SelectItem value="cash">{t('contracts.depositTypes.cash')}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>{t('contracts.form.depositMode')}</Label>
-              <Select value={form.deposit_mode} onValueChange={v => set('deposit_mode', v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="required">{t('contracts.depositModes.required')}</SelectItem>
-                  <SelectItem value="optional">{t('contracts.depositModes.optional')}</SelectItem>
-                  <SelectItem value="none">{t('contracts.depositModes.none')}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>{t('contracts.form.currencyDeposit')}</Label>
-              <Select value={form.currency_deposit} onValueChange={v => set('currency_deposit', v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ARS">ARS</SelectItem>
-                  <SelectItem value="USD">USD</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+          )}
 
           <Separator />
 
