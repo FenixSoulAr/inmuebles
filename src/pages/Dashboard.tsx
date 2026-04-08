@@ -31,7 +31,7 @@ export default function Dashboard() {
     const load = async () => {
       const now = new Date()
       const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-      const [propRes, tenantRes, duesRes, repairRes, upcomingRes, pendRepRes, proofsRes] = await Promise.all([
+      const [propRes, contractsRes, duesRes, repairRes, upcomingRes, pendRepRes, proofsRes] = await Promise.all([
         supabase.from('properties').select('id, full_address, status, internal_identifier', { count: 'exact' }).eq('project_id', projectId).eq('active', true),
         supabase.from('contracts').select('id', { count: 'exact' }).eq('project_id', projectId).eq('is_active', true),
         supabase.from('rent_dues').select('id', { count: 'exact' }).eq('project_id', projectId).eq('period_month', currentMonth).gt('balance_due', 0),
