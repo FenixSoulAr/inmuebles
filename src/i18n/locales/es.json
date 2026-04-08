@@ -351,6 +351,8 @@
       "propertiesDesc": "Total registradas",
       "tenants": "Inquilinos activos",
       "tenantsDesc": "Con contrato vigente",
+      "activeContracts": "Contratos vigentes",
+      "activeContractsDesc": "Con contrato activo",
       "pendingDues": "Cobros pendientes",
       "pendingDuesDesc": "Este mes",
       "repairs": "Reparaciones",
