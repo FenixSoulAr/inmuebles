@@ -43,7 +43,7 @@ export default function Dashboard() {
 
       setStats({
         properties: propRes.count ?? 0,
-        tenants: tenantRes.count ?? 0,
+        activeContracts: contractsRes.count ?? 0,
         pendingDues: duesRes.count ?? 0,
         repairs: repairRes.count ?? 0,
         pendingProofs: proofsRes.count ?? 0,
