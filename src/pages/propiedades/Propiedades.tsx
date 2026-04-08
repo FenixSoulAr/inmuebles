@@ -20,14 +20,13 @@ const emptyForm = { full_address: '', internal_identifier: '', type: 'apartment'
 
 function getDisplayStatus(p: Propiedad): string {
   if (!p.active) return 'inactive'
-  if (p.status === 'occupied') return 'occupied'
-  if (p.status === 'vacant') return 'vacant'
-  return 'unknown'
+  return p.status
 }
 
 const displayStatusVariant: Record<string, 'success' | 'default' | 'warning' | 'secondary'> = {
   occupied: 'success',
-  vacant: 'warning',
+  vacant: 'default',
+  maintenance: 'warning',
   inactive: 'secondary',
   unknown: 'secondary',
 }

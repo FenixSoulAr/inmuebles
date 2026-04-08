@@ -351,6 +351,8 @@
       "propertiesDesc": "Total registered",
       "tenants": "Active tenants",
       "tenantsDesc": "With active contract",
+      "activeContracts": "Active contracts",
+      "activeContractsDesc": "Currently active",
       "pendingDues": "Pending payments",
       "pendingDuesDesc": "This month",
       "repairs": "Repairs",

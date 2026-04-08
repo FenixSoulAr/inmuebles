@@ -12,7 +12,7 @@ export default function Dashboard() {
   const { t } = useTranslation()
   const { user } = useAuth()
   const { projectId, loading: loadingProject } = useProjectId()
-  const [stats, setStats] = useState({ properties: 0, tenants: 0, pendingDues: 0, repairs: 0, pendingProofs: 0 })
+  const [stats, setStats] = useState({ properties: 0, activeContracts: 0, pendingDues: 0, repairs: 0, pendingProofs: 0 })
   const [upcomingDues, setUpcomingDues] = useState<any[]>([])
   const [pendingRepairs, setPendingRepairs] = useState<any[]>([])
   const [properties, setProperties] = useState<any[]>([])
@@ -31,9 +31,9 @@ export default function Dashboard() {
     const load = async () => {
       const now = new Date()
       const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-      const [propRes, tenantRes, duesRes, repairRes, upcomingRes, pendRepRes, proofsRes] = await Promise.all([
+      const [propRes, contractsRes, duesRes, repairRes, upcomingRes, pendRepRes, proofsRes] = await Promise.all([
         supabase.from('properties').select('id, full_address, status, internal_identifier', { count: 'exact' }).eq('project_id', projectId).eq('active', true),
-        supabase.from('tenants').select('id', { count: 'exact' }).eq('project_id', projectId).eq('status', 'active'),
+        supabase.from('contracts').select('id', { count: 'exact' }).eq('project_id', projectId).eq('is_active', true),
         supabase.from('rent_dues').select('id', { count: 'exact' }).eq('project_id', projectId).eq('period_month', currentMonth).gt('balance_due', 0),
         supabase.from('maintenance_issues').select('id', { count: 'exact' }).eq('project_id', projectId).in('status', ['pending', 'in_progress']),
         supabase.from('rent_dues').select('id, period_month, due_date, expected_amount, status, tenants(full_name), properties(internal_identifier)').eq('project_id', projectId).gte('due_date', new Date().toISOString().slice(0, 10)).order('due_date').limit(5),
@@ -43,7 +43,7 @@ export default function Dashboard() {
 
       setStats({
         properties: propRes.count ?? 0,
-        tenants: tenantRes.count ?? 0,
+        activeContracts: contractsRes.count ?? 0,
         pendingDues: duesRes.count ?? 0,
         repairs: repairRes.count ?? 0,
         pendingProofs: proofsRes.count ?? 0,
@@ -63,7 +63,7 @@ export default function Dashboard() {
 
   const estadisticas = [
     { titulo: t('dashboard.stats.properties'), valor: stats.properties, descripcion: t('dashboard.stats.propertiesDesc'), icon: Building2, color: 'text-blue-600', bg: 'bg-blue-50', to: '/propiedades' },
-    { titulo: t('dashboard.stats.tenants'), valor: stats.tenants, descripcion: t('dashboard.stats.tenantsDesc'), icon: Users, color: 'text-green-600', bg: 'bg-green-50', to: '/inquilinos' },
+    { titulo: t('dashboard.stats.activeContracts'), valor: stats.activeContracts, descripcion: t('dashboard.stats.activeContractsDesc'), icon: Users, color: 'text-green-600', bg: 'bg-green-50', to: '/contratos' },
     { titulo: t('dashboard.stats.pendingDues'), valor: stats.pendingDues, descripcion: t('dashboard.stats.pendingDuesDesc'), icon: CreditCard, color: 'text-yellow-600', bg: 'bg-yellow-50', to: '/cobranza' },
     { titulo: t('dashboard.stats.repairs'), valor: stats.repairs, descripcion: t('dashboard.stats.repairsDesc'), icon: Wrench, color: 'text-red-600', bg: 'bg-red-50', to: '/reparaciones' },
   ]
