@@ -299,6 +299,31 @@
       "deactivateDesc": "Deactivating this contract will pause obligation generation.",
       "activateTitle": "Activate contract?",
       "activateDesc": "This contract will be reactivated."
+    },
+    "rural": {
+      "sectionTitle": "Rural canon & deposit",
+      "paymentFrequency": "Payment frequency",
+      "freqMonthly": "Monthly",
+      "freqQuarterly": "Quarterly",
+      "freqSemiannual": "Semi-annual",
+      "freqAnnual": "Annual",
+      "canonUnit": "Canon unit",
+      "unitKgCarne": "Kg of beef (live weight)",
+      "unitQuintalGrano": "Quintal of grain (100 kg)",
+      "unitKgGrano": "Kg of grain",
+      "unitOtro": "Other",
+      "unitQuintal": "Quintals",
+      "unitOther": "Units",
+      "canonPerHa": "Canon per hectare",
+      "surfaceHa": "Surface (hectares)",
+      "totalUnitsYear": "Total units/year",
+      "year": "year",
+      "pricePerUnit": "Price per unit",
+      "estimatedInstallment": "Estimated installment",
+      "canonNotes": "Rural canon notes",
+      "canonNotesPlaceholder": "Special agreements, calculation basis, etc.",
+      "summaryTitle": "Rural canon",
+      "frequencyLabel": "Payment"
     }
   },
   "common": {

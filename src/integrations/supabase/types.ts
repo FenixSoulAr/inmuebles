@@ -561,6 +561,10 @@ export type Database = {
           property_id: string
           public_submission_token: string | null
           rent_due_day: number | null
+          rural_canon_notes: string | null
+          rural_canon_unit: string | null
+          rural_payment_frequency_months: number | null
+          rural_price_per_unit: number | null
           seguro_obligatorio: boolean | null
           seguro_tipo: string | null
           signed_contract_file_url: string | null
@@ -626,6 +630,10 @@ export type Database = {
           property_id: string
           public_submission_token?: string | null
           rent_due_day?: number | null
+          rural_canon_notes?: string | null
+          rural_canon_unit?: string | null
+          rural_payment_frequency_months?: number | null
+          rural_price_per_unit?: number | null
           seguro_obligatorio?: boolean | null
           seguro_tipo?: string | null
           signed_contract_file_url?: string | null
@@ -691,6 +699,10 @@ export type Database = {
           property_id?: string
           public_submission_token?: string | null
           rent_due_day?: number | null
+          rural_canon_notes?: string | null
+          rural_canon_unit?: string | null
+          rural_payment_frequency_months?: number | null
+          rural_price_per_unit?: number | null
           seguro_obligatorio?: boolean | null
           seguro_tipo?: string | null
           signed_contract_file_url?: string | null

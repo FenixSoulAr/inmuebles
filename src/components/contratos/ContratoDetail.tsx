@@ -76,11 +76,36 @@ export default function ContratoDetail({ open, onOpenChange, contract, onEdit, o
             <div><span className="text-muted-foreground">{t('contracts.form.graceDays')}:</span> <span className="font-medium">{contract.grace_days ?? 0}</span></div>
           </div>
 
-          {/* Deposit */}
-          {contract.deposit && (
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div><span className="text-muted-foreground">{t('contracts.form.deposit')}:</span> <span className="font-medium">{formatCurrency(contract.deposit, contract.currency_deposit ?? 'ARS')}</span></div>
-              <div><span className="text-muted-foreground">{t('contracts.form.depositType')}:</span> <span className="font-medium">{t(`contracts.depositTypes.${contract.deposit_type}`)}</span></div>
+          {/* Rural canon summary */}
+          {contract.tipo_contrato === 'rural' && (contract as any).surface_hectares && (contract as any).canon_kg_per_ha && (
+            <div className="rounded-md bg-muted p-3 text-sm space-y-1">
+              <h4 className="font-semibold flex items-center gap-1">🌾 {t('contracts.rural.summaryTitle')}</h4>
+              {(() => {
+                const c = contract as any
+                const unitLabel: Record<string, string> = {
+                  kg_carne: 'Kg',
+                  quintal_grano: t('contracts.rural.unitQuintal', 'Quintales'),
+                  kg_grano: 'Kg',
+                  otro: t('contracts.rural.unitOther', 'Unidades'),
+                }
+                const unit = unitLabel[c.rural_canon_unit] ?? 'Kg'
+                const total = c.canon_kg_per_ha * c.surface_hectares
+                const freqMap: Record<number, string> = { 1: t('contracts.rural.freqMonthly'), 3: t('contracts.rural.freqQuarterly'), 6: t('contracts.rural.freqSemiannual'), 12: t('contracts.rural.freqAnnual') }
+                const freq = freqMap[c.rural_payment_frequency_months] ?? `${c.rural_payment_frequency_months} meses`
+                return (
+                  <p>
+                    {c.canon_kg_per_ha} {unit}/ha × {c.surface_hectares} ha = <strong>{total.toLocaleString('es-AR')} {unit}/{t('contracts.rural.year')}</strong> — {t('contracts.rural.frequencyLabel')}: {freq}
+                  </p>
+                )
+              })()}
+              {(contract as any).rural_price_per_unit && (
+                <p className="text-muted-foreground">
+                  {t('contracts.rural.pricePerUnit')}: {formatCurrency((contract as any).rural_price_per_unit, 'ARS')}
+                </p>
+              )}
+              {(contract as any).rural_canon_notes && (
+                <p className="text-muted-foreground italic">{(contract as any).rural_canon_notes}</p>
+              )}
             </div>
           )}
 

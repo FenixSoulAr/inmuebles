@@ -299,6 +299,31 @@
       "deactivateDesc": "Desactivar este contrato pausará la generación de obligaciones.",
       "activateTitle": "¿Activar contrato?",
       "activateDesc": "Se reactivará este contrato."
+    },
+    "rural": {
+      "sectionTitle": "Canon rural y depósito",
+      "paymentFrequency": "Frecuencia de cobro",
+      "freqMonthly": "Mensual",
+      "freqQuarterly": "Trimestral",
+      "freqSemiannual": "Semestral",
+      "freqAnnual": "Anual",
+      "canonUnit": "Unidad del canon",
+      "unitKgCarne": "Kg de carne (en pie)",
+      "unitQuintalGrano": "Quintal de grano (100 kg)",
+      "unitKgGrano": "Kg de grano",
+      "unitOtro": "Otro",
+      "unitQuintal": "Quintales",
+      "unitOther": "Unidades",
+      "canonPerHa": "Canon por hectárea",
+      "surfaceHa": "Superficie (hectáreas)",
+      "totalUnitsYear": "Total unidades/año",
+      "year": "año",
+      "pricePerUnit": "Precio por unidad",
+      "estimatedInstallment": "Monto estimado por cuota",
+      "canonNotes": "Notas del canon rural",
+      "canonNotesPlaceholder": "Acuerdos especiales, base de cálculo, etc.",
+      "summaryTitle": "Canon rural",
+      "frequencyLabel": "Cobro"
     }
   },
   "common": {
