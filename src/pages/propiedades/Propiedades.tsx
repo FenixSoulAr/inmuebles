@@ -27,7 +27,8 @@ function getDisplayStatus(p: Propiedad): string {
 
 const displayStatusVariant: Record<string, 'success' | 'default' | 'warning' | 'secondary'> = {
   occupied: 'success',
-  vacant: 'warning',
+  vacant: 'default',
+  maintenance: 'warning',
   inactive: 'secondary',
   unknown: 'secondary',
 }
