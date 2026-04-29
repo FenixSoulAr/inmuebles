@@ -22,6 +22,39 @@
 - **Estado**: Usar Zustand para estado global. NO usar TanStack React Query (no está instalado)
 - **Formularios**: React Hook Form + Zod para validación
 
+## Modelo de cobros — invariante crítica
+
+El sistema de cobros usa un **modelo dual** que debe preservarse siempre:
+
+### Tablas y sus roles
+- `rent_dues` — vencimientos financieros. Status: `pending` / `partial` / `paid` / `overdue`. Tiene `balance_due`.
+- `obligations` con `kind='rent'` — flujo de notificación/comprobante. Status: `upcoming` / `awaiting_review` / `confirmed` / `pending_send`. **Espejo 1-a-1 de `rent_dues`** (matched por `contract_id` + `period` = `period_month`).
+- `obligations` con `kind='service'` — generadas por la edge function `ensure-obligations` para servicios públicos.
+- `rent_payments` — tabla legacy de pagos (FK a `rent_dues.id`). Mantener por compatibilidad.
+- `payments` — tabla canónica de pagos (FK a `obligations.id`).
+
+### Reglas FK (NO violar)
+- `payment_proofs.obligation_id` → `obligations.id` ✅ (NUNCA `rent_dues.id`)
+- `payments.obligation_id` → `obligations.id` ✅ (NUNCA `rent_dues.id`)
+- Asignar un `rent_due.id` a estos campos causa **fallo silencioso** por FK violation.
+
+### Helper canónico
+Para resolver `obligation_id` desde un `rent_due` (creando la obligation si no existe), usar **siempre**:
+```ts
+import { resolveRentObligationId } from '@/lib/obligations'
+```
+Tanto el flujo de aprobación de comprobantes (`PendingProofs.tsx`) como el de pago manual (`useCobranza.registrarPago`) deben pasar por este helper.
+
+### Vocabularios de status (NO confundir)
+- `obligations.status`: `upcoming` / `awaiting_review` / `confirmed` / `pending_send`
+- `rent_dues.status` y `tax_obligations.status`: `pending` / `partial` / `paid` / `overdue`
+
+### Edge function
+`generate-rent-dues v3` crea `rent_due` + `obligation` espejo (`kind='rent'`) en el mismo loop. NO modificar para que solo genere `rent_dues`.
+
+### Backfill histórico
+El 29-abr-2026 se aplicó la migración `backfill_rent_obligations_for_orphan_dues` que creó las obligations espejo faltantes. La invariante 1-a-1 ahora se cumple para todos los `rent_dues` existentes.
+
 ## Supabase — Proyecto de producción
 
 - **Project ID**: rckpejobuhbupmxlxnit
