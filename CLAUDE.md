@@ -80,7 +80,7 @@ npm run build    # Build de producción
 npm run preview  # Preview del build
 ```
 
-## Estado del proyecto — al 4 de abril de 2026
+## Estado del proyecto — al 29 de abril de 2026
 
 - [x] Estructura base con Vite + React + TypeScript
 - [x] Tailwind CSS + shadcn/ui configurados
@@ -88,15 +88,19 @@ npm run preview  # Preview del build
 - [x] Autenticación completa (login, registro, recuperación de contraseña)
 - [x] i18n ES/EN con detección automática y switch manual
 - [x] CRUD de Propiedades
-- [x] 7 Edge Functions desplegadas en Supabase
+- [x] CRUD de Inquilinos
+- [x] Módulo de Contratos (incluye contratos rurales con frecuencia variable)
+- [x] Módulo de Cobranza completo con FK obligation_id correcto
+- [x] Módulo de Reparaciones (presupuesto + responsable)
+- [x] Módulo de Impuestos (vista anual + lista filtrable + summary cards)
+- [x] Módulo de Documentos (naming automático + storage)
+- [x] Portal de Inquilino autenticado (Edge function `invite-tenant`)
+- [x] 8 Edge Functions desplegadas en Supabase
 - [x] Datos reales de producción migrados
-- [ ] CRUD de Inquilinos
-- [ ] Módulo de Contratos en menú + CRUD
-- [ ] Módulo de Cobranza completo (mora + intereses automáticos)
-- [ ] Módulo de Reparaciones completo (presupuesto + responsable)
-- [ ] Módulo de Impuestos completo (vista anual)
-- [ ] Módulo de Documentos (subida funcional + naming automático)
-- [ ] Portal de Inquilino autenticado
-- [ ] Reportes exportables (PDF y Excel)
+- [x] Backfill de obligations rent espejo (29-abr-2026)
+- [ ] Módulo de Servicios (UI — tablas existen)
+- [ ] Módulo de Alertas (UI — tabla existe)
+- [ ] Reportes exportables (PDF y Excel) — hoy solo placeholder
+- [ ] Vista riesgo de mora + intereses automáticos en Cobranza
 - [ ] Comunicación propietario-inquilino
 - [ ] Integración Mercado Pago
