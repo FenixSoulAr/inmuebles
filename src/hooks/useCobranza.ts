@@ -1,6 +1,8 @@
 import { useState, useCallback, useEffect } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { useProjectId } from '@/hooks/useProjectId'
+import { resolveRentObligationId } from '@/lib/obligations'
+import { toast } from 'sonner'
 import type { Tables } from '@/integrations/supabase/types'
 
 export type RentDue = Tables<'rent_dues'>
