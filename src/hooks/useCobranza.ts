@@ -1,6 +1,8 @@
 import { useState, useCallback, useEffect } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { useProjectId } from '@/hooks/useProjectId'
+import { resolveRentObligationId } from '@/lib/obligations'
+import { toast } from 'sonner'
 import type { Tables } from '@/integrations/supabase/types'
 
 export type RentDue = Tables<'rent_dues'>
@@ -139,6 +141,7 @@ export function useCobranza() {
     const due = dues.find(d => d.id === rentDueId)
     if (!due) throw new Error('Cuota no encontrada')
 
+    // 1. Legacy: insert in rent_payments
     const { error: payError } = await supabase.from('rent_payments').insert({
       rent_due_id: rentDueId,
       project_id: projectId,
@@ -149,6 +152,7 @@ export function useCobranza() {
     })
     if (payError) throw payError
 
+    // 2. Update rent_due balance/status
     const newBalance = Math.max(0, Number(due.balance_due) - data.amount)
     const newStatus = newBalance <= 0 ? 'paid' : 'partial'
 
@@ -158,6 +162,48 @@ export function useCobranza() {
       .eq('id', rentDueId)
       .eq('project_id', projectId)
     if (updateError) throw updateError
+
+    // 3. Resolve canonical obligation_id
+    const obligationId = await resolveRentObligationId({
+      projectId,
+      contractId: due.contract_id,
+      propertyId: due.property_id,
+      tenantId: due.tenant_id,
+      periodMonth: due.period_month,
+      dueDate: due.due_date,
+      expectedAmount: Number(due.expected_amount),
+      currency: due.currency ?? 'ARS',
+    })
+    if (!obligationId) {
+      toast.error('No se pudo vincular el pago a la obligación canónica')
+      await fetchCobranza()
+      return
+    }
+
+    // 4. Insert canonical payment
+    const { error: canonicalErr } = await supabase.from('payments').insert({
+      project_id: projectId,
+      contract_id: due.contract_id,
+      obligation_id: obligationId,
+      amount: data.amount,
+      method: data.method,
+      concept: `Alquiler ${due.period_month}`,
+      paid_at: data.payment_date,
+      notes: data.notes || null,
+    })
+    if (canonicalErr) {
+      toast.error('Error al registrar pago canónico: ' + canonicalErr.message)
+      await fetchCobranza()
+      return
+    }
+
+    // 5. If fully paid, mark obligation as confirmed
+    if (newStatus === 'paid') {
+      await supabase
+        .from('obligations')
+        .update({ status: 'confirmed' })
+        .eq('id', obligationId)
+    }
 
     await fetchCobranza()
   }
