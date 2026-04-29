@@ -63,8 +63,7 @@ El 29-abr-2026 se aplicó la migración `backfill_rent_obligations_for_orphan_du
 - **Multi-tenant**: todas las tablas tienen `project_id`
 - **Roles**: owner, admin, collaborator, viewer
 - **Storage buckets**: documents, proof-files, contract-documents
-- **Edge Functions**: 7 funciones activas (generate-rent-dues, ensure-obligations,
-  reconcile-proofs, get-public-contract, submit-payment-proof, serve-file, prepare-proof-upload)
+- **Edge Functions**: 8 funciones activas (generate-rent-dues v3, ensure-obligations, reconcile-proofs, get-public-contract, submit-payment-proof, serve-file, prepare-proof-upload, invite-tenant)
 
 ## Variables de entorno
 
